@@ -17,9 +17,15 @@ func main() {
 	defer klog.Flush()
 	klog.Info("Starting search-indexer.")
 
-	// Read the config.
+	// Read the config from the environment.
 	config := config.New()
 	config.PrintConfig()
+
+	// Validate required configuration to proceed.
+	configError := config.Validate()
+	if configError != nil {
+		klog.Fatal(configError)
+	}
 
 	// Start the server.
 	server.StartAndListen()

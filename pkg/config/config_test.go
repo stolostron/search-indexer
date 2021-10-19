@@ -73,3 +73,33 @@ func Test_PrintConfig(t *testing.T) {
 		t.Error("Expected password to be redacted when logging configuration")
 	}
 }
+
+func Test_Validate(t *testing.T) {
+	os.Setenv("DB_NAME", "test")
+	os.Setenv("DB_USER", "test")
+	os.Setenv("DB_PASS", "test")
+	conf := New()
+
+	result := conf.Validate()
+	if result != nil {
+		t.Errorf("Expected %v Got: %+v", nil, result)
+	}
+
+	conf.DBPass = ""
+	result = conf.Validate()
+	if result.Error() != "Required environment DB_PASS is not set." {
+		t.Errorf("Expected %s Got: %s", "Required environment DB_PASS is not set.", result)
+	}
+
+	conf.DBUser = ""
+	result = conf.Validate()
+	if result.Error() != "Required environment DB_USER is not set." {
+		t.Errorf("Expected %s Got: %s", "Required environment DB_USER is not set.", result)
+	}
+
+	conf.DBName = ""
+	result = conf.Validate()
+	if result.Error() != "Required environment DB_NAME is not set." {
+		t.Errorf("Expected %s Got: %s", "Required environment DB_NAME is not set.", result)
+	}
+}

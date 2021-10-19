@@ -4,19 +4,14 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"strconv"
 
 	"k8s.io/klog/v2"
 )
 
-const (
-	AGGREGATOR_API_VERSION = "2.5.0"
-	// DEFAULT_EDGE_BUILD_RATE_MS      = 15000  // 15 sec
-	// DEFAULT_REDISCOVER_RATE_MS      = 300000 // 5 min
-	// DEFAULT_REQUEST_LIMIT           = 10    // Max number of concurrent requests.
-	// DEFAULT_SKIP_CLUSTER_VALIDATION = "false"
-)
+const AGGREGATOR_API_VERSION = "2.5.0"
 
 // Struct to hold our configuratioin
 type Config struct {
@@ -30,12 +25,18 @@ type Config struct {
 	Version           string
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
 	// KubeConfig            string // Local kubeconfig path
-	// RequestLimit          int    // Max number of concurrent requests. Used to prevent from overloading Redis.
+	// RediscoverRateMS      int    // time in MS we should check on cluster resource type
+	// RequestLimit          int    // Max number of concurrent requests. Used to prevent from overloading the database.
 	// SkipClusterValidation string // Skips cluster validation. Intended only for performance tests.
 }
 
 func New() *Config {
-	return &Config{
+	// defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+	// if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
+	// 	// set default to empty string if path does not reslove
+	// 	defaultKubePath = ""
+	// }
+	conf := &Config{
 		AggregatorAddress: getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		DBHost:            getEnv("DB_HOST", "localhost"),
 		DBPort:            getEnvAsInt("DB_PORT", 5432),
@@ -44,13 +45,14 @@ func New() *Config {
 		DBPass:            getEnv("DB_PASS", ""),
 		HTTPTimeout:       getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
 		Version:           AGGREGATOR_API_VERSION,
-		// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
-		// KubeConfig            string // Local kubeconfig path
-		// RedisWatchRate        int    // rate at which Redis Ping hapens to check health
-		// RediscoverRateMS      int    // time in MS we should check on cluster resource type
-		// RequestLimit          int    // Max number of concurrent requests. Used to prevent from overloading Redis.
-		// SkipClusterValidation string // Skips cluster validation. Intended only for performance tests.
+		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
+		// KubeConfig:            getEnv("KUBECONFIG", defaultKubePath),
+		// RediscoverRateMS:      getEnvAsInt("REDISCOVER_RATE_MS"), // 5 min
+		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
+		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
 	}
+
+	return conf
 }
 
 // Format and print environment to logger.
@@ -73,7 +75,6 @@ func getEnv(key string, defaultVal string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
 	}
-
 	return defaultVal
 }
 
@@ -83,8 +84,21 @@ func getEnvAsInt(name string, defaultVal int) int {
 	if value, err := strconv.Atoi(valueStr); err == nil {
 		return value
 	}
-
 	return defaultVal
+}
+
+// Validate required configuration.
+func (cfg *Config) Validate() error {
+	if cfg.DBName == "" {
+		return errors.New("Required environment DB_NAME is not set.")
+	}
+	if cfg.DBUser == "" {
+		return errors.New("Required environment DB_USER is not set.")
+	}
+	if cfg.DBPass == "" {
+		return errors.New("Required environment DB_PASS is not set.")
+	}
+	return nil
 }
 
 // Helper to read an environment variable into a bool or return default value
