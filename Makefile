@@ -16,5 +16,14 @@ run: ## Run the service locally.
 test: ## Run unit tests.
 	go test ./... -v -coverprofile cover.out
 
+coverage: test ## Collect code coverage
+	go tool cover -html=cover.out -o=cover.html
+	open cover.html
+
+docker-build: ## Build the docker image 
+	docker build -f Dockerfile . -t search-indexer
+
+
 send: ## Sends a simulated request for testing. 
 	curl -k -d "@pkg/server/mocks/clusterA.json" -X POST https://localhost:3010/aggregator/clusters/clusterA/sync
+

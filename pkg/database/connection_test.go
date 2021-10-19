@@ -11,6 +11,5 @@ func TestConnection(t *testing.T) {
 	// TODO: Need to mock the database.
 	conn := GetConnection()
 
-	fmt.Println("TODO: This is a dummy test, need to mock database.")
-	fmt.Println("Connection: ", conn)
+	fmt.Println("TODO: This is a dummy test, need to mock database.", conn)
 }
