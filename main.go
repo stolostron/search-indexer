@@ -1,10 +1,12 @@
+// Copyright Contributors to the Open Cluster Management project
+
 package main
 
 import (
 	"flag"
 
-	"github.com/jlpadilla/search-indexer/pkg/config"
-	"github.com/jlpadilla/search-indexer/pkg/server"
+	"github.com/open-cluster-management/search-indexer/pkg/config"
+	"github.com/open-cluster-management/search-indexer/pkg/server"
 	"k8s.io/klog/v2"
 )
 

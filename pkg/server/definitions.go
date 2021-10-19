@@ -1,7 +1,9 @@
+// Copyright Contributors to the Open Cluster Management project
+
 package server
 
 import (
-	db "github.com/jlpadilla/search-indexer/pkg/database"
+	db "github.com/open-cluster-management/search-indexer/pkg/database"
 )
 
 // SyncEvent - Object sent by the collector with the resources to change.

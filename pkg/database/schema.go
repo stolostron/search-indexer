@@ -1,3 +1,5 @@
+// Copyright Contributors to the Open Cluster Management project
+
 package database
 
 // Resource - Describes a resource (node)

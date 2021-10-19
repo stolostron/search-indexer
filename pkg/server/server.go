@@ -1,3 +1,5 @@
+// Copyright Contributors to the Open Cluster Management project
+
 package server
 
 import (
@@ -6,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/jlpadilla/search-indexer/pkg/config"
+	"github.com/open-cluster-management/search-indexer/pkg/config"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/klog/v2"
 )

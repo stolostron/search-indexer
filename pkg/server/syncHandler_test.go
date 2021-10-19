@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/jlpadilla/search-indexer/pkg/config"
+	"github.com/open-cluster-management/search-indexer/pkg/config"
 )
 
 func Test_syncRequest(t *testing.T) {

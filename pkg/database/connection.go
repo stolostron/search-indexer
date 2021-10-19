@@ -1,3 +1,5 @@
+// Copyright Contributors to the Open Cluster Management project
+
 package database
 
 import (
@@ -5,16 +7,9 @@ import (
 	"fmt"
 
 	pgxpool "github.com/jackc/pgx/v4/pgxpool"
-	"github.com/jlpadilla/search-indexer/pkg/config"
+	"github.com/open-cluster-management/search-indexer/pkg/config"
 	"k8s.io/klog/v2"
 )
-
-// type dbconn interface {
-// 	Begin(ctx context.Context) (pgxpool.Tx, error)
-// 	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
-// 	Query(ctx context.Context, sql string, optionsAndArgs ...interface{}) (pgxpool.Rows, error)
-// 	QueryRow(ctx context.Context, sql string, optionsAndArgs ...interface{}) pgxpool.Row
-// }
 
 var pool *pgxpool.Pool
 

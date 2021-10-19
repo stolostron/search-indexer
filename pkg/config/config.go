@@ -1,3 +1,5 @@
+// Copyright Contributors to the Open Cluster Management project
+
 package config
 
 import (
@@ -9,14 +11,7 @@ import (
 )
 
 const (
-	AGGREGATOR_API_VERSION     = "2.5.0"
-	DEFAULT_AGGREGATOR_ADDRESS = ":3010"
-	DEFAULT_DB_HOST            = "localhost"
-	DEFAULT_DB_PORT            = 5432
-	DEFAULT_DB_NAME            = ""
-	DEFAULT_DB_USER            = ""
-	DEFAULT_HTTP_TIMEOUT       = 300000 // 5 min
-
+	AGGREGATOR_API_VERSION = "2.5.0"
 	// DEFAULT_EDGE_BUILD_RATE_MS      = 15000  // 15 sec
 	// DEFAULT_REDISCOVER_RATE_MS      = 300000 // 5 min
 	// DEFAULT_REQUEST_LIMIT           = 10    // Max number of concurrent requests.
@@ -41,13 +36,13 @@ type Config struct {
 
 func New() *Config {
 	return &Config{
-		AggregatorAddress: getEnv("AGGREGATOR_ADDRESS", DEFAULT_AGGREGATOR_ADDRESS),
-		DBHost:            getEnv("DB_HOST", DEFAULT_DB_HOST),
-		DBPort:            getEnvAsInt("DB_PORT", DEFAULT_DB_PORT),
-		DBName:            getEnv("DB_NAME", DEFAULT_DB_NAME),
-		DBUser:            getEnv("DB_USER", DEFAULT_DB_USER),
+		AggregatorAddress: getEnv("AGGREGATOR_ADDRESS", ":3010"),
+		DBHost:            getEnv("DB_HOST", "localhost"),
+		DBPort:            getEnvAsInt("DB_PORT", 5432),
+		DBName:            getEnv("DB_NAME", ""),
+		DBUser:            getEnv("DB_USER", ""),
 		DBPass:            getEnv("DB_PASS", ""),
-		HTTPTimeout:       getEnvAsInt("HTTP_TIMEOUT", DEFAULT_HTTP_TIMEOUT),
+		HTTPTimeout:       getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
 		Version:           AGGREGATOR_API_VERSION,
 		// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
 		// KubeConfig            string // Local kubeconfig path
@@ -58,7 +53,7 @@ func New() *Config {
 	}
 }
 
-// Format and print to logger.
+// Format and print environment to logger.
 func (cfg *Config) PrintConfig() {
 	// Make a copy to redact secrets and sensitive information.
 	tmp := cfg
@@ -70,7 +65,7 @@ func (cfg *Config) PrintConfig() {
 		klog.Warning("Encountered a problem formatting configuration. ", err)
 		klog.Infof("Configuration %#v\n", tmp)
 	}
-	klog.Infof("Configuration:\n%s\n", string(cfgJSON))
+	klog.Infof("Using configuration:\n%s\n", string(cfgJSON))
 }
 
 // Simple helper function to read an environment or return a default value

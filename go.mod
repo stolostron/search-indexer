@@ -1,4 +1,4 @@
-module github.com/jlpadilla/search-indexer
+module github.com/open-cluster-management/search-indexer
 
 go 1.16
 
