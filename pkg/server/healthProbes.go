@@ -17,7 +17,7 @@ func LivenessProbe(w http.ResponseWriter, r *http.Request) {
 
 // ReadinessProbe checks if database is available.
 func ReadinessProbe(w http.ResponseWriter, r *http.Request) {
-	klog.V(2).Info("readinessProbe - Checking Database connection.")
+	klog.V(2).Info("readinessProbe - TODO Check database connection.")
 
 	// TODO - Implement probe.
 
