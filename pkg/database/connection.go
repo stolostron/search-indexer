@@ -21,8 +21,6 @@ func init() {
 func initializePool() {
 	cfg := config.New()
 
-	// TODO: Validate the configuration.
-
 	database_url := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort, cfg.DBName)
 	klog.Info("Connecting to PostgreSQL at: ", fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", cfg.DBUser, "*****", cfg.DBHost, cfg.DBPort, cfg.DBName))
 
@@ -31,7 +29,6 @@ func initializePool() {
 		klog.Error("Error parsing database connection configuration.", configErr)
 	}
 
-	// config.MaxConns = maxConnections
 	conn, err := pgxpool.ConnectConfig(context.Background(), config)
 	if err != nil {
 		klog.Error("Unable to connect to database: %+v\n", err)

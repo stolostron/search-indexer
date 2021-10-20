@@ -7,7 +7,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/open-cluster-management/search-indexer/pkg/config"
-	db "github.com/open-cluster-management/search-indexer/pkg/database"
 	"k8s.io/klog/v2"
 )
 
@@ -27,7 +26,6 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: Process the sync event.
-	db.Insert(syncEvent.AddResources, clusterName)
 
 	response := &SyncResponse{Version: config.AGGREGATOR_API_VERSION}
 	w.WriteHeader(http.StatusOK)
