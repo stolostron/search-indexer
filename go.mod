@@ -1,3 +1,4 @@
+// Copyright Contributors to the Open Cluster Management project
 module github.com/open-cluster-management/search-indexer
 
 go 1.16
