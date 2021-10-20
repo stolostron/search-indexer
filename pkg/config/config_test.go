@@ -13,7 +13,6 @@ import (
 
 // Should use default value when environment variable does not exist.
 func Test_getEnv_default(t *testing.T) {
-
 	res := getEnv("ENV_VARIABLE_NOT_DEFINED", "default-value")
 
 	if res != "default-value" {
@@ -23,7 +22,6 @@ func Test_getEnv_default(t *testing.T) {
 
 // Should load string value from environment.
 func Test_getEnv(t *testing.T) {
-
 	os.Setenv("TEST_VARIABLE", "test-value")
 	res := getEnv("TEST_VARIABLE", "default-value")
 
@@ -34,7 +32,6 @@ func Test_getEnv(t *testing.T) {
 
 // Should use default value when environment variable does not exist.
 func Test_getEnvAsInt_default(t *testing.T) {
-
 	res := getEnvAsInt("ENV_VARIABLE_NOT_DEFINED", 99)
 
 	if res != 99 {
@@ -44,7 +41,6 @@ func Test_getEnvAsInt_default(t *testing.T) {
 
 // Should load int value from environment.
 func Test_getEnvAsInt(t *testing.T) {
-
 	os.Setenv("TEST_VARIABLE", "99")
 	res := getEnvAsInt("TEST_VARIABLE", 0)
 
