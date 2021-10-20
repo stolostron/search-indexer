@@ -42,7 +42,7 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 		klog.Error("Error responding to SyncEvent:", encodeError, response)
 	}
 
-	klog.V(5).Infof("Request for [%s] took %v", clusterName, time.Since(start))
+	klog.V(5).Infof("Request from [%s] took %v", clusterName, time.Since(start))
 	// Record metrics.
 	OpsProcessed.WithLabelValues(clusterName, r.RequestURI).Inc()
 	HttpDuration.WithLabelValues(clusterName, r.RequestURI).Observe(float64(time.Since(start).Milliseconds()))
