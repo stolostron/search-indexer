@@ -11,7 +11,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const AGGREGATOR_API_VERSION = "2.5.0"
+const COMPONENT_VERSION = "2.5.0"
 
 // Struct to hold our configuratioin
 type Config struct {
@@ -40,7 +40,7 @@ func New() *Config {
 		DBUser:            getEnv("DB_USER", ""),
 		DBPass:            getEnv("DB_PASS", ""),
 		HTTPTimeout:       getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
-		Version:           AGGREGATOR_API_VERSION,
+		Version:           COMPONENT_VERSION,
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
 		// KubeConfig:            getKubeConfig(),
 		// RediscoverRateMS:      getEnvAsInt("REDISCOVER_RATE_MS"), // 5 min
