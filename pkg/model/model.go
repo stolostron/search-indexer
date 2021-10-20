@@ -1,21 +1,32 @@
 // Copyright Contributors to the Open Cluster Management project
 
-package server
+package model
 
-import (
-	db "github.com/open-cluster-management/search-indexer/pkg/database"
-)
+// Resource - Describes a resource (node)
+type Resource struct {
+	Kind           string `json:"kind,omitempty"`
+	UID            string `json:"uid,omitempty"`
+	ResourceString string `json:"resourceString,omitempty"`
+	Properties     map[string]interface{}
+}
+
+// Describes a relationship between resources
+type Edge struct {
+	SourceUID, DestUID   string
+	EdgeType             string
+	SourceKind, DestKind string
+}
 
 // SyncEvent - Object sent by the collector with the resources to change.
 type SyncEvent struct {
 	ClearAll bool `json:"clearAll,omitempty"`
 
-	AddResources    []db.Resource
-	UpdateResources []db.Resource
+	AddResources    []Resource
+	UpdateResources []Resource
 	DeleteResources []DeleteResourceEvent
 
-	AddEdges    []db.Edge
-	DeleteEdges []db.Edge
+	AddEdges    []Edge
+	DeleteEdges []Edge
 	RequestId   int
 }
 

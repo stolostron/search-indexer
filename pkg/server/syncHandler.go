@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/open-cluster-management/search-indexer/pkg/config"
+	"github.com/open-cluster-management/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
 
@@ -17,7 +18,7 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 	clusterName := params["id"]
 	klog.V(2).Infof("Processing request from cluster [%s]", clusterName)
 
-	var syncEvent SyncEvent
+	var syncEvent model.SyncEvent
 	err := json.NewDecoder(r.Body).Decode(&syncEvent)
 	if err != nil {
 		klog.Error("Error decoding body of syncEvent: ", err)
@@ -27,7 +28,7 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Process the sync event.
 
-	response := &SyncResponse{Version: config.AGGREGATOR_API_VERSION}
+	response := &model.SyncResponse{Version: config.AGGREGATOR_API_VERSION}
 	w.WriteHeader(http.StatusOK)
 	encodeError := json.NewEncoder(w).Encode(response)
 	if encodeError != nil {
