@@ -1,0 +1,28 @@
+{"updateResources":[
+    {
+        "uid":"local-cluster/13250bc4-865c-41db-a8f2-05bec0bd042b",
+        "resourceString":"replicasets",
+        "properties":{
+            "_clusterNamespace":"local-cluster-ns",
+            "_hubClusterResource":true,
+            "apigroup":"apps",
+            "apiversion":"v1",
+            "created":"2021-07-14T10:15:20Z",
+            "current":0,
+            "desired":3
+            ,"kind":"ReplicaSet",
+            "label":{
+                "app.kubernetes.io/component":"controller",
+                "app.kubernetes.io/managed-by":"cluster-monitoring-operator",
+                "app.kubernetes.io/name":"prometheus-operator",
+                "app.kubernetes.io/part-of":"openshift-monitoring",
+                "app.kubernetes.io/version":"0.45.0",
+                "pod-template-hash":"5f5575c669"
+            },
+            "name":"prometheus-operator-5f5575c669",
+            "namespace":"openshift-monitoring"
+        },
+        "Metadata":{
+            "OwnerUID":"local-cluster/411e30e4-f773-41a6-b745-24c93c173f45"}
+        }
+]}

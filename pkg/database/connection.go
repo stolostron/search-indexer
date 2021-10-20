@@ -16,12 +16,11 @@ var pool *pgxpool.Pool
 func init() {
 	klog.Info("Initializing database connection.")
 	initializePool()
+	initializeTables()
 }
 
 func initializePool() {
 	cfg := config.New()
-
-	// TODO: Validate the configuration.
 
 	database_url := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort, cfg.DBName)
 	klog.Info("Connecting to PostgreSQL at: ", fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", cfg.DBUser, "*****", cfg.DBHost, cfg.DBPort, cfg.DBName))
@@ -38,6 +37,13 @@ func initializePool() {
 	}
 
 	pool = conn
+}
+
+func initializeTables() {
+	// FIXME: DONT DROP TABLE!!!
+	pool.Exec(context.Background(), "DROP TABLE resources")
+	pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
+	pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS relationships (sourceId TEXT, destId TEXT)")
 }
 
 func GetConnection() *pgxpool.Pool {

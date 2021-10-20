@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/open-cluster-management/search-indexer/pkg/config"
 	db "github.com/open-cluster-management/search-indexer/pkg/database"
+	"github.com/open-cluster-management/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
 
@@ -18,7 +19,7 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 	clusterName := params["id"]
 	klog.V(2).Infof("Processing request from cluster [%s]", clusterName)
 
-	var syncEvent SyncEvent
+	var syncEvent model.SyncEvent
 	err := json.NewDecoder(r.Body).Decode(&syncEvent)
 	if err != nil {
 		klog.Error("Error decoding body of syncEvent: ", err)
@@ -26,17 +27,22 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Process the sync event.
-	db.Insert(syncEvent.AddResources, clusterName)
-	// klog.Infof("Request body(decoded): %+v \n", syncEvent)
+	// The collector sends ClearAll if it's the first time sending or if something goes wrong and it detects
+	// that it needs a full resync with the current state.
+	if syncEvent.ClearAll {
+		db.ResyncData(syncEvent, clusterName)
+	} else {
+		db.SaveData(syncEvent, clusterName)
+	}
 
-	response := &SyncResponse{Version: config.AGGREGATOR_API_VERSION}
+	response := &model.SyncResponse{Version: config.AGGREGATOR_API_VERSION}
 	w.WriteHeader(http.StatusOK)
 	encodeError := json.NewEncoder(w).Encode(response)
 	if encodeError != nil {
 		klog.Error("Error responding to SyncEvent:", encodeError, response)
 	}
 
+	klog.V(5).Infof("Request for [%s] took %v", clusterName, time.Since(start))
 	// Record metrics.
 	OpsProcessed.WithLabelValues(clusterName, r.RequestURI).Inc()
 	HttpDuration.WithLabelValues(clusterName, r.RequestURI).Observe(float64(time.Since(start).Milliseconds()))
