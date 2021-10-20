@@ -7,7 +7,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/open-cluster-management/search-indexer/pkg/config"
-	db "github.com/open-cluster-management/search-indexer/pkg/database"
 	"github.com/open-cluster-management/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
@@ -27,13 +26,15 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The collector sends ClearAll if it's the first time sending or if something goes wrong and it detects
-	// that it needs a full resync with the current state.
-	if syncEvent.ClearAll {
-		db.ResyncData(syncEvent, clusterName)
-	} else {
-		db.SaveData(syncEvent, clusterName)
-	}
+	// // The collector sends ClearAll if it's the first time sending or if something goes wrong and it detects
+	// // that it needs a full resync with the current state.
+	// if syncEvent.ClearAll {
+	// 	db.ResyncData(syncEvent, clusterName)
+	// } else {
+	// 	db.SaveData(syncEvent, clusterName)
+	// }
+	// // TODO: Process the sync event.
+	// db.Insert(syncEvent.AddResources, clusterName)
 
 	response := &model.SyncResponse{Version: config.AGGREGATOR_API_VERSION}
 	w.WriteHeader(http.StatusOK)
