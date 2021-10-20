@@ -30,12 +30,8 @@ type Config struct {
 	// SkipClusterValidation string // Skips cluster validation. Intended only for performance tests.
 }
 
+// Reads config from environment.
 func New() *Config {
-	// defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
-	// if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
-	// 	// set default to empty string if path does not reslove
-	// 	defaultKubePath = ""
-	// }
 	conf := &Config{
 		AggregatorAddress: getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		DBHost:            getEnv("DB_HOST", "localhost"),
@@ -46,7 +42,7 @@ func New() *Config {
 		HTTPTimeout:       getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
 		Version:           AGGREGATOR_API_VERSION,
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
-		// KubeConfig:            getEnv("KUBECONFIG", defaultKubePath),
+		// KubeConfig:            getKubeConfig(),
 		// RediscoverRateMS:      getEnvAsInt("REDISCOVER_RATE_MS"), // 5 min
 		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
@@ -122,4 +118,15 @@ func (cfg *Config) Validate() error {
 // 	val := strings.Split(valStr, sep)
 
 // 	return val
+// }
+
+// func getKubeConfig() string{
+// 	defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+// 	if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
+// 		// set default to empty string if path does not reslove
+// 		defaultKubePath = ""
+// 	}
+
+// 	kubeConfig := getEnv("KUBECONFIG", defaultKubePath)
+// 	return kubeConfig
 // }
