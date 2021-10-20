@@ -28,7 +28,6 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Process the sync event.
 	db.Insert(syncEvent.AddResources, clusterName)
-	// klog.Infof("Request body(decoded): %+v \n", syncEvent)
 
 	response := &SyncResponse{Version: config.AGGREGATOR_API_VERSION}
 	w.WriteHeader(http.StatusOK)
