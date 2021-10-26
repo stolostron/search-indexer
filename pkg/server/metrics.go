@@ -8,18 +8,13 @@ import (
 )
 
 var HttpDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
-	Name: "acm_searchaggr_http_duration_seconds",
-	Help: "Duration the search aggregator takes to process HTTP requests.",
+	Name: "acm_search_indexer_http_duration_seconds",
+	Help: "Time the search indexer takes to process HTTP requests.",
 }, []string{"cluster", "endpoint"})
 
 var (
 	OpsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "acm_searchaggr_hits_total",
-		Help: "The total number of incoming requests to the search aggregator.",
+		Name: "acm_search_indexer_hits_total",
+		Help: "The total number of incoming requests to the search indexer.",
 	}, []string{"cluster", "endpoint"})
 )
-
-// var HttpSummary = promauto.NewHistogramVec(prometheus.HistogramOpts{
-// 	Name: "acm_searchaggr_http_summary",
-// 	Help: "Duration the search aggregator takes to process HTTP requests.",
-// }, []string{"cluster", "endpoint"})
