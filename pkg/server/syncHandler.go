@@ -35,7 +35,7 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 		db.SaveData(syncEvent, clusterName)
 	}
 
-	response := &model.SyncResponse{Version: config.AGGREGATOR_API_VERSION}
+	response := &model.SyncResponse{Version: config.COMPONENT_VERSION}
 	w.WriteHeader(http.StatusOK)
 	encodeError := json.NewEncoder(w).Encode(response)
 	if encodeError != nil {
