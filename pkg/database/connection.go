@@ -46,10 +46,19 @@ func initializeTables() {
 }
 
 func GetConnection() *pgxpool.Pool {
-	err := pool.Ping(context.Background())
-	if err != nil {
-		panic(err)
+	if pool == nil {
+		initializePool()
 	}
-	klog.Info("Successfully connected to database!")
-	return pool
+
+	if pool != nil {
+		err := pool.Ping(context.Background())
+		if err != nil {
+			klog.Error("Unable to get a database connection. ", err)
+			// Here we may need to add retry.
+			return nil
+		}
+		klog.Info("Successfully connected to database!")
+		return pool
+	}
+	return nil
 }

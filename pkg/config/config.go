@@ -11,18 +11,18 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const AGGREGATOR_API_VERSION = "2.5.0"
+const COMPONENT_VERSION = "2.5.0"
 
 // Struct to hold our configuratioin
 type Config struct {
-	AggregatorAddress string // address for collector <-> aggregator
-	DBHost            string
-	DBPort            int
-	DBName            string
-	DBUser            string
-	DBPass            string
-	HTTPTimeout       int // timeout when the http server should drop connections
-	Version           string
+	DBHost        string
+	DBPort        int
+	DBName        string
+	DBUser        string
+	DBPass        string
+	HTTPTimeout   int    // timeout when the http server should drop connections
+	ServerAddress string // Web server address
+	Version       string
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
 	// KubeConfig            string // Local kubeconfig path
 	// RediscoverRateMS      int    // time in MS we should check on cluster resource type
@@ -33,14 +33,14 @@ type Config struct {
 // Reads config from environment.
 func New() *Config {
 	conf := &Config{
-		AggregatorAddress: getEnv("AGGREGATOR_ADDRESS", ":3010"),
-		DBHost:            getEnv("DB_HOST", "localhost"),
-		DBPort:            getEnvAsInt("DB_PORT", 5432),
-		DBName:            getEnv("DB_NAME", ""),
-		DBUser:            getEnv("DB_USER", ""),
-		DBPass:            getEnv("DB_PASS", ""),
-		HTTPTimeout:       getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
-		Version:           AGGREGATOR_API_VERSION,
+		DBHost:        getEnv("DB_HOST", "localhost"),
+		DBPort:        getEnvAsInt("DB_PORT", 5432),
+		DBName:        getEnv("DB_NAME", ""),
+		DBUser:        getEnv("DB_USER", ""),
+		DBPass:        getEnv("DB_PASS", ""),
+		HTTPTimeout:   getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
+		ServerAddress: getEnv("AGGREGATOR_ADDRESS", ":3010"),
+		Version:       COMPONENT_VERSION,
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
 		// KubeConfig:            getKubeConfig(),
 		// RediscoverRateMS:      getEnvAsInt("REDISCOVER_RATE_MS"), // 5 min

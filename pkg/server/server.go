@@ -34,7 +34,7 @@ func StartAndListen() {
 		},
 	}
 	srv := &http.Server{
-		Addr:              config.AggregatorAddress,
+		Addr:              config.ServerAddress,
 		Handler:           router,
 		TLSConfig:         cfg,
 		ReadHeaderTimeout: time.Duration(config.HTTPTimeout) * time.Millisecond,
