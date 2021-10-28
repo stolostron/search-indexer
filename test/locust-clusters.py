@@ -2,7 +2,7 @@ from locust import HttpUser, task, between, TaskSet
 import json
 import uuid
 import urllib3
-urllib3.disable_warnings()
+urllib3.disable_warnings() # Suppress warning from unverified TLS connection (verify=false)
 
 clusterCount = 0 # Used to name clusters sequentially.
 
