@@ -3,3 +3,4 @@ cover.out
 sslcert/tls.crt
 sslcert/tls.key
 cover.html
+test/__pycache__/locustfile.cpython-39.pyc
