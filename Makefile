@@ -24,6 +24,21 @@ docker-build: ## Build the docker image.
 	docker build -f Dockerfile . -t search-indexer
 
 
-send: ## Sends a simulated request for testing. 
+test-send: ## Sends a simulated request for testing using cURL.
 	curl -k -d "@pkg/server/mocks/clusterA.json" -X POST https://localhost:3010/aggregator/clusters/clusterA/sync
+
+N_CLUSTERS ?=2
+test-scale: check-locust ## Sends multiple simulated requests for testing using Locust. Use N_CLUSTERS to change the number of simulated clusters.
+	cd test; locust --headless --users ${N_CLUSTERS} --spawn-rate ${N_CLUSTERS} -H https://localhost:3010 -f locust-clusters.py
+
+test-scale-ui: check-locust ## Start Locust and opens the UI to drive scale tests.
+	open http://0.0.0.0:8089/
+	cd test; locust --users ${N_CLUSTERS} --spawn-rate ${N_CLUSTERS} -H https://localhost:3010 -f locust-clusters.py
+
+check-locust: ## Checks if Locust is installed in the system.
+ifeq (,$(shell which locust))
+	@echo The scale tests require Locust.io, but locust was not found.
+	@echo Install locust to continue. For more info visit: https://docs.locust.io/en/stable/installation.html
+	exit 1
+endif
 
