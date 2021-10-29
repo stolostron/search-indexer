@@ -47,7 +47,7 @@ func SaveData(event model.SyncEvent, clusterName string) {
 
 	// ADD EDGES
 	for _, edge := range event.AddEdges {
-		batch.Queue("INSERT into relationships values($1,$2)", edge.SourceUID, edge.DestUID)
+		batch.Queue("INSERT into edges values($1,$2)", edge.SourceUID, edge.DestUID)
 		count++
 		if count == BATCH_SIZE {
 			wg.Add(1)
@@ -66,8 +66,8 @@ func SaveData(event model.SyncEvent, clusterName string) {
 			uids[i] = resource.UID
 		}
 		batch.Queue("DELETE from resources WHERE uid IN ($1)", strings.Join(uids, ", "))
-		batch.Queue("DELETE from relationships WHERE sourceId IN ($1)", strings.Join(uids, ", "))
-		batch.Queue("DELETE from relationships WHERE destId IN ($1)", strings.Join(uids, ", "))
+		batch.Queue("DELETE from edges WHERE sourceId IN ($1)", strings.Join(uids, ", "))
+		batch.Queue("DELETE from edges WHERE destId IN ($1)", strings.Join(uids, ", "))
 		count += 3
 	}
 	if count > 0 {
