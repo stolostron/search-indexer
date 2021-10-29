@@ -39,8 +39,8 @@ func initializePool() {
 }
 
 func initializeTables() {
-	// FIXME: REMOVE THIS WORKAROUND! Dropping tables to simplify development.
-	// klog.Warning("FIXME: REMOVE THIS WORKAROUND! Dropping tables to simplify development.")
+	// FIXME: REMOVE THIS WORKAROUND! Dropping tables to simplify development, we can't keep this for production.
+	klog.Warning("FIXME: REMOVE THIS WORKAROUND! I'm dropping tables to simplify development, we can't keep this for production.")
 	pool.Exec(context.Background(), "DROP TABLE resources")
 	pool.Exec(context.Background(), "DROP TABLE edges")
 	pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
@@ -56,7 +56,7 @@ func GetConnection() *pgxpool.Pool {
 		err := pool.Ping(context.Background())
 		if err != nil {
 			klog.Error("Unable to get a database connection. ", err)
-			// Here we may need to add retry.
+			// TODO: Here we may need to add retry.
 			return nil
 		}
 		klog.Info("Successfully connected to database!")

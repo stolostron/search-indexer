@@ -58,6 +58,7 @@ func SyncData(event model.SyncEvent, clusterName string) {
 	}
 
 	// UPDATE EDGES
+	// We don't need update. The collector only sends add and delete for edges.
 
 	// DELETE - NODE AND EDGES
 	if len(event.DeleteResources) > 0 {
@@ -86,6 +87,8 @@ func sendBatch(batch pgx.Batch, wg *sync.WaitGroup) {
 	res, err := br.Exec()
 	if err != nil {
 		klog.Error("Error sending batch. res: ", res, "  err: ", err, batch.Len())
+
+		// TODO: Need to report the errors back.
 	}
 	// klog.Info("Batch response: ", res)
 	br.Close()
