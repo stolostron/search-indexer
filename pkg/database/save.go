@@ -81,12 +81,12 @@ func SaveData(event model.SyncEvent, clusterName string) {
 
 func sendBatch(batch pgx.Batch, wg *sync.WaitGroup) {
 	defer wg.Done()
-	klog.Info("Sending batch")
+	// klog.Info("Sending batch")
 	br := pool.SendBatch(context.Background(), &batch)
 	res, err := br.Exec()
 	if err != nil {
 		klog.Error("Error sending batch. res: ", res, "  err: ", err, batch.Len())
 	}
-	klog.Info("Batch response: ", res)
+	// klog.Info("Batch response: ", res)
 	br.Close()
 }

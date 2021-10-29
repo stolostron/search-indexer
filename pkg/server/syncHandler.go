@@ -17,7 +17,7 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
 	clusterName := params["id"]
-	klog.V(2).Infof("Processing request from cluster [%s]", clusterName)
+	// klog.V(2).Infof("Processing request from cluster [%s]", clusterName)
 
 	var syncEvent model.SyncEvent
 	err := json.NewDecoder(r.Body).Decode(&syncEvent)
@@ -28,9 +28,9 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 	}
 
 	klog.Infof("Cluster [%s] clearAll [%t]  addTotal [%d]", clusterName, syncEvent.ClearAll, len(syncEvent.AddResources))
-	if !syncEvent.ClearAll {
-		klog.Infof("SyncEvent %+v", syncEvent)
-	}
+	// if !syncEvent.ClearAll {
+	// 	klog.Infof("SyncEvent %+v", syncEvent)
+	// }
 
 	// The collector sends ClearAll if it's the first time sending or if something goes wrong and it detects
 	// that it needs a full resync with the current state.
