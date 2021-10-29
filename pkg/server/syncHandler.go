@@ -27,6 +27,11 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	klog.Infof("Cluster [%s] clearAll [%t]  addTotal [%d]", clusterName, syncEvent.ClearAll, len(syncEvent.AddResources))
+	if !syncEvent.ClearAll {
+		klog.Infof("SyncEvent %+v", syncEvent)
+	}
+
 	// The collector sends ClearAll if it's the first time sending or if something goes wrong and it detects
 	// that it needs a full resync with the current state.
 	if syncEvent.ClearAll {
