@@ -27,17 +27,13 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	klog.Infof("Cluster [%s] clearAll [%t]  addTotal [%d]", clusterName, syncEvent.ClearAll, len(syncEvent.AddResources))
-	// if !syncEvent.ClearAll {
-	// 	klog.Infof("SyncEvent %+v", syncEvent)
-	// }
-
-	// The collector sends ClearAll if it's the first time sending or if something goes wrong and it detects
-	// that it needs a full resync with the current state.
+	// The collector sends 2 types of requests:
+	// 1. ReSync [ClearAll=true]  - It has the complete current state. It must overwrite any previous state.
+	// 2. Sync   [ClearAll=false] - This is the delta changes from the previous state.
 	if syncEvent.ClearAll {
 		db.ResyncData(syncEvent, clusterName)
 	} else {
-		db.SaveData(syncEvent, clusterName)
+		db.SyncData(syncEvent, clusterName)
 	}
 
 	response := &model.SyncResponse{Version: config.COMPONENT_VERSION}
@@ -47,7 +43,7 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 		klog.Error("Error responding to SyncEvent:", encodeError, response)
 	}
 
-	klog.V(5).Infof("Request from [%s] took %v", clusterName, time.Since(start))
+	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]", clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// Record metrics.
 	OpsProcessed.WithLabelValues(clusterName, r.RequestURI).Inc()
 	HttpDuration.WithLabelValues(clusterName, r.RequestURI).Observe(float64(time.Since(start).Milliseconds()))

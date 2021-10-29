@@ -40,7 +40,7 @@ func initializePool() {
 
 func initializeTables() {
 	// FIXME: REMOVE THIS WORKAROUND! Dropping tables to simplify development.
-	klog.Warning("FIXME: REMOVE THIS WORKAROUND! Dropping tables to simplify development.")
+	// klog.Warning("FIXME: REMOVE THIS WORKAROUND! Dropping tables to simplify development.")
 	pool.Exec(context.Background(), "DROP TABLE resources")
 	pool.Exec(context.Background(), "DROP TABLE edges")
 	pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")

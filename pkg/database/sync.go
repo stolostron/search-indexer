@@ -15,7 +15,7 @@ import (
 
 const BATCH_SIZE = 500
 
-func SaveData(event model.SyncEvent, clusterName string) {
+func SyncData(event model.SyncEvent, clusterName string) {
 	wg := &sync.WaitGroup{}
 	batch := &pgx.Batch{}
 	count := 0
