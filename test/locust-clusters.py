@@ -17,18 +17,14 @@ class ClusterBehavior(TaskSet):
         j = json.load(f)        
         for resource in j["addResources"]: 
             resource["uid"] = resource["uid"].replace("local-cluster",self.user.name)
+        for resource in j["addEdges"]: 
+            resource["SourceUID"] = resource["SourceUID"].replace("local-cluster",self.user.name)
+            resource["DestUID"] = resource["DestUID"].replace("local-cluster",self.user.name)
         self.client.payload = j
         self.do_post()
         print("%s - sent full state" % self.user.name)
 
     def send_update_payload(self):
-        f = open("cluster-update-template.json",)
-        j = json.load(f)        
-        for resource in j["addResources"]: 
-            resource["uid"] = "{}/{}".format(self.user.name, str(uuid.uuid4()) )
-            resource["properties"]["name"] = "gen-name-{}".format(str(uuid.uuid4()) )
-        self.client.payload = j
-        self.do_post()
         print("%s - sent update" % self.user.name)
 
     def do_post(self):

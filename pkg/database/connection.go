@@ -44,7 +44,7 @@ func initializeTables() {
 	pool.Exec(context.Background(), "DROP TABLE resources")
 	pool.Exec(context.Background(), "DROP TABLE edges")
 	pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
-	pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS edges (sourceId TEXT, destId TEXT)")
+	pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT)")
 }
 
 func GetConnection() *pgxpool.Pool {

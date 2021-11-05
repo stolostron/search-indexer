@@ -47,7 +47,7 @@ func SyncData(event model.SyncEvent, clusterName string) {
 
 	// ADD EDGES
 	for _, edge := range event.AddEdges {
-		batch.Queue("INSERT into edges values($1,$2)", edge.SourceUID, edge.DestUID)
+		batch.Queue("INSERT into edges values($1,$2,$3,$4,$5)", edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType)
 		count++
 		if count == BATCH_SIZE {
 			wg.Add(1)
