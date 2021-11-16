@@ -14,8 +14,6 @@ import (
 )
 
 func StartAndListen() {
-	config := config.New()
-
 	router := mux.NewRouter()
 	router.HandleFunc("/liveness", LivenessProbe).Methods("GET")
 	router.HandleFunc("/readiness", ReadinessProbe).Methods("GET")
@@ -34,12 +32,12 @@ func StartAndListen() {
 		},
 	}
 	srv := &http.Server{
-		Addr:              config.ServerAddress,
+		Addr:              config.Cfg.ServerAddress,
 		Handler:           router,
 		TLSConfig:         cfg,
-		ReadHeaderTimeout: time.Duration(config.HTTPTimeout) * time.Millisecond,
-		ReadTimeout:       time.Duration(config.HTTPTimeout) * time.Millisecond,
-		WriteTimeout:      time.Duration(config.HTTPTimeout) * time.Millisecond,
+		ReadHeaderTimeout: time.Duration(config.Cfg.HTTPTimeout) * time.Millisecond,
+		ReadTimeout:       time.Duration(config.Cfg.HTTPTimeout) * time.Millisecond,
+		WriteTimeout:      time.Duration(config.Cfg.HTTPTimeout) * time.Millisecond,
 		TLSNextProto:      make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 	}
 

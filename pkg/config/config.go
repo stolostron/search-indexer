@@ -13,6 +13,8 @@ import (
 
 const COMPONENT_VERSION = "2.5.0"
 
+var Cfg = new()
+
 // Struct to hold our configuratioin
 type Config struct {
 	DBHost        string
@@ -31,7 +33,7 @@ type Config struct {
 }
 
 // Reads config from environment.
-func New() *Config {
+func new() *Config {
 	conf := &Config{
 		DBHost:        getEnv("DB_HOST", "localhost"),
 		DBPort:        getEnvAsInt("DB_PORT", 5432),

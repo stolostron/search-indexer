@@ -60,7 +60,7 @@ func Test_PrintConfig(t *testing.T) {
 	}()
 
 	// Call the function.
-	c := New()
+	c := new()
 	c.PrintConfig()
 
 	// Validate environment was logged as expected.
@@ -74,7 +74,7 @@ func Test_Validate(t *testing.T) {
 	os.Setenv("DB_NAME", "test")
 	os.Setenv("DB_USER", "test")
 	os.Setenv("DB_PASS", "test")
-	conf := New()
+	conf := new()
 
 	result := conf.Validate()
 	if result != nil {
@@ -82,21 +82,21 @@ func Test_Validate(t *testing.T) {
 	}
 
 	os.Setenv("DB_PASS", "")
-	conf = New()
+	conf = new()
 	result = conf.Validate()
 	if result.Error() != "Required environment DB_PASS is not set." {
 		t.Errorf("Expected %s Got: %s", "Required environment DB_PASS is not set.", result)
 	}
 
 	os.Setenv("DB_USER", "")
-	conf = New()
+	conf = new()
 	result = conf.Validate()
 	if result.Error() != "Required environment DB_USER is not set." {
 		t.Errorf("Expected %s Got: %s", "Required environment DB_USER is not set.", result)
 	}
 
 	os.Setenv("DB_NAME", "")
-	conf = New()
+	conf = new()
 	result = conf.Validate()
 	if result.Error() != "Required environment DB_NAME is not set." {
 		t.Errorf("Expected %s Got: %s", "Required environment DB_NAME is not set.", result)

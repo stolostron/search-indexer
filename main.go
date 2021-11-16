@@ -18,11 +18,10 @@ func main() {
 	klog.Info("Starting search-indexer.")
 
 	// Read the config from the environment.
-	config := config.New()
-	config.PrintConfig()
+	config.Cfg.PrintConfig()
 
 	// Validate required configuration to proceed.
-	configError := config.Validate()
+	configError := config.Cfg.Validate()
 	if configError != nil {
 		klog.Fatal(configError)
 	}
