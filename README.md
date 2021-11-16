@@ -22,11 +22,11 @@ You must have **python**, **pip** and **locust** installed
  
 ### Running Locust
 
-1. Once we have the search indexer running with steps above, navigate to test/locustfile.py and run the following command:
+1. Once we have the search indexer running with steps above, navigate to the **test** folder and run the following command:
 `locust -f locust-clusters.py`
 
 2. Follow the url provided (http://localhost:8089) and input load parameters in ui prompt.
-Alternatively, we can just use this one line command instead of the UI for more automatic flow:
-`locust --headless --users 10 --spawn-rate 5 -H https://localhost:3010`
+Alternatively, we can just use this one line command instead of the UI for more automatated flow:
+`locust -f locust-clusters.py --headless --users 10 --spawn-rate 5 -H https://localhost:3010`
 
 For more on locust visit https://docs.locust.io/en/stable/index.html
