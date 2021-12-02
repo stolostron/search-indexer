@@ -7,12 +7,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/open-cluster-management/search-indexer/pkg/config"
-	db "github.com/open-cluster-management/search-indexer/pkg/database"
 	"github.com/open-cluster-management/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
 
-func SyncResources(w http.ResponseWriter, r *http.Request) {
+func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
@@ -31,9 +30,9 @@ func SyncResources(w http.ResponseWriter, r *http.Request) {
 	// 1. ReSync [ClearAll=true]  - It has the complete current state. It must overwrite any previous state.
 	// 2. Sync   [ClearAll=false] - This is the delta changes from the previous state.
 	if syncEvent.ClearAll {
-		db.ResyncData(syncEvent, clusterName)
+		s.Dao.ResyncData(syncEvent, clusterName)
 	} else {
-		db.SyncData(syncEvent, clusterName)
+		s.Dao.SyncData(syncEvent, clusterName)
 	}
 
 	response := &model.SyncResponse{Version: config.COMPONENT_VERSION}

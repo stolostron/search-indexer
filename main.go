@@ -6,6 +6,7 @@ import (
 	"flag"
 
 	"github.com/open-cluster-management/search-indexer/pkg/config"
+	"github.com/open-cluster-management/search-indexer/pkg/database"
 	"github.com/open-cluster-management/search-indexer/pkg/server"
 	"k8s.io/klog/v2"
 )
@@ -26,6 +27,14 @@ func main() {
 		klog.Fatal(configError)
 	}
 
+	// Initialize the database
+	dao := database.NewDAO(nil)
+	// dao.Connect()
+	dao.InitializeTables()
+
 	// Start the server.
-	server.StartAndListen()
+	srv := &server.ServerConfig{
+		Dao: &dao,
+	}
+	srv.StartAndListen()
 }

@@ -56,7 +56,7 @@ func new() *Config {
 // Format and print environment to logger.
 func (cfg *Config) PrintConfig() {
 	// Make a copy to redact secrets and sensitive information.
-	tmp := cfg
+	tmp := *cfg
 	tmp.DBPass = "[REDACTED]"
 
 	// Convert to JSON for nicer formatting.

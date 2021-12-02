@@ -9,15 +9,20 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/open-cluster-management/search-indexer/pkg/config"
+	"github.com/open-cluster-management/search-indexer/pkg/database"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/klog/v2"
 )
 
-func StartAndListen() {
+type ServerConfig struct {
+	Dao *database.DAO
+}
+
+func (s *ServerConfig) StartAndListen() {
 	router := mux.NewRouter()
 	router.HandleFunc("/liveness", LivenessProbe).Methods("GET")
 	router.HandleFunc("/readiness", ReadinessProbe).Methods("GET")
-	router.HandleFunc("/aggregator/clusters/{id}/sync", SyncResources).Methods("POST")
+	router.HandleFunc("/aggregator/clusters/{id}/sync", s.SyncResources).Methods("POST")
 
 	// Export metrics
 	router.Path("/metrics").Handler(promhttp.Handler())

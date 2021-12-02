@@ -15,7 +15,7 @@ import (
 
 const BATCH_SIZE = 500
 
-func SyncData(event model.SyncEvent, clusterName string) {
+func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 	wg := &sync.WaitGroup{}
 	batch := &pgx.Batch{}
 	count := 0
@@ -27,7 +27,7 @@ func SyncData(event model.SyncEvent, clusterName string) {
 		count++
 		if count == BATCH_SIZE {
 			wg.Add(1)
-			go sendBatch(*batch, wg)
+			go dao.sendBatch(*batch, wg)
 			count = 0
 			batch = &pgx.Batch{}
 		}
@@ -39,7 +39,7 @@ func SyncData(event model.SyncEvent, clusterName string) {
 		count++
 		if count == BATCH_SIZE {
 			wg.Add(1)
-			go sendBatch(*batch, wg)
+			go dao.sendBatch(*batch, wg)
 			count = 0
 			batch = &pgx.Batch{}
 		}
@@ -51,7 +51,7 @@ func SyncData(event model.SyncEvent, clusterName string) {
 		count++
 		if count == BATCH_SIZE {
 			wg.Add(1)
-			go sendBatch(*batch, wg)
+			go dao.sendBatch(*batch, wg)
 			count = 0
 			batch = &pgx.Batch{}
 		}
@@ -73,17 +73,17 @@ func SyncData(event model.SyncEvent, clusterName string) {
 	}
 	if count > 0 {
 		wg.Add(1)
-		go sendBatch(*batch, wg)
+		go dao.sendBatch(*batch, wg)
 	}
 
 	wg.Wait()
 
 }
 
-func sendBatch(batch pgx.Batch, wg *sync.WaitGroup) {
+func (dao *DAO) sendBatch(batch pgx.Batch, wg *sync.WaitGroup) {
 	defer wg.Done()
 	// klog.Info("Sending batch")
-	br := pool.SendBatch(context.Background(), &batch)
+	br := dao.pool.SendBatch(context.Background(), &batch)
 	res, err := br.Exec()
 	if err != nil {
 		klog.Error("Error sending batch. res: ", res, "  err: ", err, batch.Len())

@@ -63,13 +63,19 @@ func Test_PrintConfig(t *testing.T) {
 	c := new()
 	c.PrintConfig()
 
-	// Validate environment was logged as expected.
+	// Verify environment was logged as expected.
 	logMsg := buf.String()
 	if !strings.Contains(logMsg, "\"DBPass\": \"[REDACTED]\"") {
 		t.Error("Expected password to be redacted when logging configuration")
 	}
+
+	// Verify that the config wasn't changed when redacting the password.
+	if c.DBPass == "[REDACTED]" {
+		t.Error("Expected config.DBPass to not be permanently changed when redacting password.")
+	}
 }
 
+// Should validate that DB_NAME, DB_USER, and DB_PASS are required environment variables.
 func Test_Validate(t *testing.T) {
 	os.Setenv("DB_NAME", "test")
 	os.Setenv("DB_USER", "test")
