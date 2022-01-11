@@ -22,7 +22,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&syncEvent)
 	if err != nil {
 		klog.Error("Error decoding body of syncEvent: ", err)
-		// respond(http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
