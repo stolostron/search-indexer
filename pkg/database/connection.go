@@ -14,25 +14,29 @@ import (
 
 // We need to create an instance of the DAO so we can replace and mock the connection in the unit tests.
 type DAO struct {
-	pool pgxpoolmock.PgxPool
+	pool      pgxpoolmock.PgxPool
+	batchSize int
 }
 
 var poolSingleton pgxpoolmock.PgxPool
 
+// Creates new DAO instance.
 func NewDAO(p pgxpoolmock.PgxPool) DAO {
+	// Define default values.
+	dao := DAO{
+		batchSize: 500,
+	}
 	if p != nil {
 		klog.Error("Using provided database connection. This path should only get executed during unit tests.")
-		return DAO{
-			pool: p,
-		}
+		dao.pool = p
+		return dao
 	}
 
 	if poolSingleton == nil {
 		poolSingleton = initializePool()
 	}
-	return DAO{
-		pool: poolSingleton,
-	}
+	dao.pool = poolSingleton
+	return dao
 }
 
 func initializePool() pgxpoolmock.PgxPool {

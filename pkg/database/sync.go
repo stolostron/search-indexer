@@ -13,8 +13,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const BATCH_SIZE = 500
-
 func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 	wg := &sync.WaitGroup{}
 	batch := &pgx.Batch{}
@@ -25,7 +23,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 		json, _ := json.Marshal(resource.Properties)
 		batch.Queue("INSERT into resources values($1,$2,$3)", resource.UID, clusterName, string(json))
 		count++
-		if count == BATCH_SIZE {
+		if count == dao.batchSize {
 			wg.Add(1)
 			go dao.sendBatch(*batch, wg)
 			count = 0
@@ -37,7 +35,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 		json, _ := json.Marshal(resource.Properties)
 		batch.Queue("UPDATE resources SET data=$2 WHERE uid=$1", resource.UID, string(json))
 		count++
-		if count == BATCH_SIZE {
+		if count == dao.batchSize {
 			wg.Add(1)
 			go dao.sendBatch(*batch, wg)
 			count = 0
@@ -49,7 +47,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 	for _, edge := range event.AddEdges {
 		batch.Queue("INSERT into edges values($1,$2)", edge.SourceUID, edge.DestUID)
 		count++
-		if count == BATCH_SIZE {
+		if count == dao.batchSize {
 			wg.Add(1)
 			go dao.sendBatch(*batch, wg)
 			count = 0

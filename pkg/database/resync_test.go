@@ -3,29 +3,28 @@
 package database
 
 import (
+	"encoding/json"
+	"os"
 	"testing"
 
-	"github.com/driftprogramming/pgxpoolmock"
-	// "github.com/driftprogramming/pgxpoolmock/testdata"
 	"github.com/golang/mock/gomock"
-	// "github.com/stretchr/testify/assert"
 	"github.com/open-cluster-management/search-indexer/pkg/model"
 )
 
 func Test_ResyncData(t *testing.T) {
-	t.Parallel()
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	// Prepare a mock DAO instance.
+	dao, mockPool := buildMockDAO(t)
 
-	// given
-	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
+	// Mock PosgreSQL api.
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DELETE from resources WHERE cluster=$1"), gomock.Eq("test-cluster")).Return(nil, nil)
+	br := BatchResults{}
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br)
 
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
-	dao := DAO{
-		pool: mockPool,
-	}
+	// Prepare Request data.
+	data, _ := os.Open("./mocks/simple.json")
+	var syncEvent model.SyncEvent
+	json.NewDecoder(data).Decode(&syncEvent)
 
-	event := model.SyncEvent{} // TODO: Load from mock data.
-	dao.ResyncData(event, "test-cluster")
-
+	// Execute function test.
+	dao.ResyncData(syncEvent, "test-cluster")
 }
