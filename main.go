@@ -29,7 +29,6 @@ func main() {
 
 	// Initialize the database
 	dao := database.NewDAO(nil)
-	// dao.Connect()
 	dao.InitializeTables()
 
 	// Start the server.
