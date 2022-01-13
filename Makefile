@@ -13,6 +13,7 @@ setup: ## Generate ssl certificate for development.
 run: ## Run the service locally.
 	go run main.go -v=9
 
+.PHONY: test
 test: ## Run unit tests.
 	go test ./... -v -coverprofile cover.out
 

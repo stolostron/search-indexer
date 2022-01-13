@@ -13,6 +13,8 @@ import (
 
 const COMPONENT_VERSION = "2.5.0"
 
+var Cfg = new()
+
 // Struct to hold our configuratioin
 type Config struct {
 	DBHost        string
@@ -31,7 +33,7 @@ type Config struct {
 }
 
 // Reads config from environment.
-func New() *Config {
+func new() *Config {
 	conf := &Config{
 		DBHost:        getEnv("DB_HOST", "localhost"),
 		DBPort:        getEnvAsInt("DB_PORT", 5432),
@@ -54,7 +56,7 @@ func New() *Config {
 // Format and print environment to logger.
 func (cfg *Config) PrintConfig() {
 	// Make a copy to redact secrets and sensitive information.
-	tmp := cfg
+	tmp := *cfg
 	tmp.DBPass = "[REDACTED]"
 
 	// Convert to JSON for nicer formatting.

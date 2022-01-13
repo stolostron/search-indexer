@@ -8,18 +8,21 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/open-cluster-management/search-indexer/pkg/config"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/stolostron/search-indexer/pkg/config"
+	"github.com/stolostron/search-indexer/pkg/database"
 	"k8s.io/klog/v2"
 )
 
-func StartAndListen() {
-	config := config.New()
+type ServerConfig struct {
+	Dao *database.DAO
+}
 
+func (s *ServerConfig) StartAndListen() {
 	router := mux.NewRouter()
 	router.HandleFunc("/liveness", LivenessProbe).Methods("GET")
 	router.HandleFunc("/readiness", ReadinessProbe).Methods("GET")
-	router.HandleFunc("/aggregator/clusters/{id}/sync", SyncResources).Methods("POST")
+	router.HandleFunc("/aggregator/clusters/{id}/sync", s.SyncResources).Methods("POST")
 
 	// Export metrics
 	router.Path("/metrics").Handler(promhttp.Handler())
@@ -34,12 +37,12 @@ func StartAndListen() {
 		},
 	}
 	srv := &http.Server{
-		Addr:              config.ServerAddress,
+		Addr:              config.Cfg.ServerAddress,
 		Handler:           router,
 		TLSConfig:         cfg,
-		ReadHeaderTimeout: time.Duration(config.HTTPTimeout) * time.Millisecond,
-		ReadTimeout:       time.Duration(config.HTTPTimeout) * time.Millisecond,
-		WriteTimeout:      time.Duration(config.HTTPTimeout) * time.Millisecond,
+		ReadHeaderTimeout: time.Duration(config.Cfg.HTTPTimeout) * time.Millisecond,
+		ReadTimeout:       time.Duration(config.Cfg.HTTPTimeout) * time.Millisecond,
+		WriteTimeout:      time.Duration(config.Cfg.HTTPTimeout) * time.Millisecond,
 		TLSNextProto:      make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 	}
 

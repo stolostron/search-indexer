@@ -5,8 +5,9 @@ package main
 import (
 	"flag"
 
-	"github.com/open-cluster-management/search-indexer/pkg/config"
-	"github.com/open-cluster-management/search-indexer/pkg/server"
+	"github.com/stolostron/search-indexer/pkg/config"
+	"github.com/stolostron/search-indexer/pkg/database"
+	"github.com/stolostron/search-indexer/pkg/server"
 	"k8s.io/klog/v2"
 )
 
@@ -18,15 +19,21 @@ func main() {
 	klog.Info("Starting search-indexer.")
 
 	// Read the config from the environment.
-	config := config.New()
-	config.PrintConfig()
+	config.Cfg.PrintConfig()
 
 	// Validate required configuration to proceed.
-	configError := config.Validate()
+	configError := config.Cfg.Validate()
 	if configError != nil {
 		klog.Fatal(configError)
 	}
 
+	// Initialize the database
+	dao := database.NewDAO(nil)
+	dao.InitializeTables()
+
 	// Start the server.
-	server.StartAndListen()
+	srv := &server.ServerConfig{
+		Dao: &dao,
+	}
+	srv.StartAndListen()
 }

@@ -3,13 +3,21 @@
 package database
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/golang/mock/gomock"
 )
 
-func TestConnection(t *testing.T) {
-	// TODO: Need to mock the database.
-	conn := GetConnection()
+func Test_initializeTables(t *testing.T) {
+	// Prepare a mock DAO instance
+	dao, mockPool := buildMockDAO(t)
 
-	fmt.Println("TODO: This is a dummy test, need to mock database.", conn)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DROP TABLE resources")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DROP TABLE edges")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS edges (sourceId TEXT, destId TEXT)")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")).Return(nil, nil)
+
+	// Execute function test.
+	dao.InitializeTables()
+
 }

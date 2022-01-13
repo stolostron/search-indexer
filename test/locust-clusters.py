@@ -1,4 +1,5 @@
 from locust import HttpUser, task, between, TaskSet
+import time
 import json
 import uuid
 import urllib3
@@ -35,6 +36,7 @@ class ClusterBehavior(TaskSet):
 
     def on_start(self):
         self.send_full_state_payload()
+        time.sleep(120)
 
     @task
     def send_update(self):
@@ -44,7 +46,7 @@ class ClusterBehavior(TaskSet):
 class Cluster(HttpUser):
     name = ""
     tasks = [ClusterBehavior]
-    wait_time = between(5, 20)
+    wait_time = between(30, 300)
 
     def on_start(self):
         global clusterCount
