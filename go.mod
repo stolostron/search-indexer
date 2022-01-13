@@ -1,5 +1,5 @@
 // Copyright Contributors to the Open Cluster Management project
-module github.com/open-cluster-management/search-indexer
+module github.com/stolostron/search-indexer
 
 go 1.17
 

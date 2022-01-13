@@ -5,9 +5,9 @@ package main
 import (
 	"flag"
 
-	"github.com/open-cluster-management/search-indexer/pkg/config"
-	"github.com/open-cluster-management/search-indexer/pkg/database"
-	"github.com/open-cluster-management/search-indexer/pkg/server"
+	"github.com/stolostron/search-indexer/pkg/config"
+	"github.com/stolostron/search-indexer/pkg/database"
+	"github.com/stolostron/search-indexer/pkg/server"
 	"k8s.io/klog/v2"
 )
 

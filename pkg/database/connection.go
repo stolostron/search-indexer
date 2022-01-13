@@ -8,7 +8,7 @@ import (
 
 	"github.com/driftprogramming/pgxpoolmock"
 	pgxpool "github.com/jackc/pgx/v4/pgxpool"
-	"github.com/open-cluster-management/search-indexer/pkg/config"
+	"github.com/stolostron/search-indexer/pkg/config"
 	"k8s.io/klog/v2"
 )
 

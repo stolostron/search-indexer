@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/open-cluster-management/search-indexer/pkg/config"
-	"github.com/open-cluster-management/search-indexer/pkg/database"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/stolostron/search-indexer/pkg/config"
+	"github.com/stolostron/search-indexer/pkg/database"
 	"k8s.io/klog/v2"
 )
 

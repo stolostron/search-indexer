@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	pgx "github.com/jackc/pgx/v4"
-	"github.com/open-cluster-management/search-indexer/pkg/model"
+	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
 

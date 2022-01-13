@@ -12,8 +12,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
-	"github.com/open-cluster-management/search-indexer/pkg/config"
-	"github.com/open-cluster-management/search-indexer/pkg/model"
+	"github.com/stolostron/search-indexer/pkg/config"
+	"github.com/stolostron/search-indexer/pkg/model"
 )
 
 func Test_syncRequest(t *testing.T) {

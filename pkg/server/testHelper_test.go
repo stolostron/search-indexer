@@ -8,7 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/jackc/pgconn"
 	pgx "github.com/jackc/pgx/v4"
-	"github.com/open-cluster-management/search-indexer/pkg/database"
+	"github.com/stolostron/search-indexer/pkg/database"
 )
 
 type BatchResults struct{}

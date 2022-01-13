@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/open-cluster-management/search-indexer/pkg/config"
-	"github.com/open-cluster-management/search-indexer/pkg/model"
+	"github.com/stolostron/search-indexer/pkg/config"
+	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
 

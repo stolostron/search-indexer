@@ -5,7 +5,7 @@ package database
 import (
 	"context"
 
-	"github.com/open-cluster-management/search-indexer/pkg/model"
+	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
 

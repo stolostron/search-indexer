@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/open-cluster-management/search-indexer/pkg/model"
+	"github.com/stolostron/search-indexer/pkg/model"
 )
 
 func Test_SyncData(t *testing.T) {
