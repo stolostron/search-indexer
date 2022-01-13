@@ -14,7 +14,7 @@ func Test_initializeTables(t *testing.T) {
 
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DROP TABLE resources")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DROP TABLE edges")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS edges (sourceId TEXT, destId TEXT)")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT)")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")).Return(nil, nil)
 
 	// Execute function test.
