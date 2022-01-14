@@ -10,7 +10,12 @@ Index resources for search.
 
 Explore other supported tasks with `make help`.
 
-## Testing
+## Unit Test
+
+Unit tests mock the pgx connection object. More info: https://github.com/driftprogramming/pgxpoolmock
+
+
+## Scale Test
 
 Prerequisites: 
 

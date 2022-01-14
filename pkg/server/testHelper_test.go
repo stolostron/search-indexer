@@ -29,6 +29,7 @@ func (s BatchResults) Close() error {
 	return nil
 }
 
+// Builds a ServerConfig instance with a mock database connection.
 func buildMockServer(t *testing.T) (ServerConfig, *pgxpoolmock.MockPgxPool) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
