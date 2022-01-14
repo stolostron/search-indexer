@@ -66,5 +66,5 @@ func (dao *DAO) InitializeTables() {
 	dao.pool.Exec(context.Background(), "DROP TABLE resources")
 	dao.pool.Exec(context.Background(), "DROP TABLE edges")
 	dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
-	dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS edges (sourceId TEXT, destId TEXT)")
+	dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT)")
 }
