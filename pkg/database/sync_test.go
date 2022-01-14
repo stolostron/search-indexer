@@ -22,7 +22,7 @@ func Test_SyncData(t *testing.T) {
 	// Prepare Request data
 	data, _ := os.Open("./mocks/simple.json")
 	var syncEvent model.SyncEvent
-	json.NewDecoder(data).Decode(&syncEvent)
+	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
 
 	// Execute test
 	dao.SyncData(syncEvent, "test-cluster")

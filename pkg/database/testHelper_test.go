@@ -3,9 +3,10 @@
 package database
 
 import (
+	"testing"
+
 	"github.com/jackc/pgconn"
 	pgx "github.com/jackc/pgx/v4"
-	"testing"
 
 	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
@@ -29,6 +30,7 @@ func (s BatchResults) Close() error {
 	return nil
 }
 
+// Builds a DAO instance with a mock database connection.
 func buildMockDAO(t *testing.T) (DAO, *pgxpoolmock.MockPgxPool) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

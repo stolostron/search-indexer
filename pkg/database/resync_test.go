@@ -23,7 +23,7 @@ func Test_ResyncData(t *testing.T) {
 	// Prepare Request data.
 	data, _ := os.Open("./mocks/simple.json")
 	var syncEvent model.SyncEvent
-	json.NewDecoder(data).Decode(&syncEvent)
+	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
 
 	// Execute function test.
 	dao.ResyncData(syncEvent, "test-cluster")
