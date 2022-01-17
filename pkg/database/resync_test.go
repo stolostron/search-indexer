@@ -17,6 +17,7 @@ func Test_ResyncData(t *testing.T) {
 
 	// Mock PosgreSQL api.
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DELETE from resources WHERE cluster=$1"), gomock.Eq("test-cluster")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DELETE from edges WHERE cluster=$1"), gomock.Eq("test-cluster")).Return(nil, nil)
 	br := BatchResults{}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br)
 
