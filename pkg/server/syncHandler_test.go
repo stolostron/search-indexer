@@ -67,7 +67,7 @@ func Test_resyncRequest(t *testing.T) {
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
 	br := BatchResults{}
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any())
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)

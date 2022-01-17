@@ -17,6 +17,9 @@ func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string) {
 	r, e := dao.pool.Exec(context.Background(), "DELETE from resources WHERE cluster=$1", clusterName)
 	klog.V(9).Infof("WORKAROUND. Deleting all resources for cluster [%s]. Result: %+v  Errors: %+v", clusterName, r, e)
 
+	r2, e2 := dao.pool.Exec(context.Background(), "DELETE from edges WHERE cluster=$1", clusterName)
+	klog.V(9).Infof("WORKAROUND. Deleting all edges for cluster [%s]. Result: %+v  Errors: %+v", clusterName, r2, e2)
+
 	dao.SyncData(event, clusterName)
 
 	// Get all the existing resources.
