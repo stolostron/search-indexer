@@ -35,6 +35,7 @@ func Test_syncRequest(t *testing.T) {
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)
 
+	// Validation
 	expected := model.SyncResponse{Version: config.COMPONENT_VERSION}
 
 	if responseRecorder.Code != http.StatusOK {
