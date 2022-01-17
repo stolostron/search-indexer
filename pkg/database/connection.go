@@ -63,10 +63,8 @@ func (dao *DAO) InitializeTables() {
 	// FIXME: REMOVE THIS WORKAROUND! Dropping tables to simplify development, we can't keep this for production.
 	klog.Warning("FIXME: REMOVE THIS WORKAROUND! I'm dropping tables to simplify development, we can't keep this for production.")
 
-
-	dao.pool.Exec(context.Background(), "DROP TABLE resources")
-	dao.pool.Exec(context.Background(), "DROP TABLE edges")
-	dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
-	dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS edges (sourceId TEXT PRIMARY KEY, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT)")
-
+	dao.pool.Exec(context.Background(), "DROP TABLE resources")                                                                                                   //nolint: errcheck
+	dao.pool.Exec(context.Background(), "DROP TABLE edges")                                                                                                       //nolint: errcheck
+	dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")                                  //nolint: errcheck
+	dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT)") //nolint: errcheck
 }
