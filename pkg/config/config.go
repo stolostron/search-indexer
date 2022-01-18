@@ -5,6 +5,7 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"net/url"
 	"os"
 	"strconv"
 
@@ -49,6 +50,8 @@ func new() *Config {
 		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
 	}
+
+	conf.DBPass = url.QueryEscape(conf.DBPass)
 
 	return conf
 }
