@@ -24,7 +24,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&syncEvent)
 	if err != nil {
 		klog.Error("Error decoding body of syncEvent: ", err)
-		w.WriteHeader(http.StatusBadRequest)
+		// w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -37,12 +37,13 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		s.Dao.SyncData(syncEvent, clusterName)
 	}
 
-	response := &model.SyncResponse{Version: config.COMPONENT_VERSION}
-	w.WriteHeader(http.StatusOK)
+	response := &model.SyncResponse{Version: config.COMPONENT_VERSION, TotalResources: len(syncEvent.AddResources), TotalEdges: len(syncEvent.AddEdges), TotalAdded: len(syncEvent.AddResources), TotalUpdated: len(syncEvent.UpdateResources), TotalDeleted: len(syncEvent.DeleteResources), TotalEdgesAdded: len(syncEvent.AddEdges), TotalEdgesDeleted: len(syncEvent.DeleteEdges)}
+	klog.Infoln("Response: %+v", response)
 	encodeError := json.NewEncoder(w).Encode(response)
 	if encodeError != nil {
 		klog.Error("Error responding to SyncEvent:", encodeError, response)
 	}
+	// w.WriteHeader(http.StatusOK)
 
 	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]", clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// Record metrics.
