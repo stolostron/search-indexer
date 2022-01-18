@@ -43,7 +43,6 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	if encodeError != nil {
 		klog.Error("Error responding to SyncEvent:", encodeError, response)
 	}
-	w.WriteHeader(http.StatusOK)
 
 	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]", clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// Record metrics.
