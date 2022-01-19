@@ -15,9 +15,9 @@ func Test_ResyncData(t *testing.T) {
 	// Prepare a mock DAO instance.
 	dao, mockPool := buildMockDAO(t)
 
-	// Mock PosgreSQL api.
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DELETE from resources WHERE cluster=$1"), gomock.Eq("test-cluster")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DELETE from edges WHERE cluster=$1"), gomock.Eq("test-cluster")).Return(nil, nil)
+	// Mock PosgreSQL api.s
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DELETE from search.resources WHERE cluster=$1"), gomock.Eq("test-cluster")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DELETE from search.edges WHERE cluster=$1"), gomock.Eq("test-cluster")).Return(nil, nil)
 	br := BatchResults{}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br)
 

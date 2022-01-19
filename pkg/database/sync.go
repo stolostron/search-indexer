@@ -21,7 +21,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 	// ADD
 	for _, resource := range event.AddResources {
 		json, _ := json.Marshal(resource.Properties)
-		batch.Queue("INSERT into resources values($1,$2,$3)", resource.UID, clusterName, string(json))
+		batch.Queue("INSERT into search.resources values($1,$2,$3)", resource.UID, clusterName, string(json))
 		count++
 		if count == dao.batchSize {
 			wg.Add(1)
@@ -33,7 +33,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 	// UPDATE
 	for _, resource := range event.UpdateResources {
 		json, _ := json.Marshal(resource.Properties)
-		batch.Queue("UPDATE resources SET data=$2 WHERE uid=$1", resource.UID, string(json))
+		batch.Queue("UPDATE search.resources SET data=$2 WHERE uid=$1", resource.UID, string(json))
 		count++
 		if count == dao.batchSize {
 			wg.Add(1)
@@ -45,7 +45,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 
 	// ADD EDGES
 	for _, edge := range event.AddEdges {
-		batch.Queue("INSERT into edges values($1,$2,$3,$4,$5)", edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType)
+		batch.Queue("INSERT into search.edges values($1,$2,$3,$4,$5)", edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType)
 		count++
 		if count == dao.batchSize {
 			wg.Add(1)
@@ -64,9 +64,9 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 		for i, resource := range event.DeleteResources {
 			uids[i] = resource.UID
 		}
-		batch.Queue("DELETE from resources WHERE uid IN ($1)", strings.Join(uids, ", "))
-		batch.Queue("DELETE from edges WHERE sourceId IN ($1)", strings.Join(uids, ", "))
-		batch.Queue("DELETE from edges WHERE destId IN ($1)", strings.Join(uids, ", "))
+		batch.Queue("DELETE from search.resources WHERE uid IN ($1)", strings.Join(uids, ", "))
+		batch.Queue("DELETE from search.edges WHERE sourceId IN ($1)", strings.Join(uids, ", "))
+		batch.Queue("DELETE from search.edges WHERE destId IN ($1)", strings.Join(uids, ", "))
 		count += 3
 	}
 	if count > 0 {
