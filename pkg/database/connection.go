@@ -72,7 +72,7 @@ func (dao *DAO) InitializeTables() {
 
 	_, err = dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
 	checkError(err, "Error creating table search.resources.")
-	_, err = dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT)")
+	_, err = dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")
 	checkError(err, "Error creating table search.edges.")
 }
 
