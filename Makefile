@@ -14,9 +14,10 @@ run: ## Run the service locally.
 	go run main.go -v=9
 
 .PHONY: lint
-lint: ## Run lint tool.
+lint: ## Run lint and gosec tool.
 	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.38.0
 	golangci-lint run
+	gosec ./...
 
 .PHONY: test
 test: ## Run unit tests.

@@ -80,14 +80,12 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 
 func (dao *DAO) sendBatch(batch pgx.Batch, wg *sync.WaitGroup) {
 	defer wg.Done()
-	// klog.Info("Sending batch")
 	br := dao.pool.SendBatch(context.Background(), &batch)
-	res, err := br.Exec()
+	defer br.Close()
+	_, err := br.Exec()
 	if err != nil {
-		klog.Error("Error sending batch. res: ", res, "  err: ", err, batch.Len())
+		klog.Error("Error sending batch.", err)
 
-		// TODO: Need to report the errors back.
+		// TODO: Need to report the errors back in response body.
 	}
-	// klog.Info("Batch response: ", res)
-	br.Close()
 }

@@ -10,6 +10,7 @@ build:
 lint:
 	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.38.0
 	golangci-lint run
+	gosec ./...
 
 .PHONY: unit-test
 unit-test:
