@@ -36,4 +36,4 @@ Alternatively, we can just use this one line command instead of the UI for more 
 
 For more on locust visit https://docs.locust.io/en/stable/index.html
 
-Rebuild Date: 01-19-2022
+Rebuild Date: 01-20-2022
