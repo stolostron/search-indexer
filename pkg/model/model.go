@@ -9,6 +9,7 @@ type Resource struct {
 	Properties     PropertiesArray `json:"properties"`
 }
 
+// PropertiesArray - Describes items in Resource.properties
 type PropertiesArray struct {
 	Kind      string `json:"kind,omitempty"`
 	Name      string `json:"name,omitempty"`
