@@ -70,10 +70,11 @@ func (dao *DAO) InitializeTables() {
 	_, err = dao.pool.Exec(context.Background(), "DROP TABLE search.edges")
 	checkError(err, "Error dropping table search.resources.")
 
-	_, err = dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
+	_, err = dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB, kind TEXT, nameSpace TEXT, name TEXT)")
 	checkError(err, "Error creating table search.resources.")
 	_, err = dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")
 	checkError(err, "Error creating table search.edges.")
+
 }
 
 func checkError(err error, logMessage string) {
