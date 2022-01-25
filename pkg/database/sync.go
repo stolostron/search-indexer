@@ -22,7 +22,10 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 	for _, resource := range event.AddResources {
 		data, _ := json.Marshal(resource.Properties)
 		p := resource.Properties
-		json.Unmarshal([]byte(data), &p)
+		err := json.Unmarshal([]byte(data), &p)
+		if err != nil {
+			klog.Warning("Unmarshaling error", err)
+		}
 		batch.Queue("INSERT into search.resources values($1,$2,$3,$4,$5,$6)", resource.UID, clusterName, p, p.Kind, p.NameSpace, p.Name)
 		count++
 		if count == dao.batchSize {
