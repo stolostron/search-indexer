@@ -3,6 +3,7 @@ import time
 import json
 import uuid
 import urllib3
+import io
 urllib3.disable_warnings() # Suppress warning from unverified TLS connection (verify=false)
 
 clusterCount = 0 # Used to name clusters sequentially.
@@ -13,10 +14,10 @@ class ClusterBehavior(TaskSet):
 #  2. Update state.
 
     def send_full_state_payload(self):
-        f = open("cluster-template.json",)
+        with open("cluster-template.json", "r") as template_file:
+            template_string = template_file.read().replace("<<CLUSTER_NAME>>", self.user.name)
+        f = io.StringIO(template_string)
         j = json.load(f)        
-        for resource in j["addResources"]: 
-            resource["uid"] = resource["uid"].replace("local-cluster",self.user.name)
         self.client.payload = j
         self.do_post()
         print("%s - sent full state" % self.user.name)
