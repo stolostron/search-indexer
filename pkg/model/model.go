@@ -4,10 +4,17 @@ package model
 
 // Resource - Describes a resource (node)
 type Resource struct {
-	Kind           string `json:"kind,omitempty"`
-	UID            string `json:"uid,omitempty"`
-	ResourceString string `json:"resourceString,omitempty"`
-	Properties     map[string]interface{}
+	PrimaryProperties PrimaryProperties
+	UID               string `json:"uid,omitempty"`
+	ResourceString    string `json:"resourceString,omitempty"`
+	Properties        map[string]interface{}
+}
+
+// PropertiesArray - Describes items in Resource.properties
+type PrimaryProperties struct {
+	Kind      string `json:"kind,omitempty"`
+	Name      string `json:"name,omitempty"`
+	NameSpace string `json:"namespace,omitempty"`
 }
 
 // Describes a relationship between resources
