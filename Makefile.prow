@@ -9,9 +9,9 @@ build:
 .PHONY: lint
 lint:
 	@echo $(shell go env)
-	@echo $(shell go env GOBIN)
+	@echo $(shell go env GOPATH)
 	go mod tidy
-	$(GOBIN)/golangci-lint run
+	$(GOPATH)/bin/golangci-lint run
 	gosec ./...
 
 .PHONY: unit-test

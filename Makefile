@@ -16,7 +16,7 @@ run: ## Run the service locally.
 .PHONY: lint
 lint: ## Run lint and gosec tool.
 	go mod tidy
-	${GOBIN}/golangci-lint run
+	${GOPATH}/bin/golangci-lint run
 	gosec ./...
 
 .PHONY: test
