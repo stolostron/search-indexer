@@ -60,16 +60,14 @@ func initializePool() pgxpoolmock.PgxPool {
 }
 
 func (dao *DAO) InitializeTables() {
+	if config.Cfg.DevelopmentMode {
+		klog.Warning("Dropping search schema for development only. We must not see this message in production.")
+		_, err := dao.pool.Exec(context.Background(), "DROP SCHEMA IF EXISTS search")
+		checkError(err, "Error dropping schema search.")
+	}
+
 	_, err := dao.pool.Exec(context.Background(), "CREATE SCHEMA IF NOT EXISTS search")
 	checkError(err, "Error creating schema.")
-
-	// FIXME: REMOVE THIS WORKAROUND! Dropping tables to simplify development, we can't keep this for production.
-	klog.Warning("FIXME: REMOVE THIS WORKAROUND! I'm dropping tables to simplify development, we can't keep this for production.")
-	_, err = dao.pool.Exec(context.Background(), "DROP TABLE search.resources")
-	checkError(err, "Error dropping table search.resources.")
-	_, err = dao.pool.Exec(context.Background(), "DROP TABLE search.edges")
-	checkError(err, "Error dropping table search.resources.")
-
 	_, err = dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
 	checkError(err, "Error creating table search.resources.")
 	_, err = dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")
