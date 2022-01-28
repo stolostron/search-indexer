@@ -8,6 +8,7 @@ build:
 
 .PHONY: lint
 lint:
+	go mod tidy
 	golangci-lint run
 	gosec ./...
 
