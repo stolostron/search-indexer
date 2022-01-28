@@ -52,7 +52,6 @@ func new() *Config {
 		// RediscoverRateMS:      getEnvAsInt("REDISCOVER_RATE_MS"), // 5 min
 		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
-
 	}
 
 	conf.DBPass = url.QueryEscape(conf.DBPass)
