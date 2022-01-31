@@ -4,6 +4,7 @@ package model
 
 // Resource - Describes a resource (node)
 type Resource struct {
+	Kind           string `json:"kind,omitempty"`
 	UID            string `json:"uid,omitempty"`
 	ResourceString string `json:"resourceString,omitempty"`
 	Properties     map[string]interface{}

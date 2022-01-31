@@ -19,10 +19,9 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 	count := 0
 
 	// ADD
-	// ADD
 	for _, resource := range event.AddResources {
 		data, _ := json.Marshal(resource.Properties)
-		batch.Queue("INSERT into search.resources values($1,$2,$3,$4,$5,$6)", resource.UID, clusterName, string(data))
+		batch.Queue("INSERT into search.resources values($1,$2,$3)", resource.UID, clusterName, string(data))
 		count++
 		if count == dao.batchSize {
 			wg.Add(1)
