@@ -13,10 +13,10 @@ lint:
 	@echo GOHOME: ${GOHOME}
 	@echo $(shell go env GOPATH)
 	@echo GOPATH: ${GOPATH}
-	@echo $(shell go env GOHOME)
-	@echo GOPATH: ${GOHOME}
+	@echo $(shell go env GOROOT)
+	@echo GOROOT: ${GOROOT}
 	go mod tidy
-	$(shell go env GOHOME)/bin/golangci-lint run
+	$(shell go env GOROOT)/bin/golangci-lint run
 	gosec ./...
 
 .PHONY: unit-test
