@@ -45,7 +45,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string) {
 
 	// ADD EDGES
 	for _, edge := range event.AddEdges {
-		batch.Queue("INSERT into search.edges values($1,$2,$3,$4,$5)", edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType)
+		batch.Queue("INSERT into search.edges values($1,$2,$3,$4,$5,$6)", edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName)
 		count++
 		if count == dao.batchSize {
 			wg.Add(1)

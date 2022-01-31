@@ -1,17 +1,21 @@
-# Indexer Benchmarks
+# Table of Contents
+1. [Indexing](#Indexing)
+
+
 
 ## Indexing
 
-  We wanted to compare whether removing keys originally stored in the json data column from the resources table and creating columns for each of the keys would be more efficient than keeping them inside and applying jsonb indexing. 
+  We compared whether removing keys, originally stored in the json data column from the resources table, and creating columns for each of the keys would be more efficient than keeping them in the data column and applying jsonb indexing. 
 
 
 Our table of interest, <strong>resources</strong>, has <strong>450327</strong> rows.
+
+---
 
 ### <ins><strong>Method 1: Keeping keys in data column and indexing keys using jsonb</strong></ins>
 
 We are looking at the following queries which will need to use different operators depending on what index we choose (using the GIN operator class requires specific operators in query)
 
-----
 
 <strong>Query A (with Gin index):</strong>
 
@@ -49,11 +53,12 @@ which has alternative operator:
 
 ###### * OC -type of GIN operator class
 
+----
+
 ### <ins>Method 2: Removing json keys and creating columns</ins>
 
 The following two queries were used for testing non-index key columns:
 
----
 
 <strong>Query D:</strong>
 
@@ -67,3 +72,8 @@ The following two queries were used for testing non-index key columns:
 |---|---|---|---|---|
 | no index  |  - |  - |  435 ms |  D |
 | no index | - | - | 204 ms | E |
+
+---
+
+### <strong>Results</strong>
+We can see from the results above, indexing jsonb data is more efficient than adding new columns to the table schema.
