@@ -74,6 +74,17 @@ func (dao *DAO) InitializeTables() {
 	checkError(err, "Error creating table search.resources.")
 	_, err = dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")
 	checkError(err, "Error creating table search.edges.")
+
+	//Jsonb indexing data keys:
+	_, err = dao.pool.Exec(context.Background(), "CREATE INDEX data_kind_idx ON search.resources USING GIN ((data -> 'kind'))")
+	checkError(err, "Error creating index on search.resources data key kind.")
+
+	_, err = dao.pool.Exec(context.Background(), "CREATE INDEX data_namespace_idx ON search.resources USING GIN ((data -> 'namespace'))")
+	checkError(err, "Error creating index on search.resources data key namespace.")
+
+	_, err = dao.pool.Exec(context.Background(), "CREATE INDEX data_name_idx ON search.resources USING GIN ((data ->  'name'))")
+	checkError(err, "Error creating index on search.resources data key name.")
+
 }
 
 func checkError(err error, logMessage string) {
