@@ -9,9 +9,12 @@ build:
 .PHONY: lint
 lint:
 	@echo $(shell go env)
+	@echo $(shell go env GOHOME)
+	@echo GOHOME: $GOHOME
 	@echo $(shell go env GOPATH)
+	@echo GOPATH: $GOPATH
 	go mod tidy
-	$(GOPATH)/bin/golangci-lint run
+	$(GOHOME)/bin/golangci-lint run
 	gosec ./...
 
 .PHONY: unit-test
