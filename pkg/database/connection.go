@@ -62,7 +62,7 @@ func initializePool() pgxpoolmock.PgxPool {
 func (dao *DAO) InitializeTables() {
 	if config.Cfg.DevelopmentMode {
 		klog.Warning("Dropping search schema for development only. We must not see this message in production.")
-		_, err := dao.pool.Exec(context.Background(), "DROP SCHEMA IF EXISTS search")
+		_, err := dao.pool.Exec(context.Background(), "DROP SCHEMA IF EXISTS search CASCADE")
 		checkError(err, "Error dropping schema search.")
 	}
 
@@ -87,6 +87,6 @@ func (dao *DAO) InitializeTables() {
 
 func checkError(err error, logMessage string) {
 	if err != nil {
-		klog.Error(logMessage, err)
+		klog.Error(logMessage, " ", err)
 	}
 }
