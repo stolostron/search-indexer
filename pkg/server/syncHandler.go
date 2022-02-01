@@ -28,20 +28,35 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	syncResponse := &model.SyncResponse{
+		Version:          config.COMPONENT_VERSION,
+		RequestId:        syncEvent.RequestId,
+		AddErrors:        make([]model.SyncError, 0),
+		UpdateErrors:     make([]model.SyncError, 0),
+		DeleteErrors:     make([]model.SyncError, 0),
+		AddEdgeErrors:    make([]model.SyncError, 0),
+		DeleteEdgeErrors: make([]model.SyncError, 0),
+	}
+
 	// The collector sends 2 types of requests:
 	// 1. ReSync [ClearAll=true]  - It has the complete current state. It must overwrite any previous state.
 	// 2. Sync   [ClearAll=false] - This is the delta changes from the previous state.
 	if syncEvent.ClearAll {
-		s.Dao.ResyncData(syncEvent, clusterName)
+		s.Dao.ResyncData(syncEvent, clusterName, syncResponse)
 	} else {
-		s.Dao.SyncData(syncEvent, clusterName)
+		s.Dao.SyncData(syncEvent, clusterName, syncResponse)
 	}
 
-	response := &model.SyncResponse{Version: config.COMPONENT_VERSION}
+	totalResources, totalEdges := s.Dao.ClusterTotals(clusterName)
+	syncResponse.TotalResources = totalResources
+	syncResponse.TotalEdges = totalEdges
+
+	klog.Infof("SyncResponse: %+v", syncResponse)
+
 	w.WriteHeader(http.StatusOK)
-	encodeError := json.NewEncoder(w).Encode(response)
+	encodeError := json.NewEncoder(w).Encode(syncResponse)
 	if encodeError != nil {
-		klog.Error("Error responding to SyncEvent:", encodeError, response)
+		klog.Error("Error responding to SyncEvent:", encodeError, syncResponse)
 	}
 
 	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]", clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))

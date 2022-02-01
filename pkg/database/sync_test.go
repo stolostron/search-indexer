@@ -25,5 +25,5 @@ func Test_SyncData(t *testing.T) {
 	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
 
 	// Execute test
-	dao.SyncData(syncEvent, "test-cluster")
+	dao.SyncData(syncEvent, "test-cluster", nil) // FIXME: Pass SyncResponse.
 }

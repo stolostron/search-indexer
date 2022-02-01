@@ -9,7 +9,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string) {
+func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
 	klog.Info("Resync full state for cluster ", clusterName)
 
 	// FIXME: REMOVE THIS WORKAROUND. Deleting data for cluster instead of reconcilimg with existing state.
@@ -20,7 +20,7 @@ func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string) {
 	r2, e2 := dao.pool.Exec(context.Background(), "DELETE from search.edges WHERE cluster=$1", clusterName)
 	klog.V(9).Infof("WORKAROUND. Deleting all edges for cluster [%s]. Result: %+v  Errors: %+v", clusterName, r2, e2)
 
-	dao.SyncData(event, clusterName)
+	dao.SyncData(event, clusterName, syncResponse)
 
 	// Get all the existing resources.
 	// r, e := pool.Exec(context.Background(), "SELECT uid FROM search.resources where cluster=$1", clusterName)
