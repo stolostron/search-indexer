@@ -18,16 +18,17 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
 	clusterName := params["id"]
-	// klog.V(2).Infof("Processing request from cluster [%s]", clusterName)
 
+	// Decode SyncEvent from request body.
 	var syncEvent model.SyncEvent
 	err := json.NewDecoder(r.Body).Decode(&syncEvent)
 	if err != nil {
-		klog.Error("Error decoding body of syncEvent: ", err)
+		klog.Errorf("Error decoding request body from cluster [%s]. Error: %+v\n", clusterName, err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
+	// Initialize SyncResponse object.
 	syncResponse := &model.SyncResponse{
 		Version:          config.COMPONENT_VERSION,
 		RequestId:        syncEvent.RequestId,
@@ -51,15 +52,15 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	syncResponse.TotalResources = totalResources
 	syncResponse.TotalEdges = totalEdges
 
-	klog.Infof("SyncResponse: %+v", syncResponse)
-
 	w.WriteHeader(http.StatusOK)
 	encodeError := json.NewEncoder(w).Encode(syncResponse)
 	if encodeError != nil {
 		klog.Error("Error responding to SyncEvent:", encodeError, syncResponse)
 	}
 
+	// klog.V(5).Infof("SyncResponse: %+v", syncResponse)
 	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]", clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
+
 	// Record metrics.
 	OpsProcessed.WithLabelValues(clusterName, r.RequestURI).Inc()
 	HttpDuration.WithLabelValues(clusterName, r.RequestURI).Observe(float64(time.Since(start).Milliseconds()))
