@@ -45,7 +45,7 @@ func (b *batchWithRetry) Queue(item batchItem) {
 		items := b.items               // Create a snapshot of the items to process.
 		b.items = make([]batchItem, 0) // Reset the queue.
 		b.wg.Add(1)
-		go b.sendBatch(items)
+		go b.sendBatch(items) // nolint: errcheck
 	}
 }
 
@@ -57,12 +57,16 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 		batch.Queue(item.query, item.args...)
 	}
 	br := b.dao.pool.SendBatch(context.Background(), batch)
-	_, err := br.Exec()
-	br.Close()
+	_, execErr := br.Exec()
+
+	closeErr := br.Close()
+	if closeErr != nil {
+		klog.Error("Error closing batch result.", closeErr)
+	}
 
 	// Process errors.
 	// pgx.Batch is processed as a transaction, so in case of an error, the entire batch will fail.
-	if err != nil && len(items) == 1 {
+	if execErr != nil && len(items) == 1 {
 
 		item := items[0]
 		klog.Errorf("ERROR processing batchItem.  %+v", items[0])
@@ -85,25 +89,21 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 		*errorArray = append(*errorArray, model.SyncError{ResourceUID: items[0].uid, Message: "Error details"})
 
 		return nil // Don't return error here to stop the recursion.
-	} else if err != nil {
-		// Error sending batch, resending in smaller batches.
 
-		// Retry first half.
-		firstHalf := items[:len(items)/2]
-		b.wg.Add(1)
-		err1 := b.sendBatch(firstHalf)
+	} else if execErr != nil {
+		// Error in sent batch, resend queries using smaller batches.
+		// Use a binary search recursively until we find the error.
 
-		// Retry second half
-		secondHalf := items[len(items)/2:]
-		b.wg.Add(1)
-		err2 := b.sendBatch(secondHalf)
+		b.wg.Add(2)
+		err1 := b.sendBatch(items[:len(items)/2])
+		err2 := b.sendBatch(items[len(items)/2:])
 
 		// Returns error only if we fail processing either retry.
 		if err1 != nil && err2 != nil {
 			return nil
 		}
 	}
-	return err
+	return execErr
 }
 
 func (b *batchWithRetry) flush() {
@@ -111,6 +111,6 @@ func (b *batchWithRetry) flush() {
 		items := b.items               // Create a snapshot of the items to process.
 		b.items = make([]batchItem, 0) // Reset the queue.
 		b.wg.Add(1)
-		go b.sendBatch(items)
+		go b.sendBatch(items) // nolint: errcheck
 	}
 }
