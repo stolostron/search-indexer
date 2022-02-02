@@ -28,26 +28,26 @@ func (r *Row) Scan(dest ...interface{}) error {
 // Mock the BatchResults interface defined in the pgx library.
 // https://github.com/jackc/pgx/blob/master/batch.go#L34
 // ===========================================================
-type BatchResults struct {
+type batchResults struct {
 	rows  []int
-	index *int
+	index int
 }
 
-func (br BatchResults) Exec() (pgconn.CommandTag, error) {
+func (br *batchResults) Exec() (pgconn.CommandTag, error) {
 	return nil, nil
 }
-func (br BatchResults) Query() (pgx.Rows, error) {
+func (br *batchResults) Query() (pgx.Rows, error) {
 	return nil, nil
 }
-func (br BatchResults) QueryRow() pgx.Row {
-	row := &Row{mockValue: br.rows[*br.index]}
-	*br.index = *br.index + 1
+func (br *batchResults) QueryRow() pgx.Row {
+	row := &Row{mockValue: br.rows[br.index]}
+	br.index = br.index + 1
 	return row
 }
-func (br BatchResults) QueryFunc(scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
+func (br *batchResults) QueryFunc(scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
 	return nil, nil
 }
-func (br BatchResults) Close() error {
+func (br *batchResults) Close() error {
 	return nil
 }
 

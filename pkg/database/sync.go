@@ -87,7 +87,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 	// Wait for all batches to complete.
 	batch.wg.Wait()
 
-	// The response fields below are redundant, adding for compability with existing API.
+	// The response fields below are redundant, these are more interesting for resync.
 	syncResponse.TotalAdded = len(event.AddResources) - len(syncResponse.AddErrors)
 	syncResponse.TotalUpdated = len(event.UpdateResources) - len(syncResponse.UpdateErrors)
 	syncResponse.TotalDeleted = len(event.DeleteResources) - len(syncResponse.DeleteErrors)

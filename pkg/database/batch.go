@@ -13,11 +13,12 @@ import (
 
 // This is a wrapper for pgx.Batch
 // We need this because pgx.Batch doesn't provide a way to retry batches with errors.
+// Also adds reporting of errors.
 
 type batchItem struct {
-	action string // Used to report errors.
 	query  string
 	args   []interface{}
+	action string // Used to report errors.
 	uid    string // Used to report errors.
 }
 
@@ -68,11 +69,11 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 	// pgx.Batch is processed as a transaction, so in case of an error, the entire batch will fail.
 	if execErr != nil && len(items) == 1 {
 
-		item := items[0]
-		klog.Errorf("ERROR processing batchItem.  %+v", items[0])
+		errorItem := items[0]
+		klog.Errorf("ERROR processing batchItem.  %+v", errorItem)
 
 		var errorArray *[]model.SyncError
-		switch item.action {
+		switch errorItem.action {
 		case "addResource":
 			errorArray = &b.syncResponse.AddErrors
 		case "updateResource":
@@ -84,11 +85,12 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 		case "deleteEdge":
 			errorArray = &b.syncResponse.DeleteEdgeErrors
 		default:
-			klog.Error("Unable to process sync error with type: ", item.action)
+			klog.Error("Unable to process sync error with type: ", errorItem.action)
 		}
-		*errorArray = append(*errorArray, model.SyncError{ResourceUID: items[0].uid, Message: "Error details"})
+		*errorArray = append(*errorArray,
+			model.SyncError{ResourceUID: errorItem.uid, Message: "Resource generated an error while updating the database."})
 
-		return nil // Don't return error here to stop the recursion.
+		return nil // We have processed the error, so don't return an error here to stop the recursion.
 
 	} else if execErr != nil {
 		// Error in sent batch, resend queries using smaller batches.

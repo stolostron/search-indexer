@@ -29,8 +29,8 @@ func Test_syncRequest(t *testing.T) {
 
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
-	br_index := 0
-	br := BatchResults{rows: []int{5, 3}, index: &br_index}
+
+	br := &batchResults{rows: []int{5, 3}}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
@@ -67,8 +67,8 @@ func Test_resyncRequest(t *testing.T) {
 
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
-	br_index := 0
-	br := BatchResults{rows: []int{10, 4}, index: &br_index}
+
+	br := &batchResults{rows: []int{10, 4}}
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
