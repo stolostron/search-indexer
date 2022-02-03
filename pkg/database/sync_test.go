@@ -17,7 +17,7 @@ func Test_SyncData(t *testing.T) {
 
 	// Mock PosgreSQL calls
 	br := BatchResults{}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(4)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(5)
 
 	// Prepare Request data
 	data, _ := os.Open("./mocks/simple.json")
@@ -25,5 +25,5 @@ func Test_SyncData(t *testing.T) {
 	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
 
 	// Execute test
-	dao.SyncData(syncEvent, "test-cluster")
+	dao.SyncData(syncEvent, "test-cluster", &model.SyncResponse{})
 }

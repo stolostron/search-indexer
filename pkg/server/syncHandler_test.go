@@ -29,14 +29,15 @@ func Test_syncRequest(t *testing.T) {
 
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
-	br := BatchResults{}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br)
+
+	br := &batchResults{rows: []int{5, 3}}
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)
 
 	// Validation
-	expected := model.SyncResponse{Version: config.COMPONENT_VERSION}
+	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalResources: 5, TotalEdges: 3}
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Errorf("Want status '%d', got '%d'", http.StatusOK, responseRecorder.Code)
@@ -66,14 +67,15 @@ func Test_resyncRequest(t *testing.T) {
 
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
-	br := BatchResults{}
+
+	br := &batchResults{rows: []int{10, 4}}
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)
 
-	expected := model.SyncResponse{Version: config.COMPONENT_VERSION}
+	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalResources: 10, TotalEdges: 4}
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Errorf("Want status '%d', got '%d'", http.StatusOK, responseRecorder.Code)
