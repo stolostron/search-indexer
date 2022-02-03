@@ -11,9 +11,10 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// This is a wrapper for pgx.Batch
-// We need this because pgx.Batch doesn't provide a way to retry batches with errors.
-// Also adds reporting of errors.
+// This is a wrapper for pgx.Batch. It add the following.
+//  - The Queue() function checks the size of the queued items and automatically triggers the batch processing.
+//  - Retry after a batch operation fails. It sends smaller batches to isolate the query producing the error.
+//  - Report queries that resulted in errors.
 
 type batchItem struct {
 	query  string
@@ -39,6 +40,7 @@ func NewBatchWithRetry(dao *DAO, syncResponse *model.SyncResponse) batchWithRetr
 	return batch
 }
 
+// Adds a query to the queue and check if there's enough items to process the batch.
 func (b *batchWithRetry) Queue(item batchItem) {
 	b.items = append(b.items, item)
 
@@ -50,6 +52,8 @@ func (b *batchWithRetry) Queue(item batchItem) {
 	}
 }
 
+// Sends a batch to the database. If the batch results in an error, we divide
+// the batch into smaller batches and retry until we isolate the erroring query.
 func (b *batchWithRetry) sendBatch(items []batchItem) error {
 	defer b.wg.Done()
 
@@ -108,6 +112,7 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 	return execErr
 }
 
+// Process all queued items.
 func (b *batchWithRetry) flush() {
 	if len(b.items) > 0 {
 		items := b.items               // Create a snapshot of the items to process.
