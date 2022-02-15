@@ -53,10 +53,9 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	syncResponse.TotalEdges = totalEdges
 
 	// Send Response
+	w.WriteHeader(http.StatusOK)
 	encodeError := json.NewEncoder(w).Encode(syncResponse)
-	if encodeError == nil {
-		w.WriteHeader(http.StatusOK)
-	} else {
+	if encodeError != nil {
 		klog.Error("Error responding to SyncEvent:", encodeError, syncResponse)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
