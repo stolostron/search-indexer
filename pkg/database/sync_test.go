@@ -4,13 +4,13 @@ package database
 import (
 	// "bytes"
 	"encoding/json"
-	"io/ioutil"
+	// "io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stolostron/search-indexer/pkg/model"
-	"k8s.io/klog/v2"
+	// "k8s.io/klog/v2"
 )
 
 func Test_SyncData(t *testing.T) {
