@@ -4,6 +4,7 @@ package database
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/jackc/pgconn"
@@ -12,6 +13,14 @@ import (
 	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
 )
+
+// AssertEqual checks if values are equal
+func AssertEqual(t *testing.T, a interface{}, b interface{}, message string) {
+	if a == b {
+		return
+	}
+	t.Errorf("%s Received %v (type %v), expected %v (type %v)", message, a, reflect.TypeOf(a), b, reflect.TypeOf(b))
+}
 
 type BatchResults struct {
 	mockErrorOnClose bool // Return an error on Close()

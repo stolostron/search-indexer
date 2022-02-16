@@ -42,10 +42,11 @@ func NewDAO(p pgxpoolmock.PgxPool) DAO {
 func initializePool() pgxpoolmock.PgxPool {
 	cfg := config.Cfg
 
-	database_url := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort, cfg.DBName)
-	klog.Info("Connecting to PostgreSQL at: ", fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", cfg.DBUser, "*****", cfg.DBHost, cfg.DBPort, cfg.DBName))
+	databaseUrl := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort, cfg.DBName)
+	klog.Infof("Connecting to PostgreSQL at: postgresql://%s:%s@%s:%d/%s",
+		cfg.DBUser, "*****", cfg.DBHost, cfg.DBPort, cfg.DBName)
 
-	config, configErr := pgxpool.ParseConfig(database_url)
+	config, configErr := pgxpool.ParseConfig(databaseUrl)
 	if configErr != nil {
 		klog.Fatal("Error parsing database connection configuration. ", configErr)
 	}
@@ -68,19 +69,24 @@ func (dao *DAO) InitializeTables() {
 
 	_, err := dao.pool.Exec(context.Background(), "CREATE SCHEMA IF NOT EXISTS search")
 	checkError(err, "Error creating schema.")
-	_, err = dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
+	_, err = dao.pool.Exec(context.Background(),
+		"CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
 	checkError(err, "Error creating table search.resources.")
-	_, err = dao.pool.Exec(context.Background(), "CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")
+	_, err = dao.pool.Exec(context.Background(),
+		"CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")
 	checkError(err, "Error creating table search.edges.")
 
-	//Jsonb indexing data keys:
-	_, err = dao.pool.Exec(context.Background(), "CREATE INDEX IF NOT EXISTS data_kind_idx ON search.resources USING GIN ((data -> 'kind'))")
+	// Jsonb indexing data keys:
+	_, err = dao.pool.Exec(context.Background(),
+		"CREATE INDEX IF NOT EXISTS data_kind_idx ON search.resources USING GIN ((data -> 'kind'))")
 	checkError(err, "Error creating index on search.resources data key kind.")
 
-	_, err = dao.pool.Exec(context.Background(), "CREATE INDEX IF NOT EXISTS data_namespace_idx ON search.resources USING GIN ((data -> 'namespace'))")
+	_, err = dao.pool.Exec(context.Background(),
+		"CREATE INDEX IF NOT EXISTS data_namespace_idx ON search.resources USING GIN ((data -> 'namespace'))")
 	checkError(err, "Error creating index on search.resources data key namespace.")
 
-	_, err = dao.pool.Exec(context.Background(), "CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")
+	_, err = dao.pool.Exec(context.Background(),
+		"CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")
 	checkError(err, "Error creating index on search.resources data key name.")
 
 }

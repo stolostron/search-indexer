@@ -27,5 +27,7 @@ func Test_ResyncData(t *testing.T) {
 	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
 
 	// Execute function test.
-	dao.ResyncData(syncEvent, "test-cluster", &model.SyncResponse{})
+	response := &model.SyncResponse{}
+	dao.ResyncData(syncEvent, "test-cluster", response)
+
 }
