@@ -2,15 +2,12 @@
 package database
 
 import (
-	// "bytes"
 	"encoding/json"
-	// "io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stolostron/search-indexer/pkg/model"
-	// "k8s.io/klog/v2"
 )
 
 func Test_SyncData(t *testing.T) {
@@ -41,14 +38,6 @@ func Test_SyncData(t *testing.T) {
 
 // Test for the error path.
 func Test_Sync_With_Errors(t *testing.T) {
-	// Supress console output to prevent log messages from polluting test output.
-	// var buf bytes.Buffer
-	// klog.LogToStderr(false)
-	// klog.SetOutput(&buf)
-	// defer func() {
-	// 	klog.SetOutput(os.Stderr)
-	// }()
-
 	// Prepare a mock DAO instance
 	dao, mockPool := buildMockDAO(t)
 	dao.batchSize = 1
@@ -64,6 +53,9 @@ func Test_Sync_With_Errors(t *testing.T) {
 	data, _ := os.Open("./mocks/simple.json")
 	var syncEvent model.SyncEvent
 	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
+
+	// Supress console output to prevent log messages from polluting test output.
+	defer SupressConsoleOutput()()
 
 	// Execute test
 	response := &model.SyncResponse{}

@@ -27,7 +27,6 @@ func NewDAO(p pgxpoolmock.PgxPool) DAO {
 		batchSize: 500,
 	}
 	if p != nil {
-		klog.Error("Using provided database connection. This path should only get executed during unit tests.")
 		dao.pool = p
 		return dao
 	}
@@ -55,6 +54,8 @@ func initializePool() pgxpoolmock.PgxPool {
 	if err != nil {
 		klog.Error("Unable to connect to database: %+v\n", err)
 		// TODO: We need to retry the connection until successful.
+	} else {
+		klog.Info("Successfully connected to database!")
 	}
 
 	return conn

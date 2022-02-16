@@ -4,6 +4,7 @@ package database
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"testing"
 
@@ -20,6 +21,25 @@ func AssertEqual(t *testing.T, a interface{}, b interface{}, message string) {
 		return
 	}
 	t.Errorf("%s Received %v (type %v), expected %v (type %v)", message, a, reflect.TypeOf(a), b, reflect.TypeOf(b))
+}
+
+var disableConsoleWarning bool
+
+// Supress console output to prevent log messages from polluting test output.
+func SupressConsoleOutput() func() {
+	if !disableConsoleWarning {
+		fmt.Println("!!!!! Tests are supressing log output to stderr. !!!!!")
+		disableConsoleWarning = true
+	}
+	nullFile, _ := os.Open(os.DevNull)
+	stdErr := os.Stderr
+	os.Stderr = nullFile
+
+	return func() {
+		defer nullFile.Close()
+		os.Stderr = stdErr
+	}
+
 }
 
 type BatchResults struct {
