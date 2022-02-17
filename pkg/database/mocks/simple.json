@@ -74,4 +74,23 @@
     {
         "uid":"local-cluster/e12c2ddd-4ac5-499d-b0e0-20242f508afd"
     }
-]}
+],
+"addEdges":[
+    {
+        "EdgeType":"ownedBy",
+        "SourceUID":"local-cluster/00000000-0000-0000-0000-000000000880",
+        "DestUID":"local-cluster/00000000-0000-0000-0000-000000000881",
+        "SourceKind":"Pod",
+        "DestKind":"Deployment"
+    }
+],
+"deleteEdges":[
+    {
+        "EdgeType":"ownedBy",
+        "SourceUID":"local-cluster/00000000-0000-0000-0000-000000000990",
+        "DestUID":"local-cluster/00000000-0000-0000-0000-000000000991",
+        "SourceKind":"Pod",
+        "DestKind":"Deployment"
+    }
+]
+}

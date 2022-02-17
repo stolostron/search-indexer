@@ -53,16 +53,16 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	syncResponse.TotalEdges = totalEdges
 
 	// Send Response
+	w.WriteHeader(http.StatusOK)
 	encodeError := json.NewEncoder(w).Encode(syncResponse)
-	if encodeError == nil {
-		w.WriteHeader(http.StatusOK)
-	} else {
+	if encodeError != nil {
 		klog.Error("Error responding to SyncEvent:", encodeError, syncResponse)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
 	// Log request and metrics.
-	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]", clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
+	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]",
+		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
 
 	// Record metrics.

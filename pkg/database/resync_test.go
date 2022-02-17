@@ -26,6 +26,11 @@ func Test_ResyncData(t *testing.T) {
 	var syncEvent model.SyncEvent
 	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
 
+	// Supress console output to prevent log messages from polluting test output.
+	defer SupressConsoleOutput()()
+
 	// Execute function test.
-	dao.ResyncData(syncEvent, "test-cluster", &model.SyncResponse{})
+	response := &model.SyncResponse{}
+	dao.ResyncData(syncEvent, "test-cluster", response)
+
 }

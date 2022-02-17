@@ -30,7 +30,7 @@ type Config struct {
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
 	// KubeConfig            string // Local kubeconfig path
 	// RediscoverRateMS      int    // time in MS we should check on cluster resource type
-	// RequestLimit          int    // Max number of concurrent requests. Used to prevent from overloading the database.
+	// RequestLimit          int    // Max number of concurrent requests. Used to prevent from overloading the database
 	// SkipClusterValidation string // Skips cluster validation. Intended only for performance tests.
 	DevelopmentMode bool
 }
@@ -38,12 +38,12 @@ type Config struct {
 // Reads config from environment.
 func new() *Config {
 	conf := &Config{
+		DevelopmentMode: DEVELOPMENT_MODE, // Do not read this from ENV. See config_development.go to enable.
 		DBHost:          getEnv("DB_HOST", "localhost"),
 		DBPort:          getEnvAsInt("DB_PORT", 5432),
 		DBName:          getEnv("DB_NAME", ""),
 		DBUser:          getEnv("DB_USER", ""),
 		DBPass:          getEnv("DB_PASS", ""),
-		DevelopmentMode: DEVELOPMENT_MODE,                    // Do not read this from ENV. See config_development.go to enable.
 		HTTPTimeout:     getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		Version:         COMPONENT_VERSION,
