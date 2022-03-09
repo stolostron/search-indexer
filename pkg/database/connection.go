@@ -102,9 +102,13 @@ func checkError(err error, logMessage string) {
 
 func (dao *DAO) InsertCluster(resource model.Resource) {
 	data, _ := json.Marshal(resource.Properties)
+	klog.Info("args: 1. resource.UID:", resource.UID)
+	klog.Info("args: 2. resource.UID:", "")
+	klog.Info("args: 3. resource.UID:", string(data))
+
 	args := []interface{}{resource.UID, "", string(data)}
 	klog.Info("query: INSERT into search.resources values($1,$2,$3) \n args: ", args)
-	_, err := dao.pool.Exec(context.TODO(), "INSERT into search.resources values($1,$2,$3)", args)
+	_, err := dao.pool.Exec(context.TODO(), "INSERT into search.resources values($1,$2,$3)", args...)
 	if err != nil {
 		klog.Warning("Error inserting cluster: ", err)
 	}
