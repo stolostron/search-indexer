@@ -114,6 +114,8 @@ func processClusterUpsert(obj interface{}) {
 		if err != nil {
 			klog.Warning("Failed to Unmarshal MangedCluster", err)
 		}
+		klog.Info("Received ManagedCluster: ", managedCluster.Name)
+
 		resource = transformManagedCluster(&managedCluster)
 	case "ManagedClusterInfo":
 		managedClusterInfo := clusterv1beta1.ManagedClusterInfo{}
@@ -121,6 +123,8 @@ func processClusterUpsert(obj interface{}) {
 		if err != nil {
 			klog.Warning("Failed to Unmarshal ManagedclusterInfo", err)
 		}
+		klog.Info("Received ManagedClusterInfo: ", managedClusterInfo.Name)
+
 		resource = transformManagedClusterInfo(&managedClusterInfo)
 	default:
 		klog.Warning("ClusterWatch received unknown kind.", obj.(*unstructured.Unstructured).GetKind())

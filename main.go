@@ -5,6 +5,7 @@ package main
 import (
 	"flag"
 
+	"github.com/stolostron/search-indexer/pkg/clustermgmt"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/database"
 	"github.com/stolostron/search-indexer/pkg/server"
@@ -31,6 +32,8 @@ func main() {
 	dao := database.NewDAO(nil)
 	dao.InitializeTables()
 
+	// Watch clusters and sync status to Redis.
+	go clustermgmt.WatchClusters()
 	// Start the server.
 	srv := &server.ServerConfig{
 		Dao: &dao,
