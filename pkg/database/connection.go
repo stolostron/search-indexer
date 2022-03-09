@@ -4,11 +4,13 @@ package database
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/driftprogramming/pgxpoolmock"
 	pgxpool "github.com/jackc/pgx/v4/pgxpool"
 	"github.com/stolostron/search-indexer/pkg/config"
+	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
 
@@ -96,4 +98,10 @@ func checkError(err error, logMessage string) {
 	if err != nil {
 		klog.Error(logMessage, " ", err)
 	}
+}
+
+func (dao *DAO) InsertCluster(resource model.Resource) {
+	data, _ := json.Marshal(resource.Properties)
+	args := []interface{}{resource.UID, "", string(data)}
+	dao.pool.Query(context.TODO(), "INSERT into search.resources values($1,$2,$3)", args)
 }

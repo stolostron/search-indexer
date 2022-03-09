@@ -9,6 +9,11 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/golang/glog"
+	"k8s.io/client-go/dynamic"
+	kubeClientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 )
 
@@ -28,8 +33,8 @@ type Config struct {
 	ServerAddress string // Web server address
 	Version       string
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
-	// KubeConfig            string // Local kubeconfig path
-	// RediscoverRateMS      int    // time in MS we should check on cluster resource type
+	KubeConfig       string // Local kubeconfig path
+	RediscoverRateMS int    // time in MS we should check on cluster resource type
 	// RequestLimit          int    // Max number of concurrent requests. Used to prevent from overloading the database
 	// SkipClusterValidation string // Skips cluster validation. Intended only for performance tests.
 	DevelopmentMode bool
@@ -128,13 +133,36 @@ func (cfg *Config) Validate() error {
 // 	return val
 // }
 
-// func getKubeConfig() string{
-// 	defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
-// 	if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
-// 		// set default to empty string if path does not reslove
-// 		defaultKubePath = ""
-// 	}
+// KubeClient - Client to get jobs resource
+func GetKubeClient() *kubeClientset.Clientset {
+	kubeClient, err := kubeClientset.NewForConfig(getClientConfig())
+	if kubeClient == nil || err != nil {
+		glog.Error("Error getting the kube clientset. ", err)
+	}
+	return kubeClient
+}
 
-// 	kubeConfig := getEnv("KUBECONFIG", defaultKubePath)
-// 	return kubeConfig
-// }
+// Dynamic Client
+func GetDynamicClient() dynamic.Interface {
+	dynamicClientset, err := dynamic.NewForConfig(getClientConfig())
+	if err != nil {
+		glog.Warning("Error getting the dynamic client. ", err)
+	}
+	return dynamicClientset
+}
+
+func getClientConfig() *rest.Config {
+	var clientConfig *rest.Config
+	var err error
+	if Cfg.KubeConfig != "" {
+		glog.V(1).Infof("Creating k8s client using path: %s", Cfg.KubeConfig)
+		clientConfig, err = clientcmd.BuildConfigFromFlags("", Cfg.KubeConfig)
+	} else {
+		clientConfig, err = rest.InClusterConfig()
+	}
+	if err != nil {
+		glog.Warning("Error getting the kube client config. ", err)
+		return &rest.Config{}
+	}
+	return clientConfig
+}
