@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/golang/glog"
 	"k8s.io/client-go/dynamic"
 	kubeClientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -137,7 +136,7 @@ func (cfg *Config) Validate() error {
 func GetKubeClient() *kubeClientset.Clientset {
 	kubeClient, err := kubeClientset.NewForConfig(getClientConfig())
 	if kubeClient == nil || err != nil {
-		glog.Error("Error getting the kube clientset. ", err)
+		klog.Error("Error getting the kube clientset. ", err)
 	}
 	return kubeClient
 }
@@ -146,7 +145,7 @@ func GetKubeClient() *kubeClientset.Clientset {
 func GetDynamicClient() dynamic.Interface {
 	dynamicClientset, err := dynamic.NewForConfig(getClientConfig())
 	if err != nil {
-		glog.Warning("Error getting the dynamic client. ", err)
+		klog.Warning("Error getting the dynamic client. ", err)
 	}
 	return dynamicClientset
 }
@@ -155,13 +154,13 @@ func getClientConfig() *rest.Config {
 	var clientConfig *rest.Config
 	var err error
 	if Cfg.KubeConfig != "" {
-		glog.V(1).Infof("Creating k8s client using path: %s", Cfg.KubeConfig)
+		klog.V(1).Infof("Creating k8s client using path: %s", Cfg.KubeConfig)
 		clientConfig, err = clientcmd.BuildConfigFromFlags("", Cfg.KubeConfig)
 	} else {
 		clientConfig, err = rest.InClusterConfig()
 	}
 	if err != nil {
-		glog.Warning("Error getting the kube client config. ", err)
+		klog.Warning("Error getting the kube client config. ", err)
 		return &rest.Config{}
 	}
 	return clientConfig
