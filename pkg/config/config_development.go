@@ -10,7 +10,7 @@ package config
 import "k8s.io/klog/v2"
 
 func init() {
-	klog.Warning("Running in development mode.")
+	klog.Warning("!!! Running in development mode. !!!")
 	DEVELOPMENT_MODE = true
 	Cfg = new()
 }

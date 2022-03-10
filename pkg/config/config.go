@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"k8s.io/klog/v2"
@@ -24,7 +25,9 @@ type Config struct {
 	DBName        string
 	DBUser        string
 	DBPass        string
-	HTTPTimeout   int    // timeout when the http server should drop connections
+	HTTPTimeout   int // timeout when the http server should drop connections
+	KubeConfig    string
+	PodName       string
 	ServerAddress string // Web server address
 	Version       string
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
@@ -45,6 +48,8 @@ func new() *Config {
 		DBUser:          getEnv("DB_USER", ""),
 		DBPass:          getEnv("DB_PASS", ""),
 		HTTPTimeout:     getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
+		KubeConfig:      getKubeConfig(),
+		PodName:         getEnv("POD_NAME", "local-dev"),
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		Version:         COMPONENT_VERSION,
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
@@ -128,13 +133,13 @@ func (cfg *Config) Validate() error {
 // 	return val
 // }
 
-// func getKubeConfig() string{
-// 	defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
-// 	if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
-// 		// set default to empty string if path does not reslove
-// 		defaultKubePath = ""
-// 	}
+func getKubeConfig() string {
+	defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+	if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
+		// set default to empty string if path does not reslove
+		defaultKubePath = ""
+	}
 
-// 	kubeConfig := getEnv("KUBECONFIG", defaultKubePath)
-// 	return kubeConfig
-// }
+	kubeConfig := getEnv("KUBECONFIG", defaultKubePath)
+	return kubeConfig
+}

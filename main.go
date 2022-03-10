@@ -5,6 +5,7 @@ package main
 import (
 	"flag"
 
+	"github.com/stolostron/search-indexer/pkg/clustersync"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/database"
 	"github.com/stolostron/search-indexer/pkg/server"
@@ -30,6 +31,8 @@ func main() {
 	// Initialize the database
 	dao := database.NewDAO(nil)
 	dao.InitializeTables()
+
+	go clustersync.SyncClusters()
 
 	// Start the server.
 	srv := &server.ServerConfig{
