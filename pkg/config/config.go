@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"k8s.io/client-go/dynamic"
@@ -41,6 +42,11 @@ type Config struct {
 
 // Reads config from environment.
 func new() *Config {
+	defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+	if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
+		// set default to empty string if path does not reslove
+		defaultKubePath = ""
+	}
 	conf := &Config{
 		DevelopmentMode: DEVELOPMENT_MODE, // Do not read this from ENV. See config_development.go to enable.
 		DBHost:          getEnv("DB_HOST", "localhost"),
@@ -51,8 +57,8 @@ func new() *Config {
 		HTTPTimeout:     getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		Version:         COMPONENT_VERSION,
+		KubeConfig:      getEnv("KUBECONFIG", defaultKubePath),
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
-		// KubeConfig:            getKubeConfig(),
 		// RediscoverRateMS:      getEnvAsInt("REDISCOVER_RATE_MS"), // 5 min
 		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
@@ -154,7 +160,7 @@ func getClientConfig() *rest.Config {
 	var clientConfig *rest.Config
 	var err error
 	if Cfg.KubeConfig != "" {
-		klog.V(1).Infof("Creating k8s client using path: %s", Cfg.KubeConfig)
+		klog.V(5).Infof("Creating k8s client using path: %s", Cfg.KubeConfig)
 		clientConfig, err = clientcmd.BuildConfigFromFlags("", Cfg.KubeConfig)
 	} else {
 		clientConfig, err = rest.InClusterConfig()

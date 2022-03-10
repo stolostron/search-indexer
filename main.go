@@ -32,7 +32,7 @@ func main() {
 	dao := database.NewDAO(nil)
 	dao.InitializeTables()
 
-	// Watch clusters and sync status to Redis.
+	// Watch clusters and sync status to database.
 	go clustermgmt.WatchClusters()
 	// Start the server.
 	srv := &server.ServerConfig{
