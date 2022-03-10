@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 
 	"github.com/stolostron/search-indexer/pkg/clustersync"
@@ -32,7 +33,7 @@ func main() {
 	dao := database.NewDAO(nil)
 	dao.InitializeTables()
 
-	go clustersync.SyncClusters()
+	go clustersync.ElectLeaderAndStart(context.Background()) // TODO: Pass DAO.
 
 	// Start the server.
 	srv := &server.ServerConfig{

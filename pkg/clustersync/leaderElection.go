@@ -30,7 +30,9 @@ func getNewLock(lockname, namespace string) *resourcelock.LeaseLock {
 }
 
 func runLeaderElection(lock *resourcelock.LeaseLock, ctx context.Context) {
-	for { // TODO: How do I exit cleanly and remove the lock?
+	for {
+		// TODO: Need to exit cleanly and remove the lock.
+		contextWithCancel, cancelFn := context.WithCancel(ctx)
 		leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
 			Lock:            lock,
 			ReleaseOnCancel: true,
@@ -39,17 +41,17 @@ func runLeaderElection(lock *resourcelock.LeaseLock, ctx context.Context) {
 			RetryPeriod:     2 * time.Second,
 			Callbacks: leaderelection.LeaderCallbacks{
 				OnStartedLeading: func(c context.Context) {
-					doStuff()
+					syncClusters(contextWithCancel)
 				},
 				OnStoppedLeading: func() {
 					klog.Info("no longer the leader, staying inactive.")
-					// TODO: need to stop doStuff()
+					cancelFn() // TODO: test cancel.
 
 				},
 				OnNewLeader: func(current_id string) {
 					if current_id == config.Cfg.PodName {
 						klog.Info("I'm still the leader!")
-						// TODO: Confirm that process is still running, restart if needed.
+						// TODO: Confirm that syncClusters() is still running, restart if needed.
 						return
 					}
 					klog.Infof("Leader is %s", current_id)
@@ -57,12 +59,5 @@ func runLeaderElection(lock *resourcelock.LeaseLock, ctx context.Context) {
 			},
 		})
 		klog.Info("Restarting leader election loop.")
-	}
-}
-
-func doStuff() {
-	for {
-		klog.Info("doing stuff...")
-		time.Sleep(30 * time.Second)
 	}
 }
