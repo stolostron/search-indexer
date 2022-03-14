@@ -3,7 +3,9 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
+	"log"
 	"net/http"
 	"time"
 
@@ -18,7 +20,7 @@ type ServerConfig struct {
 	Dao *database.DAO
 }
 
-func (s *ServerConfig) StartAndListen() {
+func (s *ServerConfig) StartAndListen(ctx context.Context) {
 	router := mux.NewRouter()
 	router.HandleFunc("/liveness", LivenessProbe).Methods("GET")
 	router.HandleFunc("/readiness", ReadinessProbe).Methods("GET")
@@ -46,7 +48,21 @@ func (s *ServerConfig) StartAndListen() {
 		TLSNextProto:      make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 	}
 
-	klog.Info("Server listening on: ", srv.Addr)
-	klog.Fatal(srv.ListenAndServeTLS("./sslcert/tls.crt", "./sslcert/tls.key"),
-		" Use ./setup.sh to generate certificates for local development.")
+	// Start the server
+	go func() {
+		klog.Info("Listening on: ", srv.Addr)
+		// ErrServerClosed is returned on graceful close.
+		if err := srv.ListenAndServeTLS("./sslcert/tls.crt", "./sslcert/tls.key"); err != http.ErrServerClosed {
+			log.Fatal(err, " For local development use ./setup.sh to generate certificates.")
+		}
+	}()
+
+	// Wait for cancel signal
+	<-ctx.Done()
+	klog.V(3).Info("Stopping the server.")
+	if err := srv.Shutdown(context.TODO()); err != nil {
+		klog.Error("Encountered error stopping the server. ", err)
+	} else {
+		klog.Info("Server stopped.")
+	}
 }

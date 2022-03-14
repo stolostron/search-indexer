@@ -5,12 +5,15 @@ package clustersync
 import (
 	"context"
 
-	klog "k8s.io/klog/v2"
+	"github.com/stolostron/search-indexer/pkg/config"
 )
 
 func ElectLeaderAndStart(ctx context.Context) {
-	klog.Info("Electing leader...")
-	l := getNewLock("search-indexer.open-cluster-management.io", "open-cluster-management")
+	// client := config.Cfg.KubeClient
+	lockName := "search-indexer.open-cluster-management.io"
+	podName := config.Cfg.PodName
+	podNamespace := config.Cfg.PodNamespace
 
-	runLeaderElection(l, ctx)
+	lock := getNewLock(lockName, podName, podNamespace)
+	runLeaderElection(ctx, lock)
 }

@@ -5,6 +5,10 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/stolostron/search-indexer/pkg/clustersync"
 	"github.com/stolostron/search-indexer/pkg/config"
@@ -29,15 +33,29 @@ func main() {
 		klog.Fatal(configError)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	// Initialize the database
 	dao := database.NewDAO(nil)
 	dao.InitializeTables()
 
-	go clustersync.ElectLeaderAndStart(context.Background()) // TODO: Pass DAO.
+	// Start cluster sync.
+	go clustersync.ElectLeaderAndStart(ctx)
 
 	// Start the server.
 	srv := &server.ServerConfig{
 		Dao: &dao,
 	}
-	srv.StartAndListen()
+	go srv.StartAndListen(ctx)
+
+	// Listen and wait for termination signal.
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	sig := <-sigs // Wait for termination signal.
+	klog.Warning("Received termination signal: ", sig)
+	cancel()
+
+	time.Sleep(5 * time.Second) // TODO: How can I wait synchronously?
+	klog.Info("Exiting search-indexer.")
 }

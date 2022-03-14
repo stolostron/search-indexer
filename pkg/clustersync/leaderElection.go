@@ -14,50 +14,53 @@ import (
 	klog "k8s.io/klog/v2"
 )
 
-func getNewLock(lockname, namespace string) *resourcelock.LeaseLock {
+func getNewLock(lockname, podName, podNamespace string) *resourcelock.LeaseLock {
 
-	client := config.GetKubeClient(config.GetKubeConfig()) // TODO: share the kube client.
+	client := config.Cfg.KubeClient
+
 	return &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Name:      lockname,
-			Namespace: namespace,
+			Namespace: podNamespace,
 		},
 		Client: client.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
-			Identity: config.Cfg.PodName,
+			Identity: podName,
 		},
 	}
 }
 
-func runLeaderElection(lock *resourcelock.LeaseLock, ctx context.Context) {
+func runLeaderElection(ctx context.Context, lock *resourcelock.LeaseLock) {
 	for {
-		// TODO: Need to exit cleanly and remove the lock.
-		contextWithCancel, cancelFn := context.WithCancel(ctx)
-		leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
-			Lock:            lock,
-			ReleaseOnCancel: true,
-			LeaseDuration:   30 * time.Second,
-			RenewDeadline:   20 * time.Second,
-			RetryPeriod:     2 * time.Second,
-			Callbacks: leaderelection.LeaderCallbacks{
-				OnStartedLeading: func(c context.Context) {
-					syncClusters(contextWithCancel)
-				},
-				OnStoppedLeading: func() {
-					klog.Info("no longer the leader, staying inactive.")
-					cancelFn() // TODO: test cancel.
+		select {
+		case <-ctx.Done():
+			klog.Info("Exit runLeaderElection(). Received context.Done()")
+			return
+		default:
+			klog.Info("Attempting to become leader.")
+			leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
+				Lock:            lock,
+				ReleaseOnCancel: true, // Releases the lock on context cancel.
+				LeaseDuration:   15 * time.Second,
+				RenewDeadline:   10 * time.Second,
+				RetryPeriod:     2 * time.Second,
+				Callbacks: leaderelection.LeaderCallbacks{
+					OnStartedLeading: func(c context.Context) {
+						syncClusters(c)
+					},
+					OnStoppedLeading: func() {
+						klog.Info("I'm no longer the leader.")
 
+					},
+					OnNewLeader: func(current_id string) {
+						if current_id == config.Cfg.PodName {
+							klog.Info("I'm still the leader!", current_id, config.Cfg.PodName)
+							return
+						}
+						klog.Infof("Leader is %s", current_id)
+					},
 				},
-				OnNewLeader: func(current_id string) {
-					if current_id == config.Cfg.PodName {
-						klog.Info("I'm still the leader!")
-						// TODO: Confirm that syncClusters() is still running, restart if needed.
-						return
-					}
-					klog.Infof("Leader is %s", current_id)
-				},
-			},
-		})
-		klog.Info("Restarting leader election loop.")
+			})
+		}
 	}
 }

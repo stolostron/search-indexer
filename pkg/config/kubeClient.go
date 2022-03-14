@@ -3,25 +3,33 @@
 package config
 
 import (
-	"sync"
+	"os"
+	"path/filepath"
 
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 )
 
-var mutex sync.Mutex
-var dynamicClient dynamic.Interface
+func getKubeConfigPath() string {
+	defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+	if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
+		// set default to empty string if path does not reslove
+		defaultKubePath = ""
+	}
 
-func GetKubeConfig() *rest.Config {
+	kubeConfig := getEnv("KUBECONFIG", defaultKubePath)
+	return kubeConfig
+}
+
+func getKubeConfig() *rest.Config {
 	var clientConfig *rest.Config
 	var clientConfigError error
 
-	if Cfg.KubeConfig != "" {
-		klog.Infof("Creating k8s client using KubeConfig at: %s", Cfg.KubeConfig)
-		clientConfig, clientConfigError = clientcmd.BuildConfigFromFlags("", Cfg.KubeConfig)
+	if getKubeConfigPath() != "" {
+		klog.Infof("Creating k8s client using KubeConfig at: %s", getKubeConfigPath())
+		clientConfig, clientConfigError = clientcmd.BuildConfigFromFlags("", getKubeConfigPath())
 	} else {
 		klog.V(2).Info("Creating k8s client using InClusterClientConfig()")
 		clientConfig, clientConfigError = rest.InClusterConfig()
@@ -34,7 +42,7 @@ func GetKubeConfig() *rest.Config {
 	return clientConfig
 }
 
-func GetKubeClient(config *rest.Config) *kubernetes.Clientset {
+func getKubeClient(config *rest.Config) *kubernetes.Clientset {
 	var kubeClient *kubernetes.Clientset
 	var err error
 	if config != nil {

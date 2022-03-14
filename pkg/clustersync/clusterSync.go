@@ -9,9 +9,15 @@ import (
 	klog "k8s.io/klog/v2"
 )
 
-func syncClusters(context context.Context) {
+func syncClusters(ctx context.Context) {
 	for {
-		klog.Info("TODO: Sync clusters here. Need to watch for context cancel().")
-		time.Sleep(30 * time.Second)
+		select {
+		case <-ctx.Done():
+			klog.Info("Exit syncClusters(). Received context.Done().")
+			return
+		default:
+			klog.Info("TODO: Sync clusters here.")
+		}
+		time.Sleep(5 * time.Second)
 	}
 }
