@@ -43,22 +43,6 @@ func fakeDynamicClient() *fake.FakeDynamicClient {
 	return dyn
 }
 
-// func generateSimpleEvent(informer GenericInformer, t *testing.T) {
-// 	// Add resource. Generates ADDED event.
-// 	newResource := newTestUnstructured("open-cluster-management.io/v1", "TheKind", "ns-foo", "name-new", "id-999")
-// 	_, err1 := informer.client.Resource(gvr).Namespace("ns-foo").Create(contextVar, newResource, v1.CreateOptions{})
-
-// 	// Update resource. Generates MODIFIED event.
-// 	_, err2 := informer.client.Resource(gvr).Namespace("ns-foo").Update(contextVar, newResource, v1.UpdateOptions{})
-
-// 	// Delete resource. Generated DELETED event.
-// 	err3 := informer.client.Resource(gvr).Namespace("ns-foo").Delete(contextVar, "name-bar2", v1.DeleteOptions{})
-
-// 	if err1 != nil || err2 != nil || err3 != nil {
-// 		t.Error("Error generating mocked events.")
-// 	}
-// }
-
 func newTestUnstructured(apiVersion, kind, namespace, name, uid string) *unstructured.Unstructured {
 	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -78,7 +62,7 @@ func Test_ProcessClusterUpsert(t *testing.T) {
 	database.ExistingClustersMap = make(map[string]interface{})
 	clusterResource := `{"_clusterNamespace":"name-foo", "apigroup":"internal.open-cluster-management.io", "consoleURL":"", "cpu":0, "created":"0001-01-01T00:00:00Z", "kind":"Cluster", "kubernetesVersion":"", "memory":0, "name":"name-foo", "nodes":0}`
 	var clusterRes map[string]interface{}
-	json.Unmarshal([]byte(clusterResource), &clusterRes)
+	_ = json.Unmarshal([]byte(clusterResource), &clusterRes)
 	clusterRes["cpu"] = int64(0)
 	clusterRes["memory"] = "0"
 	clusterRes["nodes"] = int64(0)

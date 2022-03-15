@@ -31,7 +31,7 @@ func Test_UpsertCluster_NoUpdate(t *testing.T) {
 	clusterResource := `{"UID":"cluster__name-foo", "Kind":"Cluster", "Properties":{"_clusterNamespace":"name-foo", "apigroup":"internal.open-cluster-management.io", "consoleURL":"", "cpu":0, "created":"0001-01-01T00:00:00Z", "kind":"Cluster", "kubernetesVersion":"", "memory":0, "name":"name-foo", "nodes":0}}`
 
 	var existingCluster map[string]interface{}
-	json.Unmarshal([]byte(clusterResource), &existingCluster)
+	_ = json.Unmarshal([]byte(clusterResource), &existingCluster)
 	ExistingClustersMap["cluster__name-foo"] = existingCluster["Properties"]
 	currCluster := model.Resource{Kind: existingCluster["Kind"].(string), UID: existingCluster["UID"].(string), Properties: existingCluster["Properties"].(map[string]interface{})}
 
@@ -49,8 +49,7 @@ func Test_UpsertCluster_Update1(t *testing.T) {
 	clusterResource := `{"UID":"cluster__name-foo", "Kind":"Cluster", "Properties":{"_clusterNamespace":"name-foo", "apigroup":"internal.open-cluster-management.io", "consoleURL":"", "created":"0001-01-01T00:00:00Z", "kind":"Cluster", "kubernetesVersion":"", "memory":0, "cpu":9, "name":"name-foo"}}`
 
 	var existingCluster map[string]interface{}
-	json.Unmarshal([]byte(clusterResource), &existingCluster)
-
+	_ = json.Unmarshal([]byte(clusterResource), &existingCluster)
 	ExistingClustersMap["cluster__name-foo"] = existingCluster["Properties"]
 
 	props := make(map[string]interface{})
@@ -86,7 +85,7 @@ func Test_UpsertCluster_Update2(t *testing.T) {
 	clusterResource := `{"UID":"cluster__name-foo", "Kind":"Cluster", "Properties":{"_clusterNamespace":"name-foo", "apigroup":"internal.open-cluster-management.io", "consoleURL":"", "created":"0001-01-01T00:00:00Z", "kind":"Cluster", "kubernetesVersion":"", "name":"name-foo" }}`
 
 	var existingCluster map[string]interface{}
-	json.Unmarshal([]byte(clusterResource), &existingCluster)
+	_ = json.Unmarshal([]byte(clusterResource), &existingCluster)
 
 	props := make(map[string]interface{})
 	for key, val := range existingCluster["Properties"].(map[string]interface{}) {
@@ -120,7 +119,7 @@ func Test_UpsertCluster_Insert(t *testing.T) {
 	clusterResource := `{"UID":"cluster__name-foo", "Kind":"Cluster", "Properties":{"_clusterNamespace":"name-foo", "apigroup":"internal.open-cluster-management.io", "consoleURL":"", "created":"0001-01-01T00:00:00Z", "kind":"Cluster", "kubernetesVersion":"", "memory":0, "cpu":9, "name":"name-foo"}}`
 
 	var existingCluster map[string]interface{}
-	json.Unmarshal([]byte(clusterResource), &existingCluster)
+	_ = json.Unmarshal([]byte(clusterResource), &existingCluster)
 
 	props := make(map[string]interface{})
 	for key, val := range existingCluster["Properties"].(map[string]interface{}) {
