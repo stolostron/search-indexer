@@ -9,11 +9,11 @@ import (
 )
 
 func ElectLeaderAndStart(ctx context.Context) {
-	// client := config.Cfg.KubeClient
+	client := config.Cfg.KubeClient
 	lockName := "search-indexer.open-cluster-management.io"
 	podName := config.Cfg.PodName
 	podNamespace := config.Cfg.PodNamespace
 
-	lock := getNewLock(lockName, podName, podNamespace)
+	lock := getNewLock(client, lockName, podName, podNamespace)
 	runLeaderElection(ctx, lock)
 }

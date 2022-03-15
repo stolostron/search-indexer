@@ -33,7 +33,7 @@ func main() {
 		klog.Fatal(configError)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, exitRoutines := context.WithCancel(context.Background())
 
 	// Initialize the database
 	dao := database.NewDAO(nil)
@@ -52,10 +52,12 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	sig := <-sigs // Wait for termination signal.
-	klog.Warning("Received termination signal: ", sig)
-	cancel()
+	sig := <-sigs // Waits for termination signal.
+	klog.Warningf("Received termination signal %s. Exiting server and clustersync routines. ", sig)
+	exitRoutines()
 
-	time.Sleep(5 * time.Second) // TODO: How can I wait synchronously?
-	klog.Info("Exiting search-indexer.")
+	// We could use a waitgroup to wait for leader election and server to shutdown
+	// but it add more complexity so keeping simple for now.
+	time.Sleep(5 * time.Second)
+	klog.Warning("Exiting search-indexer.")
 }
