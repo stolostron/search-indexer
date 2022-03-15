@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"github.com/driftprogramming/pgxpoolmock"
 	pgxpool "github.com/jackc/pgx/v4/pgxpool"
@@ -105,15 +104,15 @@ func checkError(err error, logMessage string) {
 }
 
 func (dao *DAO) UpsertCluster(resource model.Resource) {
-	data, _ := json.Marshal(resource.Properties)
 	var query string
 	var args []interface{}
+	data, _ := json.Marshal(resource.Properties)
 	clusterName := resource.Properties["name"].(string)
 
 	// Insert cluster node if cluster does not exist in the DB
-	if !dao.ClusterInDB(resource.Properties["name"].(string)) {
+	if !dao.ClusterInDB(clusterName) {
 		args = []interface{}{resource.UID, "", string(data)}
-		klog.Infof("Cluster %s does not exist in DB, inserting it.", clusterName)
+		klog.V(3).Infof("Cluster %s does not exist in DB, inserting it.", clusterName)
 		query = "INSERT into search.resources values($1,$2,$3)"
 	} else {
 		// Check if the cluster properties are up to date in the DB
@@ -137,21 +136,24 @@ func (dao *DAO) UpsertCluster(resource model.Resource) {
 func (dao *DAO) ClusterInDB(clusterName string) bool {
 	clusterUID := string("cluster__" + clusterName)
 	_, ok := ExistingClustersMap[clusterUID]
+
 	if !ok {
-		klog.Infof("cluster %s not in ExistingClustersMap. Checking in db", clusterName)
+		klog.V(3).Infof("cluster %s not in ExistingClustersMap. Checking in db", clusterName)
 		query := "SELECT uid, data from search.resources where uid=$1"
 		rows, err := dao.pool.Query(context.TODO(), query, clusterUID)
 		if err != nil {
 			klog.Errorf("Error while checking if cluster already exists in DB: %s", err.Error())
 		}
-		for rows.Next() {
-			var uid string
-			var data interface{}
-			err := rows.Scan(&uid, &data)
-			if err != nil {
-				klog.Errorf("Error %s retrieving rows for query:%s", err.Error(), query)
-			} else {
-				ExistingClustersMap[uid] = data
+		if rows != nil {
+			for rows.Next() {
+				var uid string
+				var data interface{}
+				err := rows.Scan(&uid, &data)
+				if err != nil {
+					klog.Errorf("Error %s retrieving rows for query:%s", err.Error(), query)
+				} else {
+					ExistingClustersMap[uid] = data
+				}
 			}
 		}
 		_, ok = ExistingClustersMap[clusterUID]
@@ -164,9 +166,17 @@ func (dao *DAO) ClusterPropsUpToDate(clusterName string, resource model.Resource
 	currProps := resource.Properties
 	existingProps, ok := ExistingClustersMap[clusterUID].(map[string]interface{})
 	if ok && len(existingProps) == len(currProps) {
-		return reflect.DeepEqual(currProps, existingProps)
+		for key, currVal := range currProps {
+			existingVal, ok := existingProps[key]
+			if !ok || (currVal != existingVal) {
+				return false
+			}
+		}
+		return true
 	} else {
-		klog.Infof("For cluster %s, properties needs to be updated.", clusterName)
+		klog.V(3).Infof("For cluster %s, properties needs to be updated.", clusterName)
+		klog.V(5).Info("existingProps: ", existingProps)
+		klog.V(5).Info("currProps: ", currProps)
 		return false
 	}
 }
