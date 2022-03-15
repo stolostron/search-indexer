@@ -12,6 +12,8 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// If env KUBECONFIG is defined, use it. Otherise use default location ~/.kube/config
+// NOTE: This may need to be enhanced to support development on different OS.
 func getKubeConfigPath() string {
 	defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
 	if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
@@ -32,7 +34,7 @@ func getKubeConfig() *rest.Config {
 		klog.Infof("Creating k8s client using KubeConfig at: %s", kubeConfigPath)
 		clientConfig, clientConfigError = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	} else {
-		klog.V(2).Info("Creating k8s client using InClusterClientConfig()")
+		klog.V(2).Info("Creating k8s client using InClusterClientConfig")
 		clientConfig, clientConfigError = rest.InClusterConfig()
 	}
 
