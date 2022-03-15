@@ -34,7 +34,7 @@ func runLeaderElection(ctx context.Context, lock *resourcelock.LeaseLock) {
 	for {
 		select {
 		case <-ctx.Done():
-			klog.Info("Exit runLeaderElection(). Received context.Done()")
+			klog.Info("Exit runLeaderElection().")
 			return
 		default:
 			klog.Info("Attempting to become leader.")
@@ -46,6 +46,7 @@ func runLeaderElection(ctx context.Context, lock *resourcelock.LeaseLock) {
 				RetryPeriod:     2 * time.Second,
 				Callbacks: leaderelection.LeaderCallbacks{
 					OnStartedLeading: func(c context.Context) {
+						klog.Info("I'm the leader! Starting syncClusters()")
 						syncClusters(c)
 					},
 					OnStoppedLeading: func() {
@@ -53,11 +54,9 @@ func runLeaderElection(ctx context.Context, lock *resourcelock.LeaseLock) {
 
 					},
 					OnNewLeader: func(current_id string) {
-						if current_id == config.Cfg.PodName {
-							klog.Info("I'm still the leader!", current_id, config.Cfg.PodName)
-							return
+						if current_id != config.Cfg.PodName {
+							klog.Infof("Leader is %s", current_id)
 						}
-						klog.Infof("Leader is %s", current_id)
 					},
 				},
 			})

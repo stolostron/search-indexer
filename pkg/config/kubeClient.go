@@ -24,12 +24,13 @@ func getKubeConfigPath() string {
 }
 
 func getKubeConfig() *rest.Config {
+	kubeConfigPath := getKubeConfigPath()
 	var clientConfig *rest.Config
 	var clientConfigError error
 
-	if getKubeConfigPath() != "" {
-		klog.Infof("Creating k8s client using KubeConfig at: %s", getKubeConfigPath())
-		clientConfig, clientConfigError = clientcmd.BuildConfigFromFlags("", getKubeConfigPath())
+	if kubeConfigPath != "" {
+		klog.Infof("Creating k8s client using KubeConfig at: %s", kubeConfigPath)
+		clientConfig, clientConfigError = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	} else {
 		klog.V(2).Info("Creating k8s client using InClusterClientConfig()")
 		clientConfig, clientConfigError = rest.InClusterConfig()
@@ -42,7 +43,8 @@ func getKubeConfig() *rest.Config {
 	return clientConfig
 }
 
-func getKubeClient(config *rest.Config) *kubernetes.Clientset {
+func getKubeClient() *kubernetes.Clientset {
+	config := getKubeConfig()
 	var kubeClient *kubernetes.Clientset
 	var err error
 	if config != nil {

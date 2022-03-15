@@ -56,16 +56,16 @@ func new() *Config {
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		Version:         COMPONENT_VERSION,
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
-		// KubeConfig:            getKubeConfig(),
 		// RediscoverRateMS:      getEnvAsInt("REDISCOVER_RATE_MS"), // 5 min
 		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
 	}
 
+	// URLEncode the db password.
 	conf.DBPass = url.QueryEscape(conf.DBPass)
 
 	// Initialize Kube Client
-	conf.KubeClient = getKubeClient(getKubeConfig())
+	conf.KubeClient = getKubeClient()
 
 	return conf
 }
