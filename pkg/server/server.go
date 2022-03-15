@@ -53,16 +53,22 @@ func (s *ServerConfig) StartAndListen(ctx context.Context) {
 		klog.Info("Listening on: ", srv.Addr)
 		// ErrServerClosed is returned on graceful close.
 		if err := srv.ListenAndServeTLS("./sslcert/tls.crt", "./sslcert/tls.key"); err != http.ErrServerClosed {
-			log.Fatal(err, " For local development use ./setup.sh to generate certificates.")
+			if config.Cfg.DevelopmentMode {
+				log.Fatal(err, ". If missing certificates in development mode, use ./setup.sh to generate.")
+			} else {
+				log.Fatal(err, ". Encountered while starting the server.")
+			}
 		}
 	}()
 
 	// Wait for cancel signal
 	<-ctx.Done()
 	klog.V(3).Info("Stopping the server.")
-	if err := srv.Shutdown(context.TODO()); err != nil {
+	ctxWithTimeout, ctxCancel := context.WithTimeout(context.Background(), time.Duration(5*time.Second))
+	if err := srv.Shutdown(ctxWithTimeout); err != nil {
 		klog.Error("Encountered error stopping the server. ", err)
 	} else {
 		klog.Info("Server stopped.")
 	}
+	ctxCancel()
 }
