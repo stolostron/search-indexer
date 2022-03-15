@@ -63,12 +63,12 @@ func (s *ServerConfig) StartAndListen(ctx context.Context) {
 
 	// Wait for cancel signal
 	<-ctx.Done()
-	klog.V(3).Info("Stopping the server.")
+	klog.Warning("Stopping the server.")
 	ctxWithTimeout, ctxCancel := context.WithTimeout(context.Background(), time.Duration(5*time.Second))
 	if err := srv.Shutdown(ctxWithTimeout); err != nil {
 		klog.Error("Encountered error stopping the server. ", err)
 	} else {
-		klog.Info("Server stopped.")
+		klog.Warning("Server stopped.")
 	}
 	ctxCancel()
 }
