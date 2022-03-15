@@ -50,9 +50,9 @@ func runLeaderElection(ctx context.Context, lock *resourcelock.LeaseLock) {
 					OnStoppedLeading: func() {
 						klog.Info("I'm no longer the leader.")
 					},
-					OnNewLeader: func(current_id string) {
-						if current_id != config.Cfg.PodName {
-							klog.Infof("Leader is %s", current_id)
+					OnNewLeader: func(currentId string) {
+						if currentId != config.Cfg.PodName {
+							klog.Infof("Leader is %s", currentId)
 						}
 					},
 				},
