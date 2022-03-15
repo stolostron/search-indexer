@@ -5,7 +5,6 @@ package server
 import (
 	"context"
 	"crypto/tls"
-	"log"
 	"net/http"
 	"time"
 
@@ -54,9 +53,9 @@ func (s *ServerConfig) StartAndListen(ctx context.Context) {
 		// ErrServerClosed is returned on graceful close.
 		if err := srv.ListenAndServeTLS("./sslcert/tls.crt", "./sslcert/tls.key"); err != http.ErrServerClosed {
 			if config.Cfg.DevelopmentMode {
-				log.Fatal(err, ". If missing certificates in development mode, use ./setup.sh to generate.")
+				klog.Fatal(err, ". If missing certificates in development mode, use ./setup.sh to generate.")
 			} else {
-				log.Fatal(err, ". Encountered while starting the server.")
+				klog.Fatal(err, ". Encountered while starting the server.")
 			}
 		}
 	}()
