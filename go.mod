@@ -13,7 +13,7 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/stolostron/multicloud-operators-foundation v1.0.0-2021-10-26-20-16-14.0.20220307042847-0001f46a5115
 	k8s.io/apimachinery v0.23.4
-	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/client-go v0.23.4
 	k8s.io/klog/v2 v2.30.0
 	open-cluster-management.io/api v0.5.1-0.20220112073018-2d280a97a052
 )

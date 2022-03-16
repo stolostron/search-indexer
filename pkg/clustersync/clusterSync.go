@@ -39,16 +39,10 @@ func ElectLeaderAndStart(ctx context.Context) {
 }
 
 func syncClusters(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			klog.Info("Exit syncClusters.")
-			return
-		default:
-			klog.V(1).Info("Attempting to sync clusters.")
-			WatchClusters(ctx)
-		}
-	}
+	klog.Info("Attempting to sync clusters.")
+	WatchClusters(ctx)
+	<-ctx.Done()
+	klog.Info("Exit syncClusters.")
 }
 
 // Watches ManagedCluster objects and updates the database with a Cluster node.
