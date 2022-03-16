@@ -3,9 +3,14 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/stolostron/search-indexer/pkg/clustermgmt"
+	"github.com/stolostron/search-indexer/pkg/clustersync"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/database"
 	"github.com/stolostron/search-indexer/pkg/server"
@@ -28,15 +33,31 @@ func main() {
 		klog.Fatal(configError)
 	}
 
+	ctx, exitRoutines := context.WithCancel(context.Background())
+
 	// Initialize the database
 	dao := database.NewDAO(nil)
 	dao.InitializeTables()
 
-	// Watch clusters and sync status to database.
-	go clustermgmt.WatchClusters()
+	// Start cluster sync.
+	go clustersync.ElectLeaderAndStart(ctx)
+
 	// Start the server.
 	srv := &server.ServerConfig{
 		Dao: &dao,
 	}
-	srv.StartAndListen()
+	go srv.StartAndListen(ctx)
+
+	// Listen and wait for termination signal.
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	sig := <-sigs // Waits for termination signal.
+	klog.Warningf("Received termination signal %s. Exiting server and clustersync routines. ", sig)
+	exitRoutines()
+
+	// We could use a waitgroup to wait for leader election and server to shutdown
+	// but it add more complexity so keeping simple for now.
+	time.Sleep(5 * time.Second)
+	klog.Warning("Exiting search-indexer.")
 }

@@ -10,10 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"k8s.io/client-go/dynamic"
-	kubeClientset "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 )
 
@@ -24,14 +21,18 @@ var Cfg = new()
 
 // Struct to hold our configuratioin
 type Config struct {
-	DBHost        string
-	DBPort        int
-	DBName        string
-	DBUser        string
-	DBPass        string
-	HTTPTimeout   int    // timeout when the http server should drop connections
-	ServerAddress string // Web server address
-	Version       string
+	DBHost         string
+	DBPort         int
+	DBName         string
+	DBUser         string
+	DBPass         string
+	HTTPTimeout    int // timeout when the http server should drop connections
+	KubeConfigPath string
+	KubeClient     *kubernetes.Clientset
+	PodName        string
+	PodNamespace   string
+	ServerAddress  string // Web server address
+	Version        string
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
 	KubeConfig       string // Local kubeconfig path
 	RediscoverRateMS int    // time in MS we should check on cluster resource type
@@ -55,16 +56,23 @@ func new() *Config {
 		DBUser:          getEnv("DB_USER", ""),
 		DBPass:          getEnv("DB_PASS", ""),
 		HTTPTimeout:     getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
+		KubeConfigPath:  getKubeConfigPath(),
+		PodName:         getEnv("POD_NAME", "local-dev"),
+		PodNamespace:    getEnv("POD_NAMESPACE", "open-cluster-management"),
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		Version:         COMPONENT_VERSION,
 		KubeConfig:      getEnv("KUBECONFIG", defaultKubePath),
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
-		// RediscoverRateMS:      getEnvAsInt("REDISCOVER_RATE_MS"), // 5 min
+		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 60000), // 1 min
 		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
 	}
 
+	// URLEncode the db password.
 	conf.DBPass = url.QueryEscape(conf.DBPass)
+
+	// Initialize Kube Client
+	conf.KubeClient = GetKubeClient()
 
 	return conf
 }
@@ -137,37 +145,3 @@ func (cfg *Config) Validate() error {
 
 // 	return val
 // }
-
-// KubeClient - Client to get jobs resource
-func GetKubeClient() *kubeClientset.Clientset {
-	kubeClient, err := kubeClientset.NewForConfig(getClientConfig())
-	if kubeClient == nil || err != nil {
-		klog.Error("Error getting the kube clientset. ", err)
-	}
-	return kubeClient
-}
-
-// Dynamic Client
-func GetDynamicClient() dynamic.Interface {
-	dynamicClientset, err := dynamic.NewForConfig(getClientConfig())
-	if err != nil {
-		klog.Warning("Error getting the dynamic client. ", err)
-	}
-	return dynamicClientset
-}
-
-func getClientConfig() *rest.Config {
-	var clientConfig *rest.Config
-	var err error
-	if Cfg.KubeConfig != "" {
-		klog.V(5).Infof("Creating k8s client using path: %s", Cfg.KubeConfig)
-		clientConfig, err = clientcmd.BuildConfigFromFlags("", Cfg.KubeConfig)
-	} else {
-		clientConfig, err = rest.InClusterConfig()
-	}
-	if err != nil {
-		klog.Warning("Error getting the kube client config. ", err)
-		return &rest.Config{}
-	}
-	return clientConfig
-}
