@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
 	"github.com/stolostron/search-indexer/pkg/database"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,11 +38,15 @@ func fakeDynamicClient() *fake.FakeDynamicClient {
 		newTestUnstructured(managedclustergroupAPIVersion, "ManagedCluster", "", "name-foo", ""),
 		newTestUnstructured(managedclustergroupAPIVersion, "ManagedCluster", "", "name-foo-error", ""))
 	_, err := dyn.Resource(*managedClusterGvr).Get(context.TODO(), "name-foo", v1.GetOptions{})
-	klog.Error("Error: ", err)
+	if err != nil {
+		klog.Warning("Error creating fake NewSimpleDynamicClient: ", err.Error())
+	}
 	return dyn
 }
 
 func newTestUnstructured(apiVersion, kind, namespace, name, uid string) *unstructured.Unstructured {
+	labels := make(map[string]interface{})
+	labels["env"] = "dev"
 	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": apiVersion,
@@ -50,27 +55,73 @@ func newTestUnstructured(apiVersion, kind, namespace, name, uid string) *unstruc
 				"namespace": namespace,
 				"name":      name,
 				"uid":       uid,
+				"labels":    labels,
 			},
 		},
 	}
 }
 
-// // Verify that a generic informer can be created.
-func Test_ProcessClusterUpsert(t *testing.T) {
+// Verify that ProcessClusterUpsert works.
+func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 	database.ExistingClustersMap = make(map[string]interface{})
-	clusterResource := `{"_clusterNamespace":"name-foo", "apigroup":"internal.open-cluster-management.io", "consoleURL":"", "cpu":0, "created":"0001-01-01T00:00:00Z", "kind":"Cluster", "kubernetesVersion":"", "memory":0, "name":"name-foo", "nodes":0}`
-	var clusterRes map[string]interface{}
-	_ = json.Unmarshal([]byte(clusterResource), &clusterRes)
-	clusterRes["cpu"] = int64(0)
-	clusterRes["memory"] = "0"
-	clusterRes["nodes"] = int64(0)
+	obj := newTestUnstructured(managedclustergroupAPIVersion, "ManagedCluster", "", "name-foo", "test-mc-uid")
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
+	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
 	// Prepare a mock DAO instance
-	database.ExistingClustersMap["cluster__name-foo"] = clusterRes
+	dao = database.NewDAO(mockPool)
 	dynamicClient = fakeDynamicClient()
-	processClusterUpsert("name-foo")
+	clusterResource := `{"UID":"cluster__name-foo", "Kind":"Cluster", "Properties":{"_clusterNamespace":"name-foo" ,"label":{"env":"dev"},"apigroup":"internal.open-cluster-management.io", "cpu":0,"memory":"0", "created":"0001-01-01T00:00:00Z", "kind":"Cluster", "kubernetesVersion":"", "name":"name-foo" }}`
+
+	var existingCluster map[string]interface{}
+	_ = json.Unmarshal([]byte(clusterResource), &existingCluster)
+
+	expectedProps, _ := json.Marshal(existingCluster["Properties"])
+	mockPool.EXPECT().Query(gomock.Any(),
+		gomock.Eq(`SELECT uid, data from search.resources where uid=$1`),
+		gomock.Eq([]interface{}{"cluster__name-foo"}),
+	).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`INSERT INTO search.resources (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE uid=$1`),
+		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
+	).Return(nil, nil)
+
+	processClusterUpsert(obj)
+	//Once processClusterUpsert is done, ExistingClustersMap should have an entry for cluster foo
+	AssertEqual(t, len(database.ExistingClustersMap), 1, "ExistingClustersMap should have length of 1")
+	_, ok := database.ExistingClustersMap["cluster__name-foo"]
+	AssertEqual(t, ok, true, "ExistingClustersMap should have an entry for cluster foo")
+
+}
+
+func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
+	database.ExistingClustersMap = make(map[string]interface{})
+	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedClusterInfo", "name-foo", "name-foo", "test-mc-uid")
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
+	// Prepare a mock DAO instance
+	dao = database.NewDAO(mockPool)
+	dynamicClient = fakeDynamicClient()
+	clusterResource := `{"UID":"cluster__name-foo", "Kind":"Cluster", "Properties":{"_clusterNamespace":"name-foo", "nodes":0,"apigroup":"internal.open-cluster-management.io", "consoleURL":"", "kind":"Cluster", "name":"name-foo" }}`
+
+	var existingCluster map[string]interface{}
+	_ = json.Unmarshal([]byte(clusterResource), &existingCluster)
+
+	expectedProps, _ := json.Marshal(existingCluster["Properties"])
+	mockPool.EXPECT().Query(gomock.Any(),
+		gomock.Eq(`SELECT uid, data from search.resources where uid=$1`),
+		gomock.Eq([]interface{}{"cluster__name-foo"}),
+	).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`INSERT INTO search.resources (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE uid=$1`),
+		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
+	).Return(nil, nil)
+
+	processClusterUpsert(obj)
+	//Once processClusterUpsert is done, ExistingClustersMap should have an entry for cluster foo
 	AssertEqual(t, len(database.ExistingClustersMap), 1, "ExistingClustersMap should have length of 1")
 	_, ok := database.ExistingClustersMap["cluster__name-foo"]
 	AssertEqual(t, ok, true, "ExistingClustersMap should have an entry for cluster foo")

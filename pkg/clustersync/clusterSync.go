@@ -13,7 +13,6 @@ import (
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/database"
 	"github.com/stolostron/search-indexer/pkg/model"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
@@ -72,11 +71,11 @@ func WatchClusters(ctx context.Context) {
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			klog.V(4).Info("clusterWatch: AddFunc")
-			processClusterUpsert(obj.(*unstructured.Unstructured).GetName())
+			processClusterUpsert(obj)
 		},
 		UpdateFunc: func(prev interface{}, next interface{}) {
 			klog.V(4).Info("clusterWatch: UpdateFunc")
-			processClusterUpsert(next.(*unstructured.Unstructured).GetName())
+			processClusterUpsert(next)
 		},
 		// DeleteFunc: func(obj interface{}) {
 		// 	klog.Info("clusterWatch: DeleteFunc")
@@ -128,25 +127,42 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 
 var mux sync.Mutex
 
-func processClusterUpsert(name string) {
+func processClusterUpsert(obj interface{}) {
 	// Lock so only one goroutine at a time can access add a cluster.
 	// Helps to eliminate duplicate entries.
 	mux.Lock()
 	defer mux.Unlock()
-	// We update by name, and the name *should be* the same for a given cluster
-	// Objects from a given cluster collide and update rather than duplicate insert
-
-	//Create the resource
-	resource := model.Resource{
-		Kind:           "Cluster",
-		UID:            string("cluster__" + name),
-		Properties:     make(map[string]interface{}),
-		ResourceString: "managedclusterinfos", // Maps rbac to ManagedClusterInfo
+	j, err := json.Marshal(obj.(*unstructured.Unstructured))
+	if err != nil {
+		klog.Warning("Error unmarshalling object from Informer in processClusterUpsert.")
 	}
-	// Fetch ManagedCluster
-	resource = transformManagedCluster(name, resource)
-	// Fetch corresponding ManagedClusterInfo
-	resource = transformManagedClusterInfo(name, resource)
+
+	// We update by name, and the name *should be* the same for a given cluster in either object
+	// Objects from a given cluster collide and update rather than duplicate insert
+	// Unmarshall either ManagedCluster or ManagedClusterInfo
+	// check which object we are using
+
+	var resource model.Resource
+	switch obj.(*unstructured.Unstructured).GetKind() {
+	case "ManagedCluster":
+		managedCluster := clusterv1.ManagedCluster{}
+		err = json.Unmarshal(j, &managedCluster)
+		if err != nil {
+			klog.Warning("Failed to Unmarshal MangedCluster", err)
+		}
+		resource = transformManagedCluster(&managedCluster)
+	case "ManagedClusterInfo":
+		managedClusterInfo := clusterv1beta1.ManagedClusterInfo{}
+		err = json.Unmarshal(j, &managedClusterInfo)
+		if err != nil {
+			klog.Warning("Failed to Unmarshal ManagedclusterInfo", err)
+		}
+		resource = transformManagedClusterInfo(&managedClusterInfo)
+	default:
+		klog.Warning("ClusterWatch received unknown kind.", obj.(*unstructured.Unstructured).GetKind())
+		return
+	}
+
 	if (database.DAO{} == dao) {
 		dao = database.NewDAO(nil)
 	}
@@ -167,27 +183,27 @@ func isClusterMissing(err error) bool {
 	}
 	return strings.Contains(err.Error(), "could not find the requested resource")
 }
+func addAdditionalProperties(props map[string]interface{}) map[string]interface{} {
+	clusterUid := string("cluster__" + props["name"].(string))
+	_, ok := database.ExistingClustersMap[clusterUid]
+	if ok {
+		existingProps, _ := database.ExistingClustersMap[clusterUid].(map[string]interface{})
+		for key, val := range existingProps {
+			_, present := props[key]
+			if !present {
+				props[key] = val
+			}
+		}
+	}
+	return props
+}
 
 // Transform ManagedClusterInfo object into db.Resource suitable for insert into redis
-func transformManagedClusterInfo(name string, resource model.Resource) model.Resource {
+func transformManagedClusterInfo(managedClusterInfo *clusterv1beta1.ManagedClusterInfo) model.Resource {
 	// https://github.com/stolostron/multicloud-operators-foundation/
 	//    blob/main/pkg/apis/internal.open-cluster-management.io/v1beta1/clusterinfo_types.go
-	// Fetch corresponding ManagedClusterInfo
-	managedClusterInfoGvr, _ := schema.ParseResourceArg(managedClusterInfoGVR)
-	klog.V(3).Infof("Fetching managedClusterInfo object %s from Informer in processClusterUpsert", name)
 
-	minfo, err := dynamicClient.Resource(*managedClusterInfoGvr).Namespace(name).Get(context.TODO(), name, v1.GetOptions{})
-	if err != nil {
-		klog.Warningf("Error fetching managedClusterInfo object %s from Informer in processClusterUpsert: %s", name, err.Error())
-	}
-	j, _ := json.Marshal(minfo)
-
-	managedClusterInfo := clusterv1beta1.ManagedClusterInfo{}
-	mcInfoUnMarshalErr := json.Unmarshal(j, &managedClusterInfo)
-	if mcInfoUnMarshalErr != nil {
-		klog.Warningf("Error unmarshalling managedClusterInfo object from Informer in processClusterUpsert: %s", mcInfoUnMarshalErr.Error())
-	}
-	props := resource.Properties
+	props := make(map[string]interface{})
 
 	// Get properties from ManagedClusterInfo
 	props["consoleURL"] = managedClusterInfo.Status.ConsoleURL
@@ -196,32 +212,24 @@ func transformManagedClusterInfo(name string, resource model.Resource) model.Res
 	props["name"] = managedClusterInfo.GetName()
 	props["_clusterNamespace"] = managedClusterInfo.GetNamespace() // Needed for rbac mapping.
 	props["apigroup"] = "internal.open-cluster-management.io"      // Maps rbac to ManagedClusterInfo
-
-	resource.Properties = props
-
+	props = addAdditionalProperties(props)
+	// Create the resource
+	resource := model.Resource{
+		Kind:           "Cluster",
+		UID:            string("cluster__" + managedClusterInfo.GetName()),
+		Properties:     props,
+		ResourceString: "managedclusterinfos", // Maps rbac to ManagedClusterInfo.
+	}
 	return resource
 }
 
 // Transform ManagedCluster object into db.Resource suitable for insert into DB
-func transformManagedCluster(name string, resource model.Resource) model.Resource {
+func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Resource {
 	// https://github.com/stolostron/api/blob/main/cluster/v1/types.go#L78
 	// We use ManagedCluster as the primary source of information
 	// Properties duplicated between this and ManagedClusterInfo are taken from ManagedCluster
-	// Fetch ManagedCluster
-	managedClusterGvr, _ := schema.ParseResourceArg(managedClusterGVR)
-	klog.V(3).Infof("Fetching managedCluster object %s from Informer in processClusterUpsert", name)
-	mcl, err := dynamicClient.Resource(*managedClusterGvr).Get(context.TODO(), name, v1.GetOptions{})
-	if err != nil {
-		klog.Warningf("Error fetching managedCluster object %s from Informer in processClusterUpsert: %s", name, err.Error())
-	}
-	j, _ := json.Marshal(mcl)
-	props := resource.Properties
-	managedCluster := clusterv1.ManagedCluster{}
-	// Unmarshall ManagedCluster
-	mcUnMarshalErr := json.Unmarshal(j, &managedCluster)
-	if mcUnMarshalErr != nil {
-		klog.Warningf("Error unmarshalling managedCluster object from Informer in transformManagedCluster: %s", mcUnMarshalErr.Error())
-	}
+
+	props := make(map[string]interface{})
 	if managedCluster.GetLabels() != nil {
 		// Unmarshaling labels to map[string]interface{}
 		var labelMap map[string]interface{}
@@ -247,6 +255,12 @@ func transformManagedCluster(name string, resource model.Resource) model.Resourc
 	for _, condition := range managedCluster.Status.Conditions {
 		props[condition.Type] = string(condition.Status)
 	}
-	resource.Properties = props
+	props = addAdditionalProperties(props)
+	resource := model.Resource{
+		Kind:           "Cluster",
+		UID:            string("cluster__" + managedCluster.GetName()),
+		Properties:     props,
+		ResourceString: "managedclusterinfos", // Maps rbac to ManagedClusterInfo
+	}
 	return resource
 }

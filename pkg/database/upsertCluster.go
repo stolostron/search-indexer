@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
@@ -11,33 +12,41 @@ import (
 var ExistingClustersMap map[string]interface{} // a map to hold Current clusters and properties
 
 func (dao *DAO) UpsertCluster(resource model.Resource) {
-	var query string
-	var args []interface{}
 	data, _ := json.Marshal(resource.Properties)
+	fmt.Println("resource: ", resource)
 	clusterName := resource.Properties["name"].(string)
+	query := "INSERT INTO search.resources (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE uid=$1"
+	args := []interface{}{resource.UID, string(data)}
 
 	// Insert cluster node if cluster does not exist in the DB
-	if !dao.ClusterInDB(clusterName) {
-		args = []interface{}{resource.UID, "", string(data)}
-		klog.V(3).Infof("Cluster %s does not exist in DB, inserting it.", clusterName)
-		query = "INSERT into search.resources values($1,$2,$3)"
-	} else {
-		// Check if the cluster properties are up to date in the DB
-		if !dao.ClusterPropsUpToDate(clusterName, resource) {
-			args = []interface{}{resource.UID, string(data)}
-			klog.V(3).Infof("Cluster %s already exists in DB. Updating properties.", clusterName)
-			query = "UPDATE search.resources SET data=$2 WHERE uid=$1"
+	if !dao.ClusterInDB(clusterName) || !dao.ClusterPropsUpToDate(clusterName, resource) {
+		_, err := dao.pool.Exec(context.TODO(), query, args...)
+		if err != nil {
+			klog.Warningf("Error inserting/updating cluster %s: %s", clusterName, err.Error())
 		} else {
-			klog.V(3).Infof("Cluster %s already exists in DB and properties are up to date.", clusterName)
-			return
+			ExistingClustersMap[resource.UID] = resource.Properties
 		}
-	}
-	_, err := dao.pool.Exec(context.TODO(), query, args...)
-	if err != nil {
-		klog.Warningf("Error inserting/updating cluster %s: %s", clusterName, err.Error())
 	} else {
-		ExistingClustersMap[resource.UID] = resource.Properties
+		klog.V(3).Infof("Cluster %s already exists in DB and properties are up to date.", clusterName)
+		return
 	}
+
+	// if !dao.ClusterInDB(clusterName) {
+	// 	args = []interface{}{resource.UID, "", string(data)}
+	// 	klog.V(3).Infof("Cluster %s does not exist in DB, inserting it.", clusterName)
+	// 	query = "INSERT into search.resources values($1,$2,$3)"
+	// } else {
+	// 	// Check if the cluster properties are up to date in the DB
+	// 	if !dao.ClusterPropsUpToDate(clusterName, resource) {
+	// 		args = []interface{}{resource.UID, string(data)}
+	// 		klog.V(3).Infof("Cluster %s already exists in DB. Updating properties.", clusterName)
+	// 		query = "UPDATE search.resources SET data=$2 WHERE uid=$1"
+	// 	} else {
+	// 		klog.V(3).Infof("Cluster %s already exists in DB and properties are up to date.", clusterName)
+	// 		return
+	// 	}
+	// }
+
 }
 
 func (dao *DAO) ClusterInDB(clusterName string) bool {
