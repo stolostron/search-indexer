@@ -20,11 +20,6 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	clusterName := params["id"]
 
-	if !s.Dao.ClusterInDB(clusterName) {
-		klog.Warningf("Warning, couldn't find a Cluster node with name: %s. This means that the sync request came from a managed cluster that hasn’t joined. Rejecting the incoming sync request.", clusterName)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
 	// Decode SyncEvent from request body.
 	var syncEvent model.SyncEvent
 	err := json.NewDecoder(r.Body).Decode(&syncEvent)

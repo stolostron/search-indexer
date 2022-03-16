@@ -5,12 +5,17 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"sync"
 
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 )
+
+var mutex sync.Mutex
 
 // If env KUBECONFIG is defined, use it. Otherise use default location ~/.kube/config
 // NOTE: This may need to be enhanced to support development on different OS.
@@ -45,7 +50,7 @@ func getKubeConfig() *rest.Config {
 	return clientConfig
 }
 
-func getKubeClient() *kubernetes.Clientset {
+func GetKubeClient() *kubernetes.Clientset {
 	config := getKubeConfig()
 	var kubeClient *kubernetes.Clientset
 	var err error
@@ -58,4 +63,16 @@ func getKubeClient() *kubernetes.Clientset {
 		klog.Error("Cannot Construct Kube Client as input Config is nil")
 	}
 	return kubeClient
+}
+
+// Get the kubernetes dynamic client.
+func GetDynamicClient() dynamic.Interface {
+	mutex.Lock()
+	defer mutex.Unlock()
+	newDynamicClient, err := dynamic.NewForConfig(getKubeConfig())
+	if err != nil {
+		klog.Fatal("Cannot Construct Dynamic Client ", err)
+	}
+
+	return newDynamicClient
 }

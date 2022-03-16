@@ -1,5 +1,5 @@
 // // // Copyright Contributors to the Open Cluster Management project
-package clustermgmt
+package clustersync
 
 import (
 	"context"
@@ -31,8 +31,6 @@ func fakeDynamicClient() *fake.FakeDynamicClient {
 	scheme.AddKnownTypes(managedClusterInfoGvr.GroupVersion())
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{Group: "cluster.open-cluster-management.io", Version: "v1", Kind: "ManagedCluster"},
-		&unstructured.UnstructuredList{})
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{Group: "open-cluster-management.io", Version: "v1", Kind: "TheKind"},
 		&unstructured.UnstructuredList{})
 
 	dyn := fake.NewSimpleDynamicClient(scheme, newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedClusterInfo", "name-foo", "name-foo", ""),
