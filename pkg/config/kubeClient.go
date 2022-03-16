@@ -50,7 +50,7 @@ func getKubeConfig() *rest.Config {
 	return clientConfig
 }
 
-func GetKubeClient() *kubernetes.Clientset {
+func getKubeClient() *kubernetes.Clientset {
 	config := getKubeConfig()
 	var kubeClient *kubernetes.Clientset
 	var err error

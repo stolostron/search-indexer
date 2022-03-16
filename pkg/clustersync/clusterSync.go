@@ -39,13 +39,6 @@ func ElectLeaderAndStart(ctx context.Context) {
 	runLeaderElection(ctx, lock)
 }
 
-// func syncClusters(ctx context.Context) {
-// 	klog.Info("TODO: Start Sync clusters here.")
-
-// 	<-ctx.Done() // Wait for exit signal.
-// 	klog.Info("Exit syncClusters().")
-// }
-
 func syncClusters(ctx context.Context) {
 	for {
 		select {
@@ -112,7 +105,7 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 			stopper <- struct{}{}
 			return
 		default:
-			_, err := config.GetKubeClient().ServerResourcesForGroupVersion(groupVersion)
+			_, err := config.Cfg.KubeClient.ServerResourcesForGroupVersion(groupVersion)
 			// we fail to fetch for some reason other than not found
 			if err != nil && !isClusterMissing(err) {
 				klog.Errorf("Cannot fetch resource list for %s, error message: %s ", groupVersion, err)

@@ -72,7 +72,7 @@ func new() *Config {
 	conf.DBPass = url.QueryEscape(conf.DBPass)
 
 	// Initialize Kube Client
-	conf.KubeClient = GetKubeClient()
+	conf.KubeClient = getKubeClient()
 
 	return conf
 }
