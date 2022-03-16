@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 )
 
@@ -19,14 +20,18 @@ var Cfg = new()
 
 // Struct to hold our configuratioin
 type Config struct {
-	DBHost        string
-	DBPort        int
-	DBName        string
-	DBUser        string
-	DBPass        string
-	HTTPTimeout   int    // timeout when the http server should drop connections
-	ServerAddress string // Web server address
-	Version       string
+	DBHost         string
+	DBPort         int
+	DBName         string
+	DBUser         string
+	DBPass         string
+	HTTPTimeout    int // timeout when the http server should drop connections
+	KubeConfigPath string
+	KubeClient     *kubernetes.Clientset
+	PodName        string
+	PodNamespace   string
+	ServerAddress  string // Web server address
+	Version        string
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
 	// KubeConfig            string // Local kubeconfig path
 	// RediscoverRateMS      int    // time in MS we should check on cluster resource type
@@ -45,16 +50,22 @@ func new() *Config {
 		DBUser:          getEnv("DB_USER", ""),
 		DBPass:          getEnv("DB_PASS", ""),
 		HTTPTimeout:     getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
+		KubeConfigPath:  getKubeConfigPath(),
+		PodName:         getEnv("POD_NAME", "local-dev"),
+		PodNamespace:    getEnv("POD_NAMESPACE", "open-cluster-management"),
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		Version:         COMPONENT_VERSION,
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
-		// KubeConfig:            getKubeConfig(),
 		// RediscoverRateMS:      getEnvAsInt("REDISCOVER_RATE_MS"), // 5 min
 		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
 	}
 
+	// URLEncode the db password.
 	conf.DBPass = url.QueryEscape(conf.DBPass)
+
+	// Initialize Kube Client
+	conf.KubeClient = getKubeClient()
 
 	return conf
 }
@@ -126,15 +137,4 @@ func (cfg *Config) Validate() error {
 // 	val := strings.Split(valStr, sep)
 
 // 	return val
-// }
-
-// func getKubeConfig() string{
-// 	defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
-// 	if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
-// 		// set default to empty string if path does not reslove
-// 		defaultKubePath = ""
-// 	}
-
-// 	kubeConfig := getEnv("KUBECONFIG", defaultKubePath)
-// 	return kubeConfig
 // }
