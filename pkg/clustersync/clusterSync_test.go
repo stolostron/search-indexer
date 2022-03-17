@@ -83,7 +83,7 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo"}),
 	).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`INSERT INTO search.resources (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE uid=$1`),
+		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
 		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
 	).Return(nil, nil)
 
@@ -116,7 +116,7 @@ func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo"}),
 	).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`INSERT INTO search.resources (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE uid=$1`),
+		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
 		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
 	).Return(nil, nil)
 

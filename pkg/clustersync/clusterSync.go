@@ -64,11 +64,11 @@ func WatchClusters(ctx context.Context) {
 	// Create handlers for events
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			klog.V(4).Info("clusterWatch: AddFunc")
+			klog.V(4).Info("clusterWatch: AddFunc for ", obj.(*unstructured.Unstructured).GetKind())
 			processClusterUpsert(obj)
 		},
 		UpdateFunc: func(prev interface{}, next interface{}) {
-			klog.V(4).Info("clusterWatch: UpdateFunc")
+			klog.V(4).Info("clusterWatch: UpdateFunc for", next.(*unstructured.Unstructured).GetKind())
 			processClusterUpsert(next)
 		},
 		// DeleteFunc: func(obj interface{}) {
