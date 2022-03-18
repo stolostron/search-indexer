@@ -10,7 +10,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/model"
-
 	"k8s.io/klog/v2"
 )
 
