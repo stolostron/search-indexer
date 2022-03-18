@@ -13,13 +13,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/stolostron/search-indexer/pkg/config"
-	"github.com/stolostron/search-indexer/pkg/database"
 	"github.com/stolostron/search-indexer/pkg/model"
 )
 
 func Test_syncRequest(t *testing.T) {
-	database.ExistingClustersMap = make(map[string]interface{})
-	database.ExistingClustersMap["cluster__test-cluster"] = nil
 	// Read mock request body.
 	body, readErr := os.Open("./mocks/simple.json")
 	if readErr != nil {
