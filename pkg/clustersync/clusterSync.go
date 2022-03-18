@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	klog "k8s.io/klog/v2"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -24,30 +25,27 @@ import (
 
 var dynamicClient dynamic.Interface
 var dao database.DAO
+var client *kubernetes.Clientset
+var mux sync.Mutex
 
 const managedClusterGVR = "managedclusters.v1.cluster.open-cluster-management.io"
 const managedClusterInfoGVR = "managedclusterinfos.v1beta1.internal.open-cluster-management.io"
+const lockName = "search-indexer.open-cluster-management.io"
 
 func ElectLeaderAndStart(ctx context.Context) {
-	client := config.Cfg.KubeClient
-	lockName := "search-indexer.open-cluster-management.io"
+	client = config.Cfg.KubeClient
 	podName := config.Cfg.PodName
 	podNamespace := config.Cfg.PodNamespace
-
+	if (database.DAO{} == dao) {
+		dao = database.NewDAO(nil)
+	}
 	lock := getNewLock(client, lockName, podName, podNamespace)
 	runLeaderElection(ctx, lock)
 }
 
-func syncClusters(ctx context.Context) {
-	klog.Info("Attempting to sync clusters.")
-	WatchClusters(ctx)
-	<-ctx.Done()
-	klog.Info("Exit syncClusters.")
-}
-
 // Watches ManagedCluster objects and updates the database with a Cluster node.
-func WatchClusters(ctx context.Context) {
-	klog.Info("Begin ClusterWatch routine")
+func watchClusters(ctx context.Context) {
+	klog.Info("Attempting to sync clusters. Begin ClusterWatch routine")
 
 	dynamicClient = config.GetDynamicClient()
 	dynamicFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient,
@@ -84,6 +82,7 @@ func WatchClusters(ctx context.Context) {
 	// Periodically check if the ManagedCluster/ManagedClusterInfo resource exists
 	go stopAndStartInformer(ctx, "cluster.open-cluster-management.io/v1", managedClusterInformer)
 	go stopAndStartInformer(ctx, "internal.open-cluster-management.io/v1beta1", managedClusterInfoInformer)
+
 }
 
 // Stop and Start informer according to Rediscover Rate
@@ -100,14 +99,14 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 		default:
 			_, err := config.Cfg.KubeClient.ServerResourcesForGroupVersion(groupVersion)
 			// we fail to fetch for some reason other than not found
-			if err != nil && !isClusterMissing(err) {
+			if err != nil && !isClusterCrdMissing(err) {
 				klog.Errorf("Cannot fetch resource list for %s, error message: %s ", groupVersion, err)
 			} else {
-				if informerRunning && isClusterMissing(err) {
+				if informerRunning && isClusterCrdMissing(err) {
 					klog.Infof("Stopping cluster informer routine because %s resource not found.", groupVersion)
 					stopper <- struct{}{}
 					informerRunning = false
-				} else if !informerRunning && !isClusterMissing(err) {
+				} else if !informerRunning && !isClusterCrdMissing(err) {
 					klog.Infof("Starting cluster informer routine for cluster watch for %s resource", groupVersion)
 					stopper = make(chan struct{})
 					informerRunning = true
@@ -118,8 +117,6 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 		}
 	}
 }
-
-var mux sync.Mutex
 
 func processClusterUpsert(obj interface{}) {
 	// Lock so only one goroutine at a time can access add a cluster.
@@ -157,9 +154,6 @@ func processClusterUpsert(obj interface{}) {
 		return
 	}
 
-	if (database.DAO{} == dao) {
-		dao = database.NewDAO(nil)
-	}
 	// Upsert (attempt update, attempt insert on failure)
 	dao.UpsertCluster(resource)
 
@@ -171,7 +165,7 @@ func processClusterUpsert(obj interface{}) {
 
 }
 
-func isClusterMissing(err error) bool {
+func isClusterCrdMissing(err error) bool {
 	if err == nil {
 		return false
 	}

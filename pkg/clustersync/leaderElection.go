@@ -45,7 +45,7 @@ func runLeaderElection(ctx context.Context, lock *resourcelock.LeaseLock) {
 				Callbacks: leaderelection.LeaderCallbacks{
 					OnStartedLeading: func(c context.Context) {
 						klog.Info("I'm the leader! Starting leader activities.")
-						syncClusters(c)
+						watchClusters(c)
 					},
 					OnStoppedLeading: func() {
 						klog.Info("I'm no longer the leader.")
