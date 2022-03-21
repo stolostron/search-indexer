@@ -58,6 +58,6 @@ func main() {
 
 	// We could use a waitgroup to wait for leader election and server to shutdown
 	// but it add more complexity so keeping simple for now.
-	time.Sleep(1 * time.Minute)
+	time.Sleep(10 * time.Second)
 	klog.Warning("Exiting search-indexer.")
 }
