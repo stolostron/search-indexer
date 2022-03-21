@@ -15,6 +15,8 @@ import (
 	klog "k8s.io/klog/v2"
 )
 
+var leader string
+
 func getNewLock(client *kubernetes.Clientset, lockname, podName, podNamespace string) *resourcelock.LeaseLock {
 	return &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
@@ -45,14 +47,18 @@ func runLeaderElection(ctx context.Context, lock *resourcelock.LeaseLock) {
 				Callbacks: leaderelection.LeaderCallbacks{
 					OnStartedLeading: func(c context.Context) {
 						klog.Info("I'm the leader! Starting leader activities.")
+						leader = config.Cfg.PodName
 						watchClusters(c)
 					},
 					OnStoppedLeading: func() {
-						klog.Info("I'm no longer the leader.")
+						if leader == config.Cfg.PodName {
+							klog.Info("I'm no longer the leader.")
+						}
 					},
 					OnNewLeader: func(currentId string) {
 						if currentId != config.Cfg.PodName {
 							klog.Infof("Leader is %s", currentId)
+							leader = currentId
 						}
 					},
 				},
