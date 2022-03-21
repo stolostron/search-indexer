@@ -26,7 +26,7 @@ func (dao *DAO) UpsertCluster(resource model.Resource) {
 			ExistingClustersMap[resource.UID] = resource.Properties
 		}
 	} else {
-		klog.V(3).Infof("Cluster %s already exists in DB and properties are up to date.", clusterName)
+		klog.V(4).Infof("Cluster %s already exists in DB and properties are up to date.", clusterName)
 		return
 	}
 

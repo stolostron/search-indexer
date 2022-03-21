@@ -49,7 +49,7 @@ func watchClusters(ctx context.Context) {
 
 	dynamicClient = config.GetDynamicClient()
 	dynamicFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient,
-		time.Duration(config.Cfg.RediscoverRateMS))
+		time.Duration(config.Cfg.RediscoverRateMS)*time.Millisecond)
 
 	// Create GVR for ManagedCluster and ManagedClusterInfo
 	managedClusterGvr, _ := schema.ParseResourceArg(managedClusterGVR)
