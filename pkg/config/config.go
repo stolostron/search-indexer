@@ -33,6 +33,7 @@ type Config struct {
 	PodNamespace   string
 	ServerAddress  string // Web server address
 	Version        string
+	MaxBackoffMS   int // Maximum backoff in ms to wait after error
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
 	KubeConfig       string // Local kubeconfig path
 	RediscoverRateMS int    // time in MS we should check on cluster resource type
@@ -62,6 +63,7 @@ func new() *Config {
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		Version:         COMPONENT_VERSION,
 		KubeConfig:      getEnv("KUBECONFIG", defaultKubePath),
+		MaxBackoffMS:    getEnvAsInt("MAX_BACKOFF_MS", 600000), // 10 min
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
 		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 60000), // 1 min
 		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
