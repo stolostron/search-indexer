@@ -89,6 +89,7 @@ func watchClusters(ctx context.Context) {
 func stopAndStartInformer(ctx context.Context, groupVersion string, informer cache.SharedIndexInformer) {
 	var stopper chan struct{}
 	informerRunning := false
+	wait := time.Duration(1 * time.Millisecond)
 
 	for {
 		select {
@@ -96,7 +97,7 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 			klog.Info("Exit informers for clusterwatch.")
 			stopper <- struct{}{}
 			return
-		default:
+		case <-time.After(wait):
 			_, err := config.Cfg.KubeClient.ServerResourcesForGroupVersion(groupVersion)
 			// we fail to fetch for some reason other than not found
 			if err != nil && !isClusterCrdMissing(err) {
@@ -113,7 +114,7 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 					go informer.Run(stopper)
 				}
 			}
-			time.Sleep(time.Duration(config.Cfg.RediscoverRateMS) * time.Millisecond)
+			wait = time.Duration(config.Cfg.RediscoverRateMS) * time.Millisecond
 		}
 	}
 }
