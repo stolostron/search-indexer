@@ -48,7 +48,7 @@ func runLeaderElection(ctx context.Context, lock *resourcelock.LeaseLock) {
 					OnStartedLeading: func(c context.Context) {
 						klog.Info("I'm the leader! Starting leader activities.")
 						leader = config.Cfg.PodName
-						watchClusters(c)
+						syncClusters(c)
 					},
 					OnStoppedLeading: func() {
 						if leader == config.Cfg.PodName {

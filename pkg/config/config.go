@@ -7,7 +7,6 @@ import (
 	"errors"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"k8s.io/client-go/kubernetes"
@@ -35,8 +34,7 @@ type Config struct {
 	Version        string
 	MaxBackoffMS   int // Maximum backoff in ms to wait after error
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
-	KubeConfig       string // Local kubeconfig path
-	RediscoverRateMS int    // time in MS we should check on cluster resource type
+	RediscoverRateMS int // time in MS we should check on cluster resource type
 	// RequestLimit          int    // Max number of concurrent requests. Used to prevent from overloading the database
 	// SkipClusterValidation string // Skips cluster validation. Intended only for performance tests.
 	DevelopmentMode bool
@@ -44,11 +42,6 @@ type Config struct {
 
 // Reads config from environment.
 func new() *Config {
-	defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
-	if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
-		// set default to empty string if path does not reslove
-		defaultKubePath = ""
-	}
 	conf := &Config{
 		DevelopmentMode: DEVELOPMENT_MODE, // Do not read this from ENV. See config_development.go to enable.
 		DBHost:          getEnv("DB_HOST", "localhost"),
@@ -62,10 +55,9 @@ func new() *Config {
 		PodNamespace:    getEnv("POD_NAMESPACE", "open-cluster-management"),
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		Version:         COMPONENT_VERSION,
-		KubeConfig:      getEnv("KUBECONFIG", defaultKubePath),
 		MaxBackoffMS:    getEnvAsInt("MAX_BACKOFF_MS", 600000), // 10 min
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
-		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 60000), // 1 min
+		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 300000), // 5 min
 		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
 	}
