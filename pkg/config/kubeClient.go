@@ -67,8 +67,6 @@ func getKubeClient() *kubernetes.Clientset {
 
 // Get the kubernetes dynamic client.
 func GetDynamicClient() dynamic.Interface {
-	mutex.Lock()
-	defer mutex.Unlock()
 	newDynamicClient, err := dynamic.NewForConfig(getKubeConfig())
 	if err != nil {
 		klog.Fatal("Cannot Construct Dynamic Client ", err)
