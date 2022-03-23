@@ -34,8 +34,7 @@ type Config struct {
 	ServerAddress  string // Web server address
 	Version        string
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
-	KubeConfig       string // Local kubeconfig path
-	RediscoverRateMS int    // time in MS we should check on cluster resource type
+	RediscoverRateMS int // time in MS we should check on cluster resource type
 	// RequestLimit          int    // Max number of concurrent requests. Used to prevent from overloading the database
 	// SkipClusterValidation string // Skips cluster validation. Intended only for performance tests.
 	DevelopmentMode bool
@@ -61,9 +60,8 @@ func new() *Config {
 		PodNamespace:    getEnv("POD_NAMESPACE", "open-cluster-management"),
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		Version:         COMPONENT_VERSION,
-		KubeConfig:      getEnv("KUBECONFIG", defaultKubePath),
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
-		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 60000), // 1 min
+		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 300000), // 5 min
 		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
 	}

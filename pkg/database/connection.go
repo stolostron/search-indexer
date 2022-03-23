@@ -62,7 +62,7 @@ func initializePool() pgxpoolmock.PgxPool {
 }
 
 func (dao *DAO) InitializeTables() {
-	ExistingClustersMap = make(map[string]interface{})
+	ExistingClustersCache = make(map[string]interface{})
 	if config.Cfg.DevelopmentMode {
 		klog.Warning("Dropping search schema for development only. We must not see this message in production.")
 		_, err := dao.pool.Exec(context.Background(), "DROP SCHEMA IF EXISTS search CASCADE")

@@ -36,6 +36,7 @@ func ElectLeaderAndStart(ctx context.Context) {
 	client = config.Cfg.KubeClient
 	podName := config.Cfg.PodName
 	podNamespace := config.Cfg.PodNamespace
+	dynamicClient = config.GetDynamicClient()
 	if (database.DAO{} == dao) {
 		dao = database.NewDAO(nil)
 	}
@@ -44,10 +45,9 @@ func ElectLeaderAndStart(ctx context.Context) {
 }
 
 // Watches ManagedCluster objects and updates the database with a Cluster node.
-func watchClusters(ctx context.Context) {
+func syncClusters(ctx context.Context) {
 	klog.Info("Attempting to sync clusters. Begin ClusterWatch routine")
 
-	dynamicClient = config.GetDynamicClient()
 	dynamicFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient,
 		time.Duration(config.Cfg.RediscoverRateMS)*time.Millisecond)
 
@@ -174,9 +174,9 @@ func isClusterCrdMissing(err error) bool {
 }
 func addAdditionalProperties(props map[string]interface{}) map[string]interface{} {
 	clusterUid := string("cluster__" + props["name"].(string))
-	_, ok := database.ExistingClustersMap[clusterUid]
+	data, ok := database.ReadClustersCache(clusterUid)
 	if ok {
-		existingProps, _ := database.ExistingClustersMap[clusterUid].(map[string]interface{})
+		existingProps, _ := data.(map[string]interface{})
 		for key, val := range existingProps {
 			_, present := props[key]
 			if !present {
@@ -187,7 +187,7 @@ func addAdditionalProperties(props map[string]interface{}) map[string]interface{
 	return props
 }
 
-// Transform ManagedClusterInfo object into db.Resource suitable for insert into redis
+// Transform ManagedClusterInfo object into Resource suitable for insert into database
 func transformManagedClusterInfo(managedClusterInfo *clusterv1beta1.ManagedClusterInfo) model.Resource {
 	// https://github.com/stolostron/multicloud-operators-foundation/
 	//    blob/main/pkg/apis/internal.open-cluster-management.io/v1beta1/clusterinfo_types.go
@@ -199,8 +199,9 @@ func transformManagedClusterInfo(managedClusterInfo *clusterv1beta1.ManagedClust
 	props["nodes"] = int64(len(managedClusterInfo.Status.NodeList))
 	props["kind"] = "Cluster"
 	props["name"] = managedClusterInfo.GetName()
-	props["_clusterNamespace"] = managedClusterInfo.GetNamespace() // Needed for rbac mapping.
-	props["apigroup"] = "internal.open-cluster-management.io"      // Maps rbac to ManagedClusterInfo
+	// Disabled till RBAC implementation
+	// props["_clusterNamespace"] = managedClusterInfo.GetNamespace() // Needed for rbac mapping.
+	props["apigroup"] = "internal.open-cluster-management.io" // Maps rbac to ManagedClusterInfo
 	props = addAdditionalProperties(props)
 	// Create the resource
 	resource := model.Resource{
@@ -212,7 +213,7 @@ func transformManagedClusterInfo(managedClusterInfo *clusterv1beta1.ManagedClust
 	return resource
 }
 
-// Transform ManagedCluster object into db.Resource suitable for insert into DB
+// Transform ManagedCluster object into Resource suitable for insert into database
 func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Resource {
 	// https://github.com/stolostron/api/blob/main/cluster/v1/types.go#L78
 	// We use ManagedCluster as the primary source of information
@@ -230,8 +231,9 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 	}
 
 	props["kind"] = "Cluster"
-	props["name"] = managedCluster.GetName()                  // must match ManagedClusterInfo
-	props["_clusterNamespace"] = managedCluster.GetName()     // maps to the namespace of ManagedClusterInfo
+	props["name"] = managedCluster.GetName() // must match ManagedClusterInfo
+	// Disabled till RBAC implementation
+	// props["_clusterNamespace"] = managedCluster.GetName()     // maps to the namespace of ManagedClusterInfo
 	props["apigroup"] = "internal.open-cluster-management.io" // maps rbac to ManagedClusterInfo
 	props["created"] = managedCluster.GetCreationTimestamp().UTC().Format(time.RFC3339)
 
