@@ -7,7 +7,6 @@ import (
 	"errors"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"k8s.io/client-go/kubernetes"
@@ -42,11 +41,6 @@ type Config struct {
 
 // Reads config from environment.
 func new() *Config {
-	defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
-	if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
-		// set default to empty string if path does not reslove
-		defaultKubePath = ""
-	}
 	conf := &Config{
 		DevelopmentMode: DEVELOPMENT_MODE, // Do not read this from ENV. See config_development.go to enable.
 		DBHost:          getEnv("DB_HOST", "localhost"),
