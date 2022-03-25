@@ -6,8 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 )
@@ -58,4 +60,14 @@ func getKubeClient() *kubernetes.Clientset {
 		klog.Error("Cannot Construct Kube Client as input Config is nil")
 	}
 	return kubeClient
+}
+
+// Get the kubernetes dynamic client.
+func GetDynamicClient() dynamic.Interface {
+	newDynamicClient, err := dynamic.NewForConfig(getKubeConfig())
+	if err != nil {
+		klog.Fatal("Cannot Construct Dynamic Client ", err)
+	}
+
+	return newDynamicClient
 }

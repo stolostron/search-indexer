@@ -3,13 +3,16 @@
 package database
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
 	"testing"
 
 	"github.com/jackc/pgconn"
+	"github.com/jackc/pgproto3/v2"
 	pgx "github.com/jackc/pgx/v4"
+	"k8s.io/klog/v2"
 
 	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
@@ -83,4 +86,56 @@ func buildMockDAO(t *testing.T) (DAO, *pgxpoolmock.MockPgxPool) {
 	dao := NewDAO(mockPool)
 
 	return dao, mockPool
+}
+
+type MockRows struct {
+	mockData []map[string]interface{}
+	index    int
+}
+
+func (r *MockRows) Close() {}
+
+func (r *MockRows) Err() error { return nil }
+
+func (r *MockRows) CommandTag() pgconn.CommandTag { return nil }
+
+func (r *MockRows) FieldDescriptions() []pgproto3.FieldDescription { return nil }
+
+func (r *MockRows) Next() bool {
+	r.index = r.index + 1
+	return r.index <= len(r.mockData)
+}
+
+func (r *MockRows) Scan(dest ...interface{}) error {
+	*dest[0].(*string) = r.mockData[r.index-1]["uid"].(string)
+	props, _ := r.mockData[r.index-1]["data"].(map[string]interface{})
+	dest[1] = props
+	return nil
+}
+
+func (r *MockRows) Values() ([]interface{}, error) { return nil, nil }
+
+func (r *MockRows) RawValues() [][]byte { return nil }
+
+func newMockRows() *MockRows {
+	clusterResource := `{"uid":"cluster__name-foo", "data":{"apigroup":"internal.open-cluster-management.io", "consoleURL":"", "cpu":0, "created":"0001-01-01T00:00:00Z", "kind":"Cluster", "kubernetesVersion":"", "memory":0, "name":"name-foo", "nodes":0}}`
+
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(clusterResource), &data); err != nil {
+		klog.Error("Error unmarhsaling mockrows")
+		panic(err)
+	}
+
+	mockData := make([]map[string]interface{}, 0)
+	mockData = append(mockData, data)
+
+	return &MockRows{
+		mockData: mockData,
+		index:    0,
+	}
+}
+
+func (dao *DAO) Query() (*MockRows, error) {
+	var e error
+	return newMockRows(), e
 }
