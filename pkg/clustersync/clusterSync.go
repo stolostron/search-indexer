@@ -69,10 +69,10 @@ func syncClusters(ctx context.Context) {
 			klog.V(4).Info("clusterWatch: UpdateFunc for", next.(*unstructured.Unstructured).GetKind())
 			processClusterUpsert(next)
 		},
-		// DeleteFunc: func(obj interface{}) {
-		// 	klog.Info("clusterWatch: DeleteFunc")
-		// 	processClusterDelete(obj)
-		// },
+		DeleteFunc: func(obj interface{}) {
+			klog.Info("clusterWatch: DeleteFunc")
+			processClusterDelete(obj)
+		},
 	}
 
 	// Add Handlers to both Informers
@@ -254,4 +254,12 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 		ResourceString: "managedclusterinfos", // Maps rbac to ManagedClusterInfo
 	}
 	return resource
+}
+
+// Deletes a cluster resource and all resources from the cluster.
+func processClusterDelete(obj interface{}) {
+	klog.Info("Processing Cluster Delete.")
+	clusterName := obj.(*unstructured.Unstructured).GetName()
+	klog.Infof("Deleting Cluster resource %s and all resources from the DB", clusterName)
+	dao.DeleteCluster(clusterName)
 }

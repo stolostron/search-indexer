@@ -3,11 +3,29 @@ package database
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
+
+func (dao *DAO) DeleteCluster(clusterName string) {
+	clusterUID := string("cluster__" + clusterName)
+	// Delete resources for cluster from resources table from DB
+	_, err := dao.pool.Exec(context.Background(), "DELETE FROM search.resources WHERE cluster=$1", clusterName)
+	checkError(err, fmt.Sprintf("Error deleting resources from search.resources for clusterName %s.", clusterName))
+
+	// Delete edges for cluster from DB
+	_, err = dao.pool.Exec(context.Background(), "DELETE FROM search.edges WHERE cluster=$1", clusterName)
+	checkError(err, fmt.Sprintf("Error deleting resources from search.edges for clusterName %s.", clusterName))
+
+	// Delete cluster node from DB
+	_, err = dao.pool.Exec(context.Background(), "DELETE FROM search.resources WHERE uid=$1", clusterUID)
+	checkError(err, fmt.Sprintf("Error deleting cluster %s from search.resources.", clusterName))
+
+	DeleteClustersCache(clusterUID)
+}
 
 func (dao *DAO) UpsertCluster(resource model.Resource) {
 	data, _ := json.Marshal(resource.Properties)
@@ -33,7 +51,8 @@ func (dao *DAO) UpsertCluster(resource model.Resource) {
 func (dao *DAO) clusterInDB(clusterUID string) bool {
 	_, ok := ReadClustersCache(clusterUID)
 	if !ok {
-		klog.V(3).Infof("Cluster [%s] is not in existingClustersCache. Updating cache with latest state from database.", clusterUID)
+		klog.V(3).Infof("Cluster [%s] is not in existingClustersCache. Updating cache with latest state from database.",
+			clusterUID)
 		query := "SELECT uid, data from search.resources where uid=$1"
 		rows, err := dao.pool.Query(context.TODO(), query, clusterUID)
 		if err != nil {
@@ -66,7 +85,8 @@ func (dao *DAO) clusterPropsUpToDate(clusterUID string, resource model.Resource)
 				existingVal, ok := existingProps[key]
 
 				if !ok || !reflect.DeepEqual(currVal, existingVal) {
-					klog.V(4).Infof("Values doesn't match for key:%s, existing value:%s, new value:%s \n", key, existingVal, currVal)
+					klog.V(4).Infof("cluster property values doesn't match for key:%s, existing value:%s, new value:%s \n",
+						key, existingVal, currVal)
 					return false
 				}
 			}

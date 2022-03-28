@@ -5,6 +5,8 @@ package database
 import (
 	"context"
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/driftprogramming/pgxpoolmock"
 	pgxpool "github.com/jackc/pgx/v4/pgxpool"
@@ -50,12 +52,21 @@ func initializePool() pgxpoolmock.PgxPool {
 		klog.Fatal("Error parsing database connection configuration. ", configErr)
 	}
 
-	conn, err := pgxpool.ConnectConfig(context.Background(), config)
-	if err != nil {
-		klog.Error("Unable to connect to database: %+v\n", err)
-		// TODO: We need to retry the connection until successful.
-	} else {
-		klog.Info("Successfully connected to database!")
+	retry := 0
+	var conn *pgxpool.Pool
+	var err error
+	for {
+		conn, err = pgxpool.ConnectConfig(context.Background(), config)
+		if err != nil {
+			klog.Errorf("Unable to connect to database: %+v\n", err)
+			waitMS := int(math.Min(float64(retry*15*1000), float64(cfg.MaxBackoffMS)))
+			retry++
+			klog.Infof("Retry connecting to db in %d milliseconds\n", waitMS)
+			time.Sleep(time.Duration(waitMS) * time.Millisecond)
+		} else {
+			klog.Info("Successfully connected to database!")
+			break
+		}
 	}
 
 	return conn
