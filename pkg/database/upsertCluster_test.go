@@ -3,6 +3,7 @@
 package database
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -217,7 +218,7 @@ func Test_DelCluster(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo"}),
 	).Return(nil, nil)
 
-	dao.DeleteCluster("name-foo")
+	dao.DeleteCluster(context.TODO(), "name-foo")
 	_, ok = ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
 }

@@ -101,7 +101,7 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
 	).Return(nil, nil)
 
-	processClusterUpsert(obj)
+	processClusterUpsert(context.TODO(), obj)
 	//Once processClusterUpsert is done, existingClustersCache should have an entry for cluster foo
 	_, ok := database.ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
@@ -130,7 +130,7 @@ func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
 	).Return(nil, nil)
 
-	processClusterUpsert(obj)
+	processClusterUpsert(context.TODO(), obj)
 	//Once processClusterUpsert is done, existingClustersCache should have an entry for cluster foo
 	_, ok := database.ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
@@ -170,7 +170,7 @@ func Test_ProcessClusterDelete(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo"}),
 	).Return(nil, nil)
 
-	processClusterDelete(obj)
+	processClusterDelete(context.TODO(), obj)
 
 	//Once processClusterDelete is done, existingClustersCache should not have an entry for cluster foo
 	_, ok := database.ReadClustersCache("cluster__name-foo")

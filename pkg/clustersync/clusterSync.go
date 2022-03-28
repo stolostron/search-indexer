@@ -62,16 +62,16 @@ func syncClusters(ctx context.Context) {
 	// Create handlers for events
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			klog.V(4).Info("clusterWatch: AddFunc for ", obj.(*unstructured.Unstructured).GetKind())
-			processClusterUpsert(obj)
+			klog.V(4).Info("AddFunc for ", obj.(*unstructured.Unstructured).GetKind())
+			processClusterUpsert(ctx, obj)
 		},
 		UpdateFunc: func(prev interface{}, next interface{}) {
-			klog.V(4).Info("clusterWatch: UpdateFunc for", next.(*unstructured.Unstructured).GetKind())
-			processClusterUpsert(next)
+			klog.V(4).Info("UpdateFunc for", next.(*unstructured.Unstructured).GetKind())
+			processClusterUpsert(ctx, next)
 		},
 		DeleteFunc: func(obj interface{}) {
-			klog.Info("clusterWatch: DeleteFunc")
-			processClusterDelete(obj)
+			klog.V(4).Info("DeleteFunc")
+			processClusterDelete(ctx, obj)
 		},
 	}
 
@@ -119,7 +119,7 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 	}
 }
 
-func processClusterUpsert(obj interface{}) {
+func processClusterUpsert(ctx context.Context, obj interface{}) {
 	// Lock so only one goroutine at a time can access add a cluster.
 	// Helps to eliminate duplicate entries.
 	mux.Lock()
@@ -260,9 +260,9 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 }
 
 // Deletes a cluster resource and all resources from the cluster.
-func processClusterDelete(obj interface{}) {
+func processClusterDelete(ctx context.Context, obj interface{}) {
 	klog.Info("Processing Cluster Delete.")
 	clusterName := obj.(*unstructured.Unstructured).GetName()
-	klog.Infof("Deleting Cluster resource %s and all resources from the DB", clusterName)
-	dao.DeleteCluster(clusterName)
+	klog.V(3).Infof("Deleting Cluster resource %s and all resources from the DB", clusterName)
+	dao.DeleteCluster(ctx, clusterName)
 }

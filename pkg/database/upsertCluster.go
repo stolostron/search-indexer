@@ -10,18 +10,18 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func (dao *DAO) DeleteCluster(clusterName string) {
+func (dao *DAO) DeleteCluster(ctx context.Context, clusterName string) {
 	clusterUID := string("cluster__" + clusterName)
 	// Delete resources for cluster from resources table from DB
-	_, err := dao.pool.Exec(context.Background(), "DELETE FROM search.resources WHERE cluster=$1", clusterName)
+	_, err := dao.pool.Exec(ctx, "DELETE FROM search.resources WHERE cluster=$1", clusterName)
 	checkError(err, fmt.Sprintf("Error deleting resources from search.resources for clusterName %s.", clusterName))
 
 	// Delete edges for cluster from DB
-	_, err = dao.pool.Exec(context.Background(), "DELETE FROM search.edges WHERE cluster=$1", clusterName)
+	_, err = dao.pool.Exec(ctx, "DELETE FROM search.edges WHERE cluster=$1", clusterName)
 	checkError(err, fmt.Sprintf("Error deleting resources from search.edges for clusterName %s.", clusterName))
 
 	// Delete cluster node from DB
-	_, err = dao.pool.Exec(context.Background(), "DELETE FROM search.resources WHERE uid=$1", clusterUID)
+	_, err = dao.pool.Exec(ctx, "DELETE FROM search.resources WHERE uid=$1", clusterUID)
 	checkError(err, fmt.Sprintf("Error deleting cluster %s from search.resources.", clusterName))
 
 	//Delete cluster from existing clusters cache
