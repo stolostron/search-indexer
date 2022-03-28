@@ -24,6 +24,7 @@ func (dao *DAO) DeleteCluster(clusterName string) {
 	_, err = dao.pool.Exec(context.Background(), "DELETE FROM search.resources WHERE uid=$1", clusterUID)
 	checkError(err, fmt.Sprintf("Error deleting cluster %s from search.resources.", clusterName))
 
+	//Delete cluster from existing clusters cache
 	DeleteClustersCache(clusterUID)
 }
 

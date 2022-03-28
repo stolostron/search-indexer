@@ -194,3 +194,26 @@ func Test_clusterInDB_QueryErr(t *testing.T) {
 	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo1")
 
 }
+
+func Test_DelCluster(t *testing.T) {
+	// Prepare a mock DAO instance
+	dao, mockPool := buildMockDAO(t)
+
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`DELETE FROM search.resources WHERE cluster=$1`),
+		gomock.Eq([]interface{}{"name-foo"}),
+	).Return(nil, nil)
+
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`DELETE FROM search.edges WHERE cluster=$1`),
+		gomock.Eq([]interface{}{"name-foo"}),
+	).Return(nil, nil)
+
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
+		gomock.Eq([]interface{}{"cluster__name-foo"}),
+	).Return(nil, nil)
+
+	dao.DeleteCluster("name-foo")
+
+}
