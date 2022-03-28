@@ -11,7 +11,7 @@ require (
 	github.com/jackc/pgproto3/v2 v2.1.1
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/prometheus/client_golang v1.12.1
-	github.com/stolostron/multicloud-operators-foundation v0.0.0-00010101000000-000000000000
+	github.com/stolostron/multicloud-operators-foundation v2.0.0-2022-03-28-10-15-01+incompatible
 	k8s.io/apimachinery v0.23.4
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog/v2 v2.40.1
