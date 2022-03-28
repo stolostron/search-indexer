@@ -4,13 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
-	"sync"
 
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
-
-var ExistingClustersCache map[string]interface{} // a map to hold Current clusters and properties
 
 func (dao *DAO) UpsertCluster(resource model.Resource) {
 	data, _ := json.Marshal(resource.Properties)
@@ -33,34 +30,14 @@ func (dao *DAO) UpsertCluster(resource model.Resource) {
 
 }
 
-var mux sync.RWMutex
-
-func ReadClustersCache(uid string) (interface{}, bool) {
-	mux.RLock()
-	defer mux.RUnlock()
-	data, ok := ExistingClustersCache[uid]
-	return data, ok
-}
-
-func UpdateClustersCache(uid string, data interface{}) {
-	mux.Lock()
-	defer mux.Unlock()
-	ExistingClustersCache[uid] = data
-}
-func DeleteClustersCache(uid string) {
-	mux.Lock()
-	defer mux.Unlock()
-	delete(ExistingClustersCache, uid)
-}
-
 func (dao *DAO) clusterInDB(clusterUID string) bool {
 	_, ok := ReadClustersCache(clusterUID)
 	if !ok {
-		klog.V(3).Infof("Cluster [%s] is not in ExistingClustersMap. Updating cache with latest state from database.", clusterUID)
+		klog.V(3).Infof("Cluster [%s] is not in existingClustersCache. Updating cache with latest state from database.", clusterUID)
 		query := "SELECT uid, data from search.resources where uid=$1"
 		rows, err := dao.pool.Query(context.TODO(), query, clusterUID)
 		if err != nil {
-			klog.Errorf("Error while updating ExistingClusterCache from database: %s", err.Error())
+			klog.Errorf("Error while fetching cluster %s from database: %s", clusterUID, err.Error())
 		}
 		if rows != nil {
 			for rows.Next() {
@@ -101,7 +78,7 @@ func (dao *DAO) clusterPropsUpToDate(clusterUID string, resource model.Resource)
 			return false
 		}
 	} else {
-		klog.V(3).Infof("Cluster [%s] is not in ExistingClustersMap.", clusterUID)
+		klog.V(3).Infof("Cluster [%s] is not in existingClustersCache.", clusterUID)
 		return false
 	}
 }
