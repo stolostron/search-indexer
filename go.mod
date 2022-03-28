@@ -11,7 +11,7 @@ require (
 	github.com/jackc/pgproto3/v2 v2.1.1
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/prometheus/client_golang v1.12.1
-	github.com/stolostron/multicloud-operators-foundation v1.0.0-2021-10-26-20-16-14.0.20220315082353-128591ce9dbe
+	github.com/stolostron/multicloud-operators-foundation v0.0.0-00010101000000-000000000000
 	k8s.io/apimachinery v0.23.4
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog/v2 v2.40.1
@@ -41,10 +41,12 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/onsi/gomega v1.18.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
@@ -55,20 +57,33 @@ require (
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/api v0.23.4 // indirect
 	k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf // indirect
 	k8s.io/utils v0.0.0-20220127004650-9b3446523e65 // indirect
-	sigs.k8s.io/controller-runtime v0.11.0 // indirect
+	sigs.k8s.io/controller-runtime v0.11.1 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
 replace (
-	github.com/stolostron/multicloud-operators-foundation => github.com/stolostron/multicloud-operators-foundation v1.0.0-2021-10-26-20-16-14.0.20220315082353-128591ce9dbe // indirect
+	github.com/IBM-Cloud/terraform-provider-ibm => github.com/openshift/terraform-provider-ibm v1.26.2-openshift-2
+	github.com/metal3-io/baremetal-operator => github.com/openshift/cluster-baremetal-operator v0.0.0-20220325053116-efa06caa3e66
+	github.com/metal3-io/baremetal-operator/apis => github.com/metal3-io/baremetal-operator/apis v0.0.0-20220323083018-9bfb47657ba6
+	github.com/metal3-io/baremetal-operator/pkg/hardwareutils => github.com/metal3-io/baremetal-operator/pkg/hardwareutils v0.0.0-20220323083018-9bfb47657ba6
+	github.com/openshift/cluster-api-provider-azure => github.com/openshift/cluster-api-provider-azure v1.2.1-0.20220325212758-d1c52034b92e
+	github.com/openshift/hive/apis => github.com/openshift/hive/apis v0.0.0-20220325201640-a149ff297128
+	github.com/stolostron/multicloud-operators-foundation => github.com/stolostron/multicloud-operators-foundation v0.0.0-20220317080545-2ea99b88c0fd // indirect
+	github.com/terraform-providers/terraform-provider-aws => github.com/hashicorp/terraform-provider-aws v1.60.1-0.20220325205205-433af9276ab5
+	github.com/terraform-providers/terraform-provider-ignition/v2 => github.com/community-terraform-providers/terraform-provider-ignition/v2 v2.1.3-0.20220105023746-b0f9e422dda5
 	k8s.io/api => k8s.io/api v0.23.4
 	k8s.io/client-go => k8s.io/client-go v0.23.4
+	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.1.0
+	sigs.k8s.io/cluster-api-provider-aws => github.com/openshift/cluster-api-provider-aws v0.2.1-0.20220303094158-3c2daa272191
+	sigs.k8s.io/cluster-api-provider-azure => sigs.k8s.io/cluster-api-provider-azure v1.2.1
+	sigs.k8s.io/cluster-api-provider-openstack => sigs.k8s.io/cluster-api-provider-openstack v0.5.1-0.20220325161359-d73965086790
 )
