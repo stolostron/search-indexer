@@ -144,3 +144,36 @@ func AssertEqual(t *testing.T, a interface{}, b interface{}, message string) {
 	}
 	t.Errorf("%s Received %v (type %v), expected %v (type %v)", message, a, reflect.TypeOf(a), b, reflect.TypeOf(b))
 }
+
+func Test_ProcessClusterDelete(t *testing.T) {
+	initializeVars()
+	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedClusterInfo", "name-foo", "name-foo", "test-mc-uid")
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
+	// Prepare a mock DAO instance
+	dao = database.NewDAO(mockPool)
+
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`DELETE FROM search.resources WHERE cluster=$1`),
+		gomock.Eq([]interface{}{"name-foo"}),
+	).Return(nil, nil)
+
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`DELETE FROM search.edges WHERE cluster=$1`),
+		gomock.Eq([]interface{}{"name-foo"}),
+	).Return(nil, nil)
+
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
+		gomock.Eq([]interface{}{"cluster__name-foo"}),
+	).Return(nil, nil)
+
+	processClusterDelete(obj)
+
+	//Once processClusterDelete is done, existingClustersCache should not have an entry for cluster foo
+	_, ok := database.ReadClustersCache("cluster__name-foo")
+	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
+
+}

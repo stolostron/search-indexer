@@ -158,7 +158,10 @@ func processClusterUpsert(obj interface{}) {
 	// Upsert (attempt update, attempt insert on failure)
 	dao.UpsertCluster(resource)
 
-	// If a cluster is offline we remove the resources from that cluster, but leave the cluster resource object.
+	// A cluster can be offline due to resource shortage, network outage or other reasons. We are not deleting
+	// the cluster or resources if a cluster is offline to avoid unnecessary deletes and re-inserts in the database.
+	// We need to add a Message in the UI to show a list of clusters that are offline and warn users
+	// that the data might be stale
 	/*if resource.Properties["status"] == "offline" {
 		klog.Infof("Cluster %s is offline, removing cluster resources from datastore.", cluster.GetName())
 		delClusterResources(cluster)

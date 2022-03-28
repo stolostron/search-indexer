@@ -195,10 +195,13 @@ func Test_clusterInDB_QueryErr(t *testing.T) {
 
 }
 
+//The previous test will create an entry for cluster foo in existingClustersCache.
+// This should get removed after the delete function comepletes
 func Test_DelCluster(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao, mockPool := buildMockDAO(t)
-
+	_, ok := ReadClustersCache("cluster__name-foo")
+	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(`DELETE FROM search.resources WHERE cluster=$1`),
 		gomock.Eq([]interface{}{"name-foo"}),
@@ -215,5 +218,6 @@ func Test_DelCluster(t *testing.T) {
 	).Return(nil, nil)
 
 	dao.DeleteCluster("name-foo")
-
+	_, ok = ReadClustersCache("cluster__name-foo")
+	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
 }
