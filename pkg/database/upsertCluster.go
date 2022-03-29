@@ -21,8 +21,8 @@ func (dao *DAO) DeleteCluster(ctx context.Context, clusterName string) {
 
 	// Retry cluster deletion till it succeeds
 	for {
-		// If a statement within a transaction fails, the transaction can get aborted and rest of the statements can get skipped.
-		// So if any statements fail, we retry the entire transaction
+		// If a statement within a transaction fails, the transaction can get aborted and rest of the statements
+		// can get skipped. So if any statements fail, we retry the entire transaction
 		err := dao.DeleteClusterTxn(ctx, clusterName)
 		if err != nil {
 			klog.Errorf("Unable to process cluster delete transaction for cluster:%s. Error: %+v\n", clusterName, err)
@@ -50,24 +50,28 @@ func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterName string) error 
 	} else {
 		// Delete resources for cluster from resources table from DB
 		if _, err := tx.Exec(ctx, "DELETE FROM search.resources WHERE cluster=$1", clusterName); err != nil {
-			checkErrorAndRollback(err, fmt.Sprintf("Error deleting resources from search.resources for clusterName %s.", clusterName), tx, ctx)
+			checkErrorAndRollback(err,
+				fmt.Sprintf("Error deleting resources from search.resources for clusterName %s.", clusterName), tx, ctx)
 			return err
 		}
 
 		// Delete edges for cluster from DB
 		if _, err := tx.Exec(ctx, "DELETE FROM search.edges WHERE cluster=$1", clusterName); err != nil {
-			checkErrorAndRollback(err, fmt.Sprintf("Error deleting resources from search.edges for clusterName %s.", clusterName), tx, ctx)
+			checkErrorAndRollback(err,
+				fmt.Sprintf("Error deleting resources from search.edges for clusterName %s.", clusterName), tx, ctx)
 			return err
 		}
 
 		// Delete cluster node from DB
 		if _, err := tx.Exec(ctx, "DELETE FROM search.resources WHERE uid=$1", clusterUID); err != nil {
-			checkErrorAndRollback(err, fmt.Sprintf("Error deleting cluster %s from search.resources.", clusterName), tx, ctx)
+			checkErrorAndRollback(err,
+				fmt.Sprintf("Error deleting cluster %s from search.resources.", clusterName), tx, ctx)
 			return err
 		}
 
 		if err := tx.Commit(ctx); err != nil {
-			checkErrorAndRollback(err, fmt.Sprintf("Error commiting delete cluster transaction for cluster: %s.", clusterName), tx, ctx)
+			checkErrorAndRollback(err,
+				fmt.Sprintf("Error commiting delete cluster transaction for cluster: %s.", clusterName), tx, ctx)
 			return err
 		}
 	}

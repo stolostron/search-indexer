@@ -217,7 +217,10 @@ func Test_DelCluster(t *testing.T) {
 		gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
 		gomock.Eq([]interface{}{"cluster__name-foo"}),
 	).Return(nil, nil)
-
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`BeginTx`),
+		gomock.Eq([]interface{}{}),
+	).Return(nil, nil)
 	dao.DeleteCluster(context.TODO(), "name-foo")
 	_, ok = ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
