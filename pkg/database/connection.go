@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/driftprogramming/pgxpoolmock"
+	"github.com/jackc/pgx/v4"
 	pgxpool "github.com/jackc/pgx/v4/pgxpool"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"k8s.io/klog/v2"
@@ -107,4 +108,9 @@ func checkError(err error, logMessage string) {
 	if err != nil {
 		klog.Error(logMessage, " ", err)
 	}
+}
+
+func checkErrorAndRollback(err error, logMessage string, tx pgx.Tx, ctx context.Context) {
+	checkError(err, logMessage)
+	tx.Rollback(ctx)
 }

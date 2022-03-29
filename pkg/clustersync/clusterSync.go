@@ -261,7 +261,7 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 
 // Deletes a cluster resource and all resources from the cluster.
 func processClusterDelete(ctx context.Context, obj interface{}) {
-	klog.Info("Processing Cluster Delete.")
+	klog.V(4).Info("Processing Cluster Delete.")
 	clusterName := obj.(*unstructured.Unstructured).GetName()
 	klog.V(3).Infof("Deleting Cluster resource %s and all resources from the DB", clusterName)
 	dao.DeleteCluster(ctx, clusterName)
