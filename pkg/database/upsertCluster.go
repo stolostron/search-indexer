@@ -63,7 +63,6 @@ func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterName string) error 
 		// Delete cluster node from DB
 		if _, err := tx.Exec(ctx, "DELETE FROM search.resources WHERE uid=$1", clusterUID); err != nil {
 			checkErrorAndRollback(err, fmt.Sprintf("Error deleting cluster %s from search.resources.", clusterName), tx, ctx)
-			tx.Commit(ctx)
 			return err
 		}
 

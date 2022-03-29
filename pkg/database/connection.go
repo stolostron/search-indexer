@@ -112,5 +112,7 @@ func checkError(err error, logMessage string) {
 
 func checkErrorAndRollback(err error, logMessage string, tx pgx.Tx, ctx context.Context) {
 	checkError(err, logMessage)
-	tx.Rollback(ctx)
+	if err := tx.Rollback(ctx); err != nil {
+		checkError(err, "Encountered error while rolling back cluster delete transaction command")
+	}
 }
