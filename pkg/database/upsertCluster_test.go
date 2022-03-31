@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	pgx "github.com/jackc/pgx/v4"
+	"github.com/pashagolub/pgxmock"
 	"github.com/stolostron/search-indexer/pkg/model"
 )
 
@@ -196,32 +198,27 @@ func Test_clusterInDB_QueryErr(t *testing.T) {
 
 }
 
-//The previous test will create an entry for cluster foo in existingClustersCache.
-// This should get removed after the delete function comepletes
+// Test delete cluster from db
 func Test_DelCluster(t *testing.T) {
-	// Prepare a mock DAO instance
+	clusterName := "name-foo"
+	clusterUID := "cluster__name-foo"
+	//Ensure there is an entry for cluster_foo in the cluster cache
+	UpdateClustersCache("cluster__name-foo", nil)
+
+	mock, err := pgxmock.NewConn()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer mock.Close(context.Background())
 	dao, mockPool := buildMockDAO(t)
-	_, ok := ReadClustersCache("cluster__name-foo")
-	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
-	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`DELETE FROM search.resources WHERE cluster=$1`),
-		gomock.Eq([]interface{}{"name-foo"}),
-	).Return(nil, nil)
-
-	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`DELETE FROM search.edges WHERE cluster=$1`),
-		gomock.Eq([]interface{}{"name-foo"}),
-	).Return(nil, nil)
-
-	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo"}),
-	).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`BeginTx`),
-		gomock.Eq([]interface{}{}),
-	).Return(nil, nil)
+	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mock, nil)
+	mock.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mock.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mock.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterUID).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mock.ExpectCommit()
 	dao.DeleteCluster(context.TODO(), "name-foo")
-	_, ok = ReadClustersCache("cluster__name-foo")
+
+	// After delete cluster method runs, clusters cache should not have an entry for cluster_foo
+	_, ok := ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
 }
