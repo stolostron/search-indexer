@@ -30,6 +30,7 @@ var mux sync.Mutex
 
 const managedClusterGVR = "managedclusters.v1.cluster.open-cluster-management.io"
 const managedClusterInfoGVR = "managedclusterinfos.v1beta1.internal.open-cluster-management.io"
+const managedClusterAddonGVR = "managedclusteraddons.v1alpha1.addon.open-cluster-management.io"
 const lockName = "search-indexer.open-cluster-management.io"
 
 func ElectLeaderAndStart(ctx context.Context) {
@@ -54,10 +55,12 @@ func syncClusters(ctx context.Context) {
 	// Create GVR for ManagedCluster and ManagedClusterInfo
 	managedClusterGvr, _ := schema.ParseResourceArg(managedClusterGVR)
 	managedClusterInfoGvr, _ := schema.ParseResourceArg(managedClusterInfoGVR)
+	managedClusterAddonGvr, _ := schema.ParseResourceArg(managedClusterAddonGVR)
 
 	//Create Informers for ManagedCluster and ManagedClusterInfo
 	managedClusterInformer := dynamicFactory.ForResource(*managedClusterGvr).Informer()
 	managedClusterInfoInformer := dynamicFactory.ForResource(*managedClusterInfoGvr).Informer()
+	managedClusterAddonInformer := dynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
 	// Create handlers for events
 	handlers := cache.ResourceEventHandlerFuncs{
@@ -78,10 +81,12 @@ func syncClusters(ctx context.Context) {
 	// Add Handlers to both Informers
 	managedClusterInformer.AddEventHandler(handlers)
 	managedClusterInfoInformer.AddEventHandler(handlers)
+	managedClusterAddonInformer.AddEventHandler(handlers)
 
 	// Periodically check if the ManagedCluster/ManagedClusterInfo resource exists
 	go stopAndStartInformer(ctx, "cluster.open-cluster-management.io/v1", managedClusterInformer)
 	go stopAndStartInformer(ctx, "internal.open-cluster-management.io/v1beta1", managedClusterInfoInformer)
+	go stopAndStartInformer(ctx, "addon.open-cluster-management.io/v1alpha1", managedClusterInfoInformer)
 
 }
 
@@ -264,5 +269,16 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 	klog.V(4).Info("Processing Cluster Delete.")
 	clusterName := obj.(*unstructured.Unstructured).GetName()
 	klog.V(3).Infof("Deleting Cluster resource %s and all resources from the DB", clusterName)
-	dao.DeleteCluster(ctx, clusterName)
+	var deleteClusterNode bool
+	kind := obj.(*unstructured.Unstructured).GetKind()
+	switch kind {
+	case "ManagedCluster":
+		deleteClusterNode = true
+	case "ManagedClusterAddOn":
+		deleteClusterNode = false
+	default:
+		klog.V(4).Info("No delete cluster actions for kind: %s", kind)
+		return
+	}
+	dao.DeleteClusterAndResources(ctx, clusterName, deleteClusterNode)
 }

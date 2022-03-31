@@ -198,7 +198,30 @@ func Test_clusterInDB_QueryErr(t *testing.T) {
 
 }
 
-// Test delete cluster from db
+// Test delete cluster resources from db
+func Test_DelClusterResources(t *testing.T) {
+	clusterName := "name-foo"
+	//Ensure there is an entry for cluster_foo in the cluster cache
+	UpdateClustersCache("cluster__name-foo", nil)
+
+	mock, err := pgxmock.NewConn()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer mock.Close(context.Background())
+	dao, mockPool := buildMockDAO(t)
+	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mock, nil)
+	mock.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mock.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mock.ExpectCommit()
+	dao.DeleteClusterAndResources(context.TODO(), clusterName, false)
+
+	// After delete cluster method runs, clusters cache should still have an entry for cluster_foo
+	// as cluster itself is not deleted
+	_, ok := ReadClustersCache("cluster__name-foo")
+	AssertEqual(t, ok, true, "existingClustersCache should still have an entry for cluster foo")
+}
+
 func Test_DelCluster(t *testing.T) {
 	clusterName := "name-foo"
 	clusterUID := "cluster__name-foo"
@@ -214,9 +237,13 @@ func Test_DelCluster(t *testing.T) {
 	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mock, nil)
 	mock.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mock.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterUID).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mock.ExpectCommit()
-	dao.DeleteCluster(context.TODO(), "name-foo")
+
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
+		gomock.Eq([]interface{}{clusterUID}),
+	).Return(nil, nil)
+	dao.DeleteClusterAndResources(context.TODO(), clusterName, true)
 
 	// After delete cluster method runs, clusters cache should not have an entry for cluster_foo
 	_, ok := ReadClustersCache("cluster__name-foo")

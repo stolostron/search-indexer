@@ -14,8 +14,22 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func (dao *DAO) DeleteCluster(ctx context.Context, clusterName string) {
+func (dao *DAO) DeleteClusterAndResources(ctx context.Context, clusterName string, deleteClusterNode bool) {
 	clusterUID := string("cluster__" + clusterName)
+	if err := dao.deleteWithRetry(dao.DeleteClusterResourcesTxn(ctx, clusterName)); err == nil {
+		klog.V(2).Infof("Successfully deleted resources and edges for cluster %s from database!", clusterName)
+	}
+
+	if deleteClusterNode {
+		if err := dao.deleteWithRetry(dao.DeleteClusterTxn(ctx, clusterUID)); err == nil {
+			klog.V(2).Infof("Successfully deleted cluster node %s from database!", clusterName)
+			// Delete cluster from existing clusters cache
+			DeleteClustersCache(clusterUID)
+		}
+	}
+}
+
+func (dao *DAO) deleteWithRetry(deleteFunction error) error {
 	retry := 0
 	cfg := config.Cfg
 
@@ -23,26 +37,21 @@ func (dao *DAO) DeleteCluster(ctx context.Context, clusterName string) {
 	for {
 		// If a statement within a transaction fails, the transaction can get aborted and rest of the statements
 		// can get skipped. So if any statements fail, we retry the entire transaction
-		err := dao.DeleteClusterTxn(ctx, clusterName)
+		err := deleteFunction
 		if err != nil {
-			klog.Errorf("Unable to process cluster delete transaction for cluster:%s. Error: %+v\n", clusterName, err)
+			klog.Errorf("Unable to process cluster delete transaction. Error: %+v\n", err)
 			waitMS := int(math.Min(float64(retry*500), float64(cfg.MaxBackoffMS)))
 			retry++
 			klog.Infof("Retry cluster delete transaction in %d milliseconds\n", waitMS)
 			time.Sleep(time.Duration(waitMS) * time.Millisecond)
 		} else {
-			klog.Info("Successfully deleted cluster %s, related resources and edges from database!", clusterName)
 			break
 		}
 	}
-
-	// Delete cluster from existing clusters cache
-	DeleteClustersCache(clusterUID)
+	return nil
 }
 
-func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterName string) error {
-	clusterUID := string("cluster__" + clusterName)
-
+func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName string) error {
 	tx, txErr := dao.pool.BeginTx(ctx, pgx.TxOptions{})
 	if txErr != nil {
 		klog.Error("Error while beginning transaction block for deleting cluster ", clusterName)
@@ -62,18 +71,20 @@ func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterName string) error 
 			return err
 		}
 
-		// Delete cluster node from DB
-		if _, err := tx.Exec(ctx, "DELETE FROM search.resources WHERE uid=$1", clusterUID); err != nil {
-			checkErrorAndRollback(err,
-				fmt.Sprintf("Error deleting cluster %s from search.resources.", clusterName), tx, ctx)
-			return err
-		}
-
 		if err := tx.Commit(ctx); err != nil {
 			checkErrorAndRollback(err,
 				fmt.Sprintf("Error commiting delete cluster transaction for cluster: %s.", clusterName), tx, ctx)
 			return err
 		}
+	}
+	return nil
+}
+
+func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterUID string) error {
+	// Delete cluster node from DB.
+	if _, err := dao.pool.Exec(ctx, "DELETE FROM search.resources WHERE uid=$1", clusterUID); err != nil {
+		checkError(err, fmt.Sprintf("Error deleting cluster %s from search.resources.", clusterUID))
+		return err
 	}
 	return nil
 }
