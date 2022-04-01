@@ -16,12 +16,12 @@ import (
 
 func (dao *DAO) DeleteClusterAndResources(ctx context.Context, clusterName string, deleteClusterNode bool) {
 	clusterUID := string("cluster__" + clusterName)
-	if err := dao.deleteWithRetry(dao.DeleteClusterResourcesTxn(ctx, clusterName)); err == nil {
+	if err := dao.deleteWithRetry(dao.DeleteClusterResourcesTxn, ctx, clusterName); err == nil {
 		klog.V(2).Infof("Successfully deleted resources and edges for cluster %s from database!", clusterName)
 	}
 
 	if deleteClusterNode {
-		if err := dao.deleteWithRetry(dao.DeleteClusterTxn(ctx, clusterUID)); err == nil {
+		if err := dao.deleteWithRetry(dao.DeleteClusterTxn, ctx, clusterUID); err == nil {
 			klog.V(2).Infof("Successfully deleted cluster node %s from database!", clusterName)
 			// Delete cluster from existing clusters cache
 			DeleteClustersCache(clusterUID)
@@ -29,7 +29,7 @@ func (dao *DAO) DeleteClusterAndResources(ctx context.Context, clusterName strin
 	}
 }
 
-func (dao *DAO) deleteWithRetry(deleteFunction error) error {
+func (dao *DAO) deleteWithRetry(deleteFunction func(context.Context, string) error, ctx context.Context, clusterName string) error {
 	retry := 0
 	cfg := config.Cfg
 
@@ -37,13 +37,14 @@ func (dao *DAO) deleteWithRetry(deleteFunction error) error {
 	for {
 		// If a statement within a transaction fails, the transaction can get aborted and rest of the statements
 		// can get skipped. So if any statements fail, we retry the entire transaction
-		err := deleteFunction
+		err := deleteFunction(ctx, clusterName)
 		if err != nil {
 			klog.Errorf("Unable to process cluster delete transaction. Error: %+v\n", err)
 			waitMS := int(math.Min(float64(retry*500), float64(cfg.MaxBackoffMS)))
+			timetoSleep := time.Duration(waitMS) * time.Second
 			retry++
-			klog.Infof("Retry cluster delete transaction in %d milliseconds\n", waitMS)
-			time.Sleep(time.Duration(waitMS) * time.Millisecond)
+			klog.Infof("Retry cluster delete transaction in %d seconds\n", timetoSleep)
+			time.Sleep(timetoSleep)
 		} else {
 			break
 		}

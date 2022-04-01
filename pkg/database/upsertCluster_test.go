@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/jackc/pgconn"
 	pgx "github.com/jackc/pgx/v4"
 	"github.com/pashagolub/pgxmock"
 	"github.com/stolostron/search-indexer/pkg/model"
@@ -17,6 +18,7 @@ import (
 
 var clusterProps map[string]interface{}
 var existingCluster map[string]interface{}
+var retryDel int
 
 func initializeVars() {
 	clusterProps = map[string]interface{}{
@@ -243,6 +245,62 @@ func Test_DelCluster(t *testing.T) {
 		gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
 		gomock.Eq([]interface{}{clusterUID}),
 	).Return(nil, nil)
+	dao.DeleteClusterAndResources(context.TODO(), clusterName, true)
+
+	// After delete cluster method runs, clusters cache should not have an entry for cluster_foo
+	_, ok := ReadClustersCache("cluster__name-foo")
+	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
+}
+
+// Test delete cluster resources from db
+func Test_DelClusterResourcesError(t *testing.T) {
+	clusterName := "name-foo"
+	clusterUID := "cluster__name-foo"
+
+	//Ensure there is an entry for cluster_foo in the cluster cache
+	UpdateClustersCache("cluster__name-foo", nil)
+
+	mock, err := pgxmock.NewConn()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer mock.Close(context.Background())
+	dao, mockPool := buildMockDAO(t)
+
+	// Delete cluster resources and edges
+	retryDel = 0 //count to keep track of failures/executions
+
+	// Expect BeginTx to be called twice. First time, return error. Second time, return success.
+	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Times(2).
+		DoAndReturn(func(con context.Context, txo pgx.TxOptions) (pgxmock.PgxConnIface, error) {
+
+			if retryDel == 0 { // First try to begin transaction
+				retryDel++
+				return mock, errors.New("error deleting cluster resources from resources table") //return error
+			} else {
+				retryDel = 0     //reset retryDel
+				return mock, nil //return no error
+			}
+		})
+	mock.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mock.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mock.ExpectCommit()
+
+	// Expect deletecluster to be called twice. First time, return error. Second time, return success.
+	mockPool.EXPECT().Exec(context.TODO(), gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
+		gomock.Eq(clusterUID)).
+		Times(2). //expect it to be called twice
+		DoAndReturn(func(con context.Context, sql string, clusterUID string) (pgconn.CommandTag, error) {
+
+			if retryDel == 0 { // First try to delete cluster
+				retryDel++
+				return nil, errors.New("error deleting cluster from resources")
+			} else {
+				retryDel = 0 //reset retryDel
+				return nil, nil
+			}
+		})
+
 	dao.DeleteClusterAndResources(context.TODO(), clusterName, true)
 
 	// After delete cluster method runs, clusters cache should not have an entry for cluster_foo

@@ -55,7 +55,8 @@ func new() *Config {
 		PodNamespace:    getEnv("POD_NAMESPACE", "open-cluster-management"),
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		Version:         COMPONENT_VERSION,
-		MaxBackoffMS:    getEnvAsInt("MAX_BACKOFF_MS", 30000), // 30 sec
+		// Use 5min for delete cluster activities and 30 seconds for db reconnect retry
+		MaxBackoffMS: getEnvAsInt("MAX_BACKOFF_MS", 300000), // 5 min
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
 		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 300000), // 5 min
 		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
