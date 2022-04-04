@@ -155,6 +155,8 @@ func processClusterUpsert(ctx context.Context, obj interface{}) {
 			klog.Warning("Failed to Unmarshal ManagedclusterInfo", err)
 		}
 		resource = transformManagedClusterInfo(&managedClusterInfo)
+	case "ManagedClusterAddOn":
+		klog.V(4).Info("No upsert cluster actions for kind: %s", obj.(*unstructured.Unstructured).GetKind())
 	default:
 		klog.Warning("ClusterWatch received unknown kind.", obj.(*unstructured.Unstructured).GetKind())
 		return
@@ -273,8 +275,13 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 	kind := obj.(*unstructured.Unstructured).GetKind()
 	switch kind {
 	case "ManagedCluster":
+		// When ManagedCluster (MC) is deleted, delete the resources and edges and cluster node for that cluster from db
+		// ManagedClusterInfo (namespace scoped) will be deleted when the MC (cluster scoped) is being deleted.
+		// So, we are tracking deletes of MC only to avoid duplication.
 		deleteClusterNode = true
 	case "ManagedClusterAddOn":
+		// When ManagedClusterAddOn (MCA) is deleted, search is disabled in the cluster. So, we delete the resources
+		// and edges for that cluster from db. But the cluster node is kept until MC is deleted.
 		deleteClusterNode = false
 	default:
 		klog.V(4).Info("No delete cluster actions for kind: %s", kind)

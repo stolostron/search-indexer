@@ -184,6 +184,8 @@ func Test_ProcessClusterNoDeleteOnMCInfo(t *testing.T) {
 func Test_ProcessClusterDeleteOnMC(t *testing.T) {
 	initializeVars()
 	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedCluster", "", "name-foo", "test-mc-uid")
+	//Ensure there is an entry for cluster_foo in the cluster cache
+	database.UpdateClustersCache("cluster__name-foo", nil)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -219,6 +221,9 @@ func Test_ProcessClusterDeleteOnMCA(t *testing.T) {
 	initializeVars()
 	obj := newTestUnstructured(managedclusteraddongroupAPIVersion, "ManagedClusterAddOn", "", "name-foo", "test-mc-uid")
 
+	//Ensure there is an entry for cluster_foo in the cluster cache
+	database.UpdateClustersCache("cluster__name-foo", nil)
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
@@ -235,15 +240,11 @@ func Test_ProcessClusterDeleteOnMCA(t *testing.T) {
 	mock.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mock.ExpectCommit()
 
-	// mockPool.EXPECT().Exec(gomock.Any(),
-	// 	gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
-	// 	gomock.Eq([]interface{}{clusterUID}),
-	// ).Return(nil, nil)
-
 	processClusterDelete(context.TODO(), obj)
 
-	//Once processClusterDelete is done, existingClustersCache should not have an entry for cluster foo
+	// Once processClusterDelete is done, existingClustersCache should still have an entry for cluster foo
+	// as we are not deleting it until MC is deleted.
 	_, ok := database.ReadClustersCache("cluster__name-foo")
-	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
+	AssertEqual(t, ok, true, "existingClustersCache should still have an entry for cluster foo")
 
 }
