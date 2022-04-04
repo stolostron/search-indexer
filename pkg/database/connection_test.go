@@ -3,9 +3,12 @@
 package database
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/pashagolub/pgxmock"
 )
 
 func Test_initializeTables(t *testing.T) {
@@ -20,5 +23,33 @@ func Test_initializeTables(t *testing.T) {
 
 	// Execute function test.
 	dao.InitializeTables()
+
+}
+
+func Test_checkErrorAndRollback(t *testing.T) {
+	mock, err := pgxmock.NewConn()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer mock.Close(context.Background())
+	mock.ExpectRollback()
+	e := errors.New("table resources not found")
+	logMessage := "Error commiting delete cluster transaction for cluster: cluster_foo"
+	// Execute function test.
+	checkErrorAndRollback(e, logMessage, mock, context.TODO())
+
+}
+func Test_checkErrorAndRollbackError(t *testing.T) {
+	mock, err := pgxmock.NewConn()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer mock.Close(context.Background())
+	e := errors.New("table resources not found")
+
+	mock.ExpectRollback().WillReturnError(e) // Rollback returns error
+	logMessage := "Error commiting delete cluster transaction for cluster: cluster_foo"
+	// Execute function test.
+	checkErrorAndRollback(e, logMessage, mock, context.TODO())
 
 }

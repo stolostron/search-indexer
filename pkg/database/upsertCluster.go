@@ -29,7 +29,8 @@ func (dao *DAO) DeleteClusterAndResources(ctx context.Context, clusterName strin
 	}
 }
 
-func (dao *DAO) deleteWithRetry(deleteFunction func(context.Context, string) error, ctx context.Context, clusterName string) error {
+func (dao *DAO) deleteWithRetry(deleteFunction func(context.Context, string) error,
+	ctx context.Context, clusterName string) error {
 	retry := 0
 	cfg := config.Cfg
 

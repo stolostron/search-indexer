@@ -45,6 +45,7 @@ func Test_UpsertCluster_NoUpdate(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao, _ := buildMockDAO(t)
 
+	// Execute function test.
 	dao.UpsertCluster(currCluster)
 	AssertEqual(t, len(existingClustersCache), 1, "existingClustersCache should have length of 1")
 	_, ok := ReadClustersCache("cluster__name-foo")
@@ -82,6 +83,7 @@ func Test_UpsertCluster_Update1(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
 	).Return(nil, nil)
 
+	// Execute function test.
 	dao.UpsertCluster(currCluster)
 	AssertEqual(t, len(existingClustersCache), 1, "existingClustersCache should have length of 1")
 	currProps, clusterPresent := ReadClustersCache("cluster__name-foo")
@@ -127,6 +129,8 @@ func Test_UpsertCluster_Update2(t *testing.T) {
 		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
 		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
 	).Return(nil, nil)
+
+	// Execute function test.
 	dao.UpsertCluster(currCluster)
 	AssertEqual(t, len(existingClustersCache), 1, "existingClustersCache should have length of 1")
 	currProps, clusterPresent := ReadClustersCache("cluster__name-foo")
@@ -171,6 +175,7 @@ func Test_UpsertCluster_Insert(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
 	).Return(nil, nil)
 
+	// Execute function test.
 	dao.UpsertCluster(currCluster)
 	AssertEqual(t, len(existingClustersCache), 1, "existingClustersCache should have length of 1")
 	_, ok := ReadClustersCache("cluster__name-foo")
@@ -181,6 +186,7 @@ func Test_UpsertCluster_Insert(t *testing.T) {
 func Test_clusterPropsUpToDate_notInCache(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao, _ := buildMockDAO(t)
+	// Execute function test.
 	ok := dao.clusterPropsUpToDate("cluster__name-foo1", model.Resource{})
 	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo1")
 
@@ -195,6 +201,7 @@ func Test_clusterInDB_QueryErr(t *testing.T) {
 		gomock.Eq(`SELECT uid, data from search.resources where uid=$1`),
 		gomock.Eq([]interface{}{"cluster__name-foo1"}),
 	).Return(nil, errors.New("Error fetching data"))
+	// Execute function test.
 	ok := dao.clusterInDB("cluster__name-foo1")
 	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo1")
 
@@ -216,6 +223,7 @@ func Test_DelClusterResources(t *testing.T) {
 	mock.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mock.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mock.ExpectCommit()
+	// Execute function test.
 	dao.DeleteClusterAndResources(context.TODO(), clusterName, false)
 
 	// After delete cluster method runs, clusters cache should still have an entry for cluster_foo
@@ -245,6 +253,7 @@ func Test_DelCluster(t *testing.T) {
 		gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
 		gomock.Eq([]interface{}{clusterUID}),
 	).Return(nil, nil)
+	// Execute function test.
 	dao.DeleteClusterAndResources(context.TODO(), clusterName, true)
 
 	// After delete cluster method runs, clusters cache should not have an entry for cluster_foo
@@ -300,7 +309,7 @@ func Test_DelClusterResourcesError(t *testing.T) {
 				return nil, nil
 			}
 		})
-
+	// Execute function test.
 	dao.DeleteClusterAndResources(context.TODO(), clusterName, true)
 
 	// After delete cluster method runs, clusters cache should not have an entry for cluster_foo
