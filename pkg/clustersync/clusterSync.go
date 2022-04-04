@@ -73,7 +73,7 @@ func syncClusters(ctx context.Context) {
 			processClusterUpsert(ctx, next)
 		},
 		DeleteFunc: func(obj interface{}) {
-			klog.V(4).Info("DeleteFunc")
+			klog.V(4).Info("DeleteFunc for ", obj.(*unstructured.Unstructured).GetKind())
 			processClusterDelete(ctx, obj)
 		},
 	}
@@ -270,7 +270,6 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 func processClusterDelete(ctx context.Context, obj interface{}) {
 	klog.V(4).Info("Processing Cluster Delete.")
 	clusterName := obj.(*unstructured.Unstructured).GetName()
-	klog.V(3).Infof("Deleting Cluster resource %s and all resources from the DB", clusterName)
 	var deleteClusterNode bool
 	kind := obj.(*unstructured.Unstructured).GetKind()
 	switch kind {
@@ -279,10 +278,16 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 		// ManagedClusterInfo (namespace scoped) will be deleted when the MC (cluster scoped) is being deleted.
 		// So, we are tracking deletes of MC only to avoid duplication.
 		deleteClusterNode = true
+		klog.V(3).Infof("Received delete for %s. Deleting Cluster resource %s and all resources from the DB", kind,
+			clusterName)
+
 	case "ManagedClusterAddOn":
 		// When ManagedClusterAddOn (MCA) is deleted, search is disabled in the cluster. So, we delete the resources
 		// and edges for that cluster from db. But the cluster node is kept until MC is deleted.
 		deleteClusterNode = false
+		klog.V(3).Infof("Received delete for %s. Deleting Cluster resources and edges for cluster %s from the DB", kind,
+			clusterName)
+
 	default:
 		klog.V(4).Info("No delete cluster actions for kind: %s", kind)
 		return
