@@ -54,15 +54,15 @@ func (dao *DAO) deleteWithRetry(deleteFunction func(context.Context, string) err
 
 func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName string) error {
 	start := time.Now()
+	var rowsDeleted int64
 	defer func() {
-		// Log as a warning if delete is too slow.
+		// Log a warning if delete is too slow.
 		// Note the 100ms is just an initial guess, we should adjust based on normal execution time.
 		if time.Since(start) > 100*time.Millisecond {
-			// Is it possible to include the number of records deleted?
-			klog.Warning("Delete of %s took %s", clusterName, time.Since(start))
+			klog.Warning("Delete of %s took %s. RowsDeleted: %d", clusterName, time.Since(start), rowsDeleted)
 			return
 		}
-		klog.V(4).Info("Delete of %s took %s", clusterName, time.Since(start))
+		klog.V(4).Info("Delete of %s took %s. RowsDeleted: %d", clusterName, time.Since(start), rowsDeleted)
 	}()
 	tx, txErr := dao.pool.BeginTx(ctx, pgx.TxOptions{})
 	if txErr != nil {
@@ -70,17 +70,21 @@ func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName strin
 		return txErr
 	} else {
 		// Delete resources for cluster from resources table from DB
-		if _, err := tx.Exec(ctx, "DELETE FROM search.resources WHERE cluster=$1", clusterName); err != nil {
+		if res, err := tx.Exec(ctx, "DELETE FROM search.resources WHERE cluster=$1", clusterName); err != nil {
 			checkErrorAndRollback(err,
 				fmt.Sprintf("Error deleting resources from search.resources for clusterName %s.", clusterName), tx, ctx)
 			return err
+		} else {
+			rowsDeleted = rowsDeleted + res.RowsAffected()
 		}
 
 		// Delete edges for cluster from DB
-		if _, err := tx.Exec(ctx, "DELETE FROM search.edges WHERE cluster=$1", clusterName); err != nil {
+		if res, err := tx.Exec(ctx, "DELETE FROM search.edges WHERE cluster=$1", clusterName); err != nil {
 			checkErrorAndRollback(err,
 				fmt.Sprintf("Error deleting resources from search.edges for clusterName %s.", clusterName), tx, ctx)
 			return err
+		} else {
+			rowsDeleted = rowsDeleted + res.RowsAffected()
 		}
 
 		if err := tx.Commit(ctx); err != nil {
