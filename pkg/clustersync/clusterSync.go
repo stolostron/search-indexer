@@ -288,8 +288,12 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 		klog.V(3).Infof("Received delete for %s. Deleting Cluster resources and edges for cluster %s from the DB", kind,
 			clusterName)
 
+	case "ManagedClusterInfo":
+		klog.V(4).Infof("No delete cluster actions for kind: %s", kind)
+		return
+
 	default:
-		klog.V(4).Info("No delete cluster actions for kind: %s", kind)
+		klog.Warningf("No delete cluster actions for kind: %s", kind)
 		return
 	}
 	dao.DeleteClusterAndResources(ctx, clusterName, deleteClusterNode)

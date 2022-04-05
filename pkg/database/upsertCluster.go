@@ -41,9 +41,9 @@ func (dao *DAO) deleteWithRetry(deleteFunction func(context.Context, string) err
 		err := deleteFunction(ctx, clusterName)
 		if err != nil {
 			waitMS := int(math.Min(float64(retry*500), float64(cfg.MaxBackoffMS)))
-			timetoSleep := time.Duration(waitMS) * time.Second
+			timetoSleep := time.Duration(waitMS) * time.Millisecond
 			retry++
-			klog.Errorf("Unable to process cluster delete transaction: %+v. Retry in %d seconds\n", err, timetoSleep)
+			klog.Errorf("Unable to process cluster delete transaction: %+v. Retry in %d ms\n", err, timetoSleep)
 			time.Sleep(timetoSleep)
 		} else {
 			break
@@ -53,6 +53,17 @@ func (dao *DAO) deleteWithRetry(deleteFunction func(context.Context, string) err
 }
 
 func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName string) error {
+	start := time.Now()
+	defer func() {
+		// Log as a warning if delete is too slow.
+		// Note the 100ms is just an initial guess, we should adjust based on normal execution time.
+		if time.Since(start) > 100*time.Millisecond {
+			// Is it possible to include the number of records deleted?
+			klog.Warning("Delete of %s took %s", clusterName, time.Since(start))
+			return
+		}
+		klog.V(4).Info("Delete of %s took %s", clusterName, time.Since(start))
+	}()
 	tx, txErr := dao.pool.BeginTx(ctx, pgx.TxOptions{})
 	if txErr != nil {
 		klog.Error("Error while beginning transaction block for deleting cluster ", clusterName)

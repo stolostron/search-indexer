@@ -64,7 +64,7 @@ func initializePool() pgxpoolmock.PgxPool {
 			timeToSleep := time.Duration(waitMS) * time.Millisecond
 			retry++
 			klog.Errorf("Unable to connect to database: %+v. Will retry in %d milliseconds\n", err, timeToSleep)
-			time.Sleep(time.Millisecond)
+			time.Sleep(timeToSleep)
 		} else {
 			klog.Info("Successfully connected to database!")
 			break
