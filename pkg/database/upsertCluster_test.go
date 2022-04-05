@@ -213,16 +213,16 @@ func Test_DelClusterResources(t *testing.T) {
 	//Ensure there is an entry for cluster_foo in the cluster cache
 	UpdateClustersCache("cluster__name-foo", nil)
 
-	mock, err := pgxmock.NewConn()
+	mockConn, err := pgxmock.NewConn()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mock.Close(context.Background())
+	defer mockConn.Close(context.Background())
 	dao, mockPool := buildMockDAO(t)
-	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mock, nil)
-	mock.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectCommit()
+	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
+	mockConn.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectCommit()
 	// Execute function test.
 	dao.DeleteClusterAndResources(context.TODO(), clusterName, false)
 
@@ -238,16 +238,16 @@ func Test_DelCluster(t *testing.T) {
 	//Ensure there is an entry for cluster_foo in the cluster cache
 	UpdateClustersCache("cluster__name-foo", nil)
 
-	mock, err := pgxmock.NewConn()
+	mockConn, err := pgxmock.NewConn()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mock.Close(context.Background())
+	defer mockConn.Close(context.Background())
 	dao, mockPool := buildMockDAO(t)
-	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mock, nil)
-	mock.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectCommit()
+	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
+	mockConn.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectCommit()
 
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
@@ -269,11 +269,11 @@ func Test_DelClusterResourcesError(t *testing.T) {
 	//Ensure there is an entry for cluster_foo in the cluster cache
 	UpdateClustersCache("cluster__name-foo", nil)
 
-	mock, err := pgxmock.NewConn()
+	mockConn, err := pgxmock.NewConn()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mock.Close(context.Background())
+	defer mockConn.Close(context.Background())
 	dao, mockPool := buildMockDAO(t)
 
 	// Delete cluster resources and edges
@@ -285,15 +285,15 @@ func Test_DelClusterResourcesError(t *testing.T) {
 
 			if retryDel == 0 { // First try to begin transaction
 				retryDel++
-				return mock, errors.New("error deleting cluster resources from resources table") //return error
+				return mockConn, errors.New("error deleting cluster resources from resources table") //return error
 			} else {
-				retryDel = 0     //reset retryDel
-				return mock, nil //return no error
+				retryDel = 0         //reset retryDel
+				return mockConn, nil //return no error
 			}
 		})
-	mock.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectCommit()
+	mockConn.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectCommit()
 
 	// Expect deletecluster to be called twice. First time, return error. Second time, return success.
 	mockPool.EXPECT().Exec(context.TODO(), gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),

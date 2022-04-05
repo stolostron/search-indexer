@@ -40,11 +40,10 @@ func (dao *DAO) deleteWithRetry(deleteFunction func(context.Context, string) err
 		// can get skipped. So if any statements fail, we retry the entire transaction
 		err := deleteFunction(ctx, clusterName)
 		if err != nil {
-			klog.Errorf("Unable to process cluster delete transaction. Error: %+v\n", err)
 			waitMS := int(math.Min(float64(retry*500), float64(cfg.MaxBackoffMS)))
 			timetoSleep := time.Duration(waitMS) * time.Second
 			retry++
-			klog.Infof("Retry cluster delete transaction in %d seconds\n", timetoSleep)
+			klog.Errorf("Unable to process cluster delete transaction: %+v. Retry in %d seconds\n", err, timetoSleep)
 			time.Sleep(timetoSleep)
 		} else {
 			break

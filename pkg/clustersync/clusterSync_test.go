@@ -153,7 +153,7 @@ func AssertEqual(t *testing.T, a interface{}, b interface{}, message string) {
 
 func Test_isClusterCrdMissingNoError(t *testing.T) {
 	ok := isClusterCrdMissing(nil)
-	AssertEqual(t, ok, false, "Noerror found in clusterCRDMissing")
+	AssertEqual(t, ok, false, "No error found in clusterCRDMissing")
 }
 
 func Test_clusterCrdMissingWithMissingError(t *testing.T) {
@@ -194,15 +194,15 @@ func Test_ProcessClusterDeleteOnMC(t *testing.T) {
 	dao = database.NewDAO(mockPool)
 	clusterName := "name-foo"
 	clusterUID := "cluster__name-foo"
-	mock, err := pgxmock.NewConn()
+	mockConn, err := pgxmock.NewConn()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mock.Close(context.Background())
-	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mock, nil)
-	mock.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectCommit()
+	defer mockConn.Close(context.Background())
+	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
+	mockConn.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectCommit()
 
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
@@ -230,15 +230,15 @@ func Test_ProcessClusterDeleteOnMCA(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao = database.NewDAO(mockPool)
 	clusterName := "name-foo"
-	mock, err := pgxmock.NewConn()
+	mockConn, err := pgxmock.NewConn()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mock.Close(context.Background())
-	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mock, nil)
-	mock.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectCommit()
+	defer mockConn.Close(context.Background())
+	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
+	mockConn.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectCommit()
 
 	processClusterDelete(context.TODO(), obj)
 
