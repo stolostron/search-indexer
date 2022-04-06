@@ -156,7 +156,7 @@ func processClusterUpsert(ctx context.Context, obj interface{}) {
 		}
 		resource = transformManagedClusterInfo(&managedClusterInfo)
 	case "ManagedClusterAddOn":
-		klog.V(4).Info("No upsert cluster actions for kind: %s", obj.(*unstructured.Unstructured).GetKind())
+		klog.V(4).Infof("No upsert cluster actions for kind: %s", obj.(*unstructured.Unstructured).GetKind())
 	default:
 		klog.Warning("ClusterWatch received unknown kind.", obj.(*unstructured.Unstructured).GetKind())
 		return

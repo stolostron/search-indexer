@@ -54,15 +54,18 @@ func (dao *DAO) deleteWithRetry(deleteFunction func(context.Context, string) err
 
 func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName string) error {
 	start := time.Now()
-	var rowsDeleted int64
+	var rowsDeleted, resourcesDeleted, edgesDeleted int64
+
 	defer func() {
 		// Log a warning if delete is too slow.
 		// Note the 100ms is just an initial guess, we should adjust based on normal execution time.
 		if time.Since(start) > 100*time.Millisecond {
-			klog.Warning("Delete of %s took %s. RowsDeleted: %d", clusterName, time.Since(start), rowsDeleted)
+			klog.Warningf("Delete of %s took %s. Resources Deleted: %d, Edges Deleted: %d, Total RowsDeleted: %d",
+				clusterName, time.Since(start), resourcesDeleted, edgesDeleted, rowsDeleted)
 			return
 		}
-		klog.V(4).Info("Delete of %s took %s. RowsDeleted: %d", clusterName, time.Since(start), rowsDeleted)
+		klog.V(4).Infof("Delete of %s took %s. Resources Deleted: %d, Edges Deleted: %d, Total RowsDeleted: %d",
+			clusterName, time.Since(start), resourcesDeleted, edgesDeleted, rowsDeleted)
 	}()
 	tx, txErr := dao.pool.BeginTx(ctx, pgx.TxOptions{})
 	if txErr != nil {
@@ -75,7 +78,8 @@ func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName strin
 				fmt.Sprintf("Error deleting resources from search.resources for clusterName %s.", clusterName), tx, ctx)
 			return err
 		} else {
-			rowsDeleted = rowsDeleted + res.RowsAffected()
+			resourcesDeleted = res.RowsAffected()
+			rowsDeleted = rowsDeleted + resourcesDeleted
 		}
 
 		// Delete edges for cluster from DB
@@ -84,12 +88,13 @@ func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName strin
 				fmt.Sprintf("Error deleting resources from search.edges for clusterName %s.", clusterName), tx, ctx)
 			return err
 		} else {
-			rowsDeleted = rowsDeleted + res.RowsAffected()
+			edgesDeleted = res.RowsAffected()
+			rowsDeleted = rowsDeleted + edgesDeleted
 		}
 
 		if err := tx.Commit(ctx); err != nil {
 			checkErrorAndRollback(err,
-				fmt.Sprintf("Error commiting delete cluster transaction for cluster: %s.", clusterName), tx, ctx)
+				fmt.Sprintf("Error committing delete cluster transaction for cluster: %s.", clusterName), tx, ctx)
 			return err
 		}
 	}
