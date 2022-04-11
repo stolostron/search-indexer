@@ -5,8 +5,11 @@ package database
 import (
 	"context"
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/driftprogramming/pgxpoolmock"
+	"github.com/jackc/pgx/v4"
 	pgxpool "github.com/jackc/pgx/v4/pgxpool"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"k8s.io/klog/v2"
@@ -50,12 +53,22 @@ func initializePool() pgxpoolmock.PgxPool {
 		klog.Fatal("Error parsing database connection configuration. ", configErr)
 	}
 
-	conn, err := pgxpool.ConnectConfig(context.Background(), config)
-	if err != nil {
-		klog.Error("Unable to connect to database: %+v\n", err)
-		// TODO: We need to retry the connection until successful.
-	} else {
-		klog.Info("Successfully connected to database!")
+	retry := 0
+	var conn *pgxpool.Pool
+	var err error
+	for {
+		conn, err = pgxpool.ConnectConfig(context.Background(), config)
+		if err != nil {
+			// Max wait time is 30 sec
+			waitMS := int(math.Min(float64(retry*500), float64(cfg.MaxBackoffMS/10)))
+			timeToSleep := time.Duration(waitMS) * time.Millisecond
+			retry++
+			klog.Errorf("Unable to connect to database: %+v. Will retry in %d milliseconds\n", err, timeToSleep)
+			time.Sleep(timeToSleep)
+		} else {
+			klog.Info("Successfully connected to database!")
+			break
+		}
 	}
 
 	return conn
@@ -95,5 +108,12 @@ func (dao *DAO) InitializeTables() {
 func checkError(err error, logMessage string) {
 	if err != nil {
 		klog.Error(logMessage, " ", err)
+	}
+}
+
+func checkErrorAndRollback(err error, logMessage string, tx pgx.Tx, ctx context.Context) {
+	checkError(err, logMessage)
+	if err := tx.Rollback(ctx); err != nil {
+		checkError(err, "Encountered error while rolling back cluster delete transaction command")
 	}
 }

@@ -4,11 +4,14 @@ package clustersync
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 
 	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
+	"github.com/jackc/pgx/v4"
+	"github.com/pashagolub/pgxmock"
 	"github.com/stolostron/search-indexer/pkg/database"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -21,6 +24,7 @@ import (
 // Create a GroupVersionResource
 const managedclusterinfogroupAPIVersion = "internal.open-cluster-management.io/v1beta1"
 const managedclustergroupAPIVersion = "cluster.open-cluster-management.io/v1"
+const managedclusteraddongroupAPIVersion = "addon.open-cluster-management.io/v1alpha1"
 
 var managedClusterGvr *schema.GroupVersionResource
 var managedClusterInfoGvr *schema.GroupVersionResource
@@ -101,7 +105,7 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
 	).Return(nil, nil)
 
-	processClusterUpsert(obj)
+	processClusterUpsert(context.TODO(), obj)
 	//Once processClusterUpsert is done, existingClustersCache should have an entry for cluster foo
 	_, ok := database.ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
@@ -110,6 +114,8 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 
 func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 	initializeVars()
+	//Ensure there is an entry for cluster_foo in the cluster cache
+	database.UpdateClustersCache("cluster__name-foo", existingCluster["Properties"])
 	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedClusterInfo", "name-foo", "name-foo", "test-mc-uid")
 
 	ctrl := gomock.NewController(t)
@@ -130,7 +136,7 @@ func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
 	).Return(nil, nil)
 
-	processClusterUpsert(obj)
+	processClusterUpsert(context.TODO(), obj)
 	//Once processClusterUpsert is done, existingClustersCache should have an entry for cluster foo
 	_, ok := database.ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
@@ -143,4 +149,102 @@ func AssertEqual(t *testing.T, a interface{}, b interface{}, message string) {
 		return
 	}
 	t.Errorf("%s Received %v (type %v), expected %v (type %v)", message, a, reflect.TypeOf(a), b, reflect.TypeOf(b))
+}
+
+func Test_isClusterCrdMissingNoError(t *testing.T) {
+	ok := isClusterCrdMissing(nil)
+	AssertEqual(t, ok, false, "No error found in clusterCRDMissing")
+}
+
+func Test_clusterCrdMissingWithMissingError(t *testing.T) {
+	err := errors.New("could not find the requested resource: ClusterCRD")
+	ok := isClusterCrdMissing(err)
+	AssertEqual(t, ok, true, "Error found: clusterCRD is missing")
+}
+func Test_clusterCrdMissingWithNotMissingError(t *testing.T) {
+	err := errors.New("some other error")
+	ok := isClusterCrdMissing(err)
+	AssertEqual(t, ok, false, "Error found: clusterCRD is missing")
+}
+func Test_ProcessClusterNoDeleteOnMCInfo(t *testing.T) {
+	initializeVars()
+	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedClusterInfo", "", "name-foo", "test-mc-uid")
+	//Ensure there is an entry for cluster_foo in the cluster cache
+	database.UpdateClustersCache("cluster__name-foo", nil)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	processClusterDelete(context.TODO(), obj)
+
+	//Once processClusterDelete is done, existingClustersCache should still have an entry for cluster foo as resources
+	// are not deleted on deletion of ManadClusterInfo
+	_, ok := database.ReadClustersCache("cluster__name-foo")
+	AssertEqual(t, ok, true, "existingClustersCache should not have an entry for cluster foo")
+
+}
+func Test_ProcessClusterDeleteOnMC(t *testing.T) {
+	initializeVars()
+	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedCluster", "", "name-foo", "test-mc-uid")
+	//Ensure there is an entry for cluster_foo in the cluster cache
+	database.UpdateClustersCache("cluster__name-foo", nil)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
+	// Prepare a mock DAO instance
+	dao = database.NewDAO(mockPool)
+	clusterName := "name-foo"
+	clusterUID := "cluster__name-foo"
+	mockConn, err := pgxmock.NewConn()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer mockConn.Close(context.Background())
+	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
+	mockConn.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectCommit()
+
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
+		gomock.Eq([]interface{}{clusterUID}),
+	).Return(nil, nil)
+
+	processClusterDelete(context.TODO(), obj)
+
+	//Once processClusterDelete is done, existingClustersCache should not have an entry for cluster foo
+	_, ok := database.ReadClustersCache("cluster__name-foo")
+	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
+
+}
+
+func Test_ProcessClusterDeleteOnMCA(t *testing.T) {
+	initializeVars()
+	obj := newTestUnstructured(managedclusteraddongroupAPIVersion, "ManagedClusterAddOn", "", "name-foo", "test-mc-uid")
+
+	//Ensure there is an entry for cluster_foo in the cluster cache
+	database.UpdateClustersCache("cluster__name-foo", nil)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
+	// Prepare a mock DAO instance
+	dao = database.NewDAO(mockPool)
+	clusterName := "name-foo"
+	mockConn, err := pgxmock.NewConn()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer mockConn.Close(context.Background())
+	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
+	mockConn.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectCommit()
+
+	processClusterDelete(context.TODO(), obj)
+
+	// Once processClusterDelete is done, existingClustersCache should still have an entry for cluster foo
+	// as we are not deleting it until MC is deleted.
+	_, ok := database.ReadClustersCache("cluster__name-foo")
+	AssertEqual(t, ok, true, "existingClustersCache should still have an entry for cluster foo")
+
 }

@@ -30,6 +30,7 @@ var mux sync.Mutex
 
 const managedClusterGVR = "managedclusters.v1.cluster.open-cluster-management.io"
 const managedClusterInfoGVR = "managedclusterinfos.v1beta1.internal.open-cluster-management.io"
+const managedClusterAddonGVR = "managedclusteraddons.v1alpha1.addon.open-cluster-management.io"
 const lockName = "search-indexer.open-cluster-management.io"
 
 func ElectLeaderAndStart(ctx context.Context) {
@@ -54,34 +55,38 @@ func syncClusters(ctx context.Context) {
 	// Create GVR for ManagedCluster and ManagedClusterInfo
 	managedClusterGvr, _ := schema.ParseResourceArg(managedClusterGVR)
 	managedClusterInfoGvr, _ := schema.ParseResourceArg(managedClusterInfoGVR)
+	managedClusterAddonGvr, _ := schema.ParseResourceArg(managedClusterAddonGVR)
 
 	//Create Informers for ManagedCluster and ManagedClusterInfo
 	managedClusterInformer := dynamicFactory.ForResource(*managedClusterGvr).Informer()
 	managedClusterInfoInformer := dynamicFactory.ForResource(*managedClusterInfoGvr).Informer()
+	managedClusterAddonInformer := dynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
 	// Create handlers for events
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			klog.V(4).Info("clusterWatch: AddFunc for ", obj.(*unstructured.Unstructured).GetKind())
-			processClusterUpsert(obj)
+			klog.V(4).Info("AddFunc for ", obj.(*unstructured.Unstructured).GetKind())
+			processClusterUpsert(ctx, obj)
 		},
 		UpdateFunc: func(prev interface{}, next interface{}) {
-			klog.V(4).Info("clusterWatch: UpdateFunc for", next.(*unstructured.Unstructured).GetKind())
-			processClusterUpsert(next)
+			klog.V(4).Info("UpdateFunc for", next.(*unstructured.Unstructured).GetKind())
+			processClusterUpsert(ctx, next)
 		},
-		// DeleteFunc: func(obj interface{}) {
-		// 	klog.Info("clusterWatch: DeleteFunc")
-		// 	processClusterDelete(obj)
-		// },
+		DeleteFunc: func(obj interface{}) {
+			klog.V(4).Info("DeleteFunc for ", obj.(*unstructured.Unstructured).GetKind())
+			processClusterDelete(ctx, obj)
+		},
 	}
 
 	// Add Handlers to both Informers
 	managedClusterInformer.AddEventHandler(handlers)
 	managedClusterInfoInformer.AddEventHandler(handlers)
+	managedClusterAddonInformer.AddEventHandler(handlers)
 
 	// Periodically check if the ManagedCluster/ManagedClusterInfo resource exists
 	go stopAndStartInformer(ctx, "cluster.open-cluster-management.io/v1", managedClusterInformer)
 	go stopAndStartInformer(ctx, "internal.open-cluster-management.io/v1beta1", managedClusterInfoInformer)
+	go stopAndStartInformer(ctx, "addon.open-cluster-management.io/v1alpha1", managedClusterInfoInformer)
 
 }
 
@@ -119,7 +124,7 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 	}
 }
 
-func processClusterUpsert(obj interface{}) {
+func processClusterUpsert(ctx context.Context, obj interface{}) {
 	// Lock so only one goroutine at a time can access add a cluster.
 	// Helps to eliminate duplicate entries.
 	mux.Lock()
@@ -150,6 +155,8 @@ func processClusterUpsert(obj interface{}) {
 			klog.Warning("Failed to Unmarshal ManagedclusterInfo", err)
 		}
 		resource = transformManagedClusterInfo(&managedClusterInfo)
+	case "ManagedClusterAddOn":
+		klog.V(4).Infof("No upsert cluster actions for kind: %s", obj.(*unstructured.Unstructured).GetKind())
 	default:
 		klog.Warning("ClusterWatch received unknown kind.", obj.(*unstructured.Unstructured).GetKind())
 		return
@@ -158,7 +165,10 @@ func processClusterUpsert(obj interface{}) {
 	// Upsert (attempt update, attempt insert on failure)
 	dao.UpsertCluster(resource)
 
-	// If a cluster is offline we remove the resources from that cluster, but leave the cluster resource object.
+	// A cluster can be offline due to resource shortage, network outage or other reasons. We are not deleting
+	// the cluster or resources if a cluster is offline to avoid unnecessary deletes and re-inserts in the database.
+	// We need to add a Message in the UI to show a list of clusters that are offline and warn users
+	// that the data might be stale
 	/*if resource.Properties["status"] == "offline" {
 		klog.Infof("Cluster %s is offline, removing cluster resources from datastore.", cluster.GetName())
 		delClusterResources(cluster)
@@ -254,4 +264,37 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 		ResourceString: "managedclusterinfos", // Maps rbac to ManagedClusterInfo
 	}
 	return resource
+}
+
+// Deletes a cluster resource and all resources from the cluster.
+func processClusterDelete(ctx context.Context, obj interface{}) {
+	klog.V(4).Info("Processing Cluster Delete.")
+	clusterName := obj.(*unstructured.Unstructured).GetName()
+	var deleteClusterNode bool
+	kind := obj.(*unstructured.Unstructured).GetKind()
+	switch kind {
+	case "ManagedCluster":
+		// When ManagedCluster (MC) is deleted, delete the resources and edges and cluster node for that cluster from db
+		// ManagedClusterInfo (namespace scoped) will be deleted when the MC (cluster scoped) is being deleted.
+		// So, we are tracking deletes of MC only to avoid duplication.
+		deleteClusterNode = true
+		klog.V(3).Infof("Received delete for %s. Deleting Cluster resource %s and all resources from the DB", kind,
+			clusterName)
+
+	case "ManagedClusterAddOn":
+		// When ManagedClusterAddOn (MCA) is deleted, search is disabled in the cluster. So, we delete the resources
+		// and edges for that cluster from db. But the cluster node is kept until MC is deleted.
+		deleteClusterNode = false
+		klog.V(3).Infof("Received delete for %s. Deleting Cluster resources and edges for cluster %s from the DB", kind,
+			clusterName)
+
+	case "ManagedClusterInfo":
+		klog.V(4).Infof("No delete cluster actions for kind: %s", kind)
+		return
+
+	default:
+		klog.Warningf("No delete cluster actions for kind: %s", kind)
+		return
+	}
+	dao.DeleteClusterAndResources(ctx, clusterName, deleteClusterNode)
 }
