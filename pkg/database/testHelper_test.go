@@ -26,14 +26,10 @@ func AssertEqual(t *testing.T, a interface{}, b interface{}, message string) {
 	t.Errorf("%s Received %v (type %v), expected %v (type %v)", message, a, reflect.TypeOf(a), b, reflect.TypeOf(b))
 }
 
-var disableConsoleWarning bool
-
 // Supress console output to prevent log messages from polluting test output.
 func SupressConsoleOutput() func() {
-	if !disableConsoleWarning {
-		fmt.Println("!!!!! Tests are supressing log output to stderr. !!!!!")
-		disableConsoleWarning = true
-	}
+	fmt.Println("\t  !!!!! Test is supressing log output to stderr. !!!!!")
+
 	nullFile, _ := os.Open(os.DevNull)
 	stdErr := os.Stderr
 	os.Stderr = nullFile
@@ -42,7 +38,6 @@ func SupressConsoleOutput() func() {
 		defer nullFile.Close()
 		os.Stderr = stdErr
 	}
-
 }
 
 type BatchResults struct {
