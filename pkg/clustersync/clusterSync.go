@@ -41,7 +41,7 @@ func ElectLeaderAndStart(ctx context.Context) {
 		dao = database.NewDAO(nil)
 	}
 	lock := getNewLock(client, lockName, podName, podNamespace)
-	runLeaderElection(ctx, lock)
+	runLeaderElection(ctx, lock, syncClusters)
 }
 
 // Watches ManagedCluster objects and updates the database with a Cluster node.
