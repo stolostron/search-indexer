@@ -30,7 +30,7 @@ func getNewLock(client *kubernetes.Clientset, lockname, podName, podNamespace st
 	}
 }
 
-func runLeaderElection(ctx context.Context, lock *resourcelock.LeaseLock, runLeaderTasks func(context.Context)) {
+func runLeaderElection(ctx context.Context, lock *resourcelock.LeaseLock) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -48,7 +48,7 @@ func runLeaderElection(ctx context.Context, lock *resourcelock.LeaseLock, runLea
 					OnStartedLeading: func(c context.Context) {
 						klog.Info("I'm the leader! Starting leader activities.")
 						leader = config.Cfg.PodName
-						runLeaderTasks(c)
+						syncClusters(c)
 					},
 					OnStoppedLeading: func() {
 						if leader == config.Cfg.PodName {
