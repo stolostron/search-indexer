@@ -157,6 +157,7 @@ func processClusterUpsert(ctx context.Context, obj interface{}) {
 		resource = transformManagedClusterInfo(&managedClusterInfo)
 	case "ManagedClusterAddOn":
 		klog.V(4).Infof("No upsert cluster actions for kind: %s", obj.(*unstructured.Unstructured).GetKind())
+		return
 	default:
 		klog.Warning("ClusterWatch received unknown kind.", obj.(*unstructured.Unstructured).GetKind())
 		return
@@ -272,6 +273,7 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 	clusterName := obj.(*unstructured.Unstructured).GetName()
 	var deleteClusterNode bool
 	kind := obj.(*unstructured.Unstructured).GetKind()
+	name := obj.(*unstructured.Unstructured).GetName()
 	switch kind {
 	case "ManagedCluster":
 		// When ManagedCluster (MC) is deleted, delete the resources and edges and cluster node for that cluster from db
@@ -284,10 +286,14 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 	case "ManagedClusterAddOn":
 		// When ManagedClusterAddOn (MCA) is deleted, search is disabled in the cluster. So, we delete the resources
 		// and edges for that cluster from db. But the cluster node is kept until MC is deleted.
-		deleteClusterNode = false
-		klog.V(3).Infof("Received delete for %s. Deleting Cluster resources and edges for cluster %s from the DB", kind,
-			clusterName)
-
+		if name == "search-collector" { // process only search-collector addon deletes
+			deleteClusterNode = false
+			klog.V(3).Infof("Received delete for %s. Deleting Cluster resources and edges for cluster %s from the DB", kind,
+				clusterName)
+		} else {
+			klog.V(4).Infof("No delete cluster actions for kind: %s and name: %s", kind)
+			return
+		}
 	case "ManagedClusterInfo":
 		klog.V(4).Infof("No delete cluster actions for kind: %s", kind)
 		return
