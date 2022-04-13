@@ -284,6 +284,7 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 			clusterName)
 
 	case "ManagedClusterAddOn":
+		clusterName = obj.(*unstructured.Unstructured).GetNamespace() // Namespace reflects the name of the cluster
 		// When ManagedClusterAddOn (MCA) is deleted, search is disabled in the cluster. So, we delete the resources
 		// and edges for that cluster from db. But the cluster node is kept until MC is deleted.
 		if name == "search-collector" { // process only search-collector addon deletes
