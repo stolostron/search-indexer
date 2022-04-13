@@ -69,7 +69,7 @@ func syncClusters(ctx context.Context) {
 			processClusterUpsert(ctx, obj)
 		},
 		UpdateFunc: func(prev interface{}, next interface{}) {
-			klog.V(4).Info("UpdateFunc for", next.(*unstructured.Unstructured).GetKind())
+			klog.V(4).Info("UpdateFunc for ", next.(*unstructured.Unstructured).GetKind())
 			processClusterUpsert(ctx, next)
 		},
 		DeleteFunc: func(obj interface{}) {
@@ -86,7 +86,7 @@ func syncClusters(ctx context.Context) {
 	// Periodically check if the ManagedCluster/ManagedClusterInfo resource exists
 	go stopAndStartInformer(ctx, "cluster.open-cluster-management.io/v1", managedClusterInformer)
 	go stopAndStartInformer(ctx, "internal.open-cluster-management.io/v1beta1", managedClusterInfoInformer)
-	go stopAndStartInformer(ctx, "addon.open-cluster-management.io/v1alpha1", managedClusterInfoInformer)
+	go stopAndStartInformer(ctx, "addon.open-cluster-management.io/v1alpha1", managedClusterAddonInformer)
 
 }
 
