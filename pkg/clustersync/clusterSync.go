@@ -292,7 +292,7 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 			klog.V(3).Infof("Received delete for %s. Deleting Cluster resources and edges for cluster %s from the DB", kind,
 				clusterName)
 		} else {
-			klog.V(4).Infof("No delete cluster actions for kind: %s and name: %s", kind)
+			klog.V(4).Infof("No delete cluster actions for kind: %s and name: %s", kind, name)
 			return
 		}
 	case "ManagedClusterInfo":
