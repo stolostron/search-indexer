@@ -217,30 +217,6 @@ func Test_ProcessClusterDeleteOnMC(t *testing.T) {
 
 }
 
-//Do not delete if addon name is not search-collector
-func Test_ProcessClusterNoDeleteOnMCANotSearch(t *testing.T) {
-	initializeVars()
-	obj := newTestUnstructured(managedclusteraddongroupAPIVersion, "ManagedClusterAddOn", "name-foo", "work-manager", "test-mc-uid")
-
-	//Ensure there is an entry for cluster_foo in the cluster cache
-	database.UpdateClustersCache("cluster__name-foo", nil)
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
-	// Prepare a mock DAO instance
-	dao = database.NewDAO(mockPool)
-
-	// Execute the function - delete should not happen as addon is not for search collector
-	processClusterDelete(context.TODO(), obj)
-
-	// Once processClusterDelete is done, existingClustersCache should still have an entry for cluster foo
-	// as we are not deleting anything.
-	_, ok := database.ReadClustersCache("cluster__name-foo")
-	AssertEqual(t, ok, true, "existingClustersCache should still have an entry for cluster foo")
-
-}
-
 //Delete only if addon name is search-collector
 func Test_ProcessClusterDeleteOnMCASearch(t *testing.T) {
 	initializeVars()
