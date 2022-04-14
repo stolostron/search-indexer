@@ -13,6 +13,7 @@ import (
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/database"
 	"github.com/stolostron/search-indexer/pkg/model"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
@@ -52,6 +53,13 @@ func syncClusters(ctx context.Context) {
 	dynamicFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient,
 		time.Duration(config.Cfg.RediscoverRateMS)*time.Millisecond)
 
+	// Filter and Process only search-addon events
+	filter := metav1.ListOptions{FieldSelector: "metadata.name=search-collector"}
+	filterFunc := dynamicinformer.TweakListOptionsFunc(func(options *metav1.ListOptions) { *options = filter })
+
+	filteredDynamicFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient,
+		time.Duration(config.Cfg.RediscoverRateMS)*time.Millisecond, metav1.NamespaceAll, filterFunc)
+
 	// Create GVR for ManagedCluster and ManagedClusterInfo
 	managedClusterGvr, _ := schema.ParseResourceArg(managedClusterGVR)
 	managedClusterInfoGvr, _ := schema.ParseResourceArg(managedClusterInfoGVR)
@@ -60,7 +68,7 @@ func syncClusters(ctx context.Context) {
 	//Create Informers for ManagedCluster and ManagedClusterInfo
 	managedClusterInformer := dynamicFactory.ForResource(*managedClusterGvr).Informer()
 	managedClusterInfoInformer := dynamicFactory.ForResource(*managedClusterInfoGvr).Informer()
-	managedClusterAddonInformer := dynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
+	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
 	// Create handlers for events
 	handlers := cache.ResourceEventHandlerFuncs{
