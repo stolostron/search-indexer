@@ -217,9 +217,10 @@ func Test_ProcessClusterDeleteOnMC(t *testing.T) {
 
 }
 
-func Test_ProcessClusterDeleteOnMCA(t *testing.T) {
+//Delete only if addon name is search-collector
+func Test_ProcessClusterDeleteOnMCASearch(t *testing.T) {
 	initializeVars()
-	obj := newTestUnstructured(managedclusteraddongroupAPIVersion, "ManagedClusterAddOn", "", "name-foo", "test-mc-uid")
+	obj := newTestUnstructured(managedclusteraddongroupAPIVersion, "ManagedClusterAddOn", "name-foo", "search-collector", "test-mc-uid")
 
 	//Ensure there is an entry for cluster_foo in the cluster cache
 	database.UpdateClustersCache("cluster__name-foo", nil)

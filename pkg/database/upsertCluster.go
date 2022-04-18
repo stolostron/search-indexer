@@ -102,10 +102,18 @@ func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName strin
 }
 
 func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterUID string) error {
+	start := time.Now()
+	var rowsDeleted int64
+
+	defer func() {
+		klog.V(4).Infof("Delete of %s took %s. Cluster Nodes Deleted: %d", clusterUID, time.Since(start), rowsDeleted)
+	}()
 	// Delete cluster node from DB.
-	if _, err := dao.pool.Exec(ctx, "DELETE FROM search.resources WHERE uid=$1", clusterUID); err != nil {
+	if res, err := dao.pool.Exec(ctx, "DELETE FROM search.resources WHERE uid=$1", clusterUID); err != nil {
 		checkError(err, fmt.Sprintf("Error deleting cluster %s from search.resources.", clusterUID))
 		return err
+	} else {
+		rowsDeleted = res.RowsAffected()
 	}
 	return nil
 }

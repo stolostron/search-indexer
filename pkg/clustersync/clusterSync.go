@@ -13,6 +13,7 @@ import (
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/database"
 	"github.com/stolostron/search-indexer/pkg/model"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
@@ -52,6 +53,13 @@ func syncClusters(ctx context.Context) {
 	dynamicFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient,
 		time.Duration(config.Cfg.RediscoverRateMS)*time.Millisecond)
 
+	// Filter and Process only search-addon events
+	filter := metav1.ListOptions{FieldSelector: "metadata.name=search-collector"}
+	filterFunc := dynamicinformer.TweakListOptionsFunc(func(options *metav1.ListOptions) { *options = filter })
+
+	filteredDynamicFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient,
+		time.Duration(config.Cfg.RediscoverRateMS)*time.Millisecond, metav1.NamespaceAll, filterFunc)
+
 	// Create GVR for ManagedCluster and ManagedClusterInfo
 	managedClusterGvr, _ := schema.ParseResourceArg(managedClusterGVR)
 	managedClusterInfoGvr, _ := schema.ParseResourceArg(managedClusterInfoGVR)
@@ -60,7 +68,7 @@ func syncClusters(ctx context.Context) {
 	//Create Informers for ManagedCluster and ManagedClusterInfo
 	managedClusterInformer := dynamicFactory.ForResource(*managedClusterGvr).Informer()
 	managedClusterInfoInformer := dynamicFactory.ForResource(*managedClusterInfoGvr).Informer()
-	managedClusterAddonInformer := dynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
+	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
 	// Create handlers for events
 	handlers := cache.ResourceEventHandlerFuncs{
@@ -157,6 +165,7 @@ func processClusterUpsert(ctx context.Context, obj interface{}) {
 		resource = transformManagedClusterInfo(&managedClusterInfo)
 	case "ManagedClusterAddOn":
 		klog.V(4).Infof("No upsert cluster actions for kind: %s", obj.(*unstructured.Unstructured).GetKind())
+		return
 	default:
 		klog.Warning("ClusterWatch received unknown kind.", obj.(*unstructured.Unstructured).GetKind())
 		return
@@ -272,6 +281,7 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 	clusterName := obj.(*unstructured.Unstructured).GetName()
 	var deleteClusterNode bool
 	kind := obj.(*unstructured.Unstructured).GetKind()
+	name := obj.(*unstructured.Unstructured).GetName()
 	switch kind {
 	case "ManagedCluster":
 		// When ManagedCluster (MC) is deleted, delete the resources and edges and cluster node for that cluster from db
@@ -282,11 +292,12 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 			clusterName)
 
 	case "ManagedClusterAddOn":
+		clusterName = obj.(*unstructured.Unstructured).GetNamespace() // Namespace reflects the name of the cluster
 		// When ManagedClusterAddOn (MCA) is deleted, search is disabled in the cluster. So, we delete the resources
 		// and edges for that cluster from db. But the cluster node is kept until MC is deleted.
 		deleteClusterNode = false
-		klog.V(3).Infof("Received delete for %s. Deleting Cluster resources and edges for cluster %s from the DB", kind,
-			clusterName)
+		klog.V(3).Infof("Received delete for %s %s. Deleting Cluster resources and edges for cluster %s from the DB",
+			name, kind, clusterName)
 
 	case "ManagedClusterInfo":
 		klog.V(4).Infof("No delete cluster actions for kind: %s", kind)
