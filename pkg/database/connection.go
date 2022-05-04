@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/driftprogramming/pgxpoolmock"
@@ -102,6 +103,22 @@ func (dao *DAO) InitializeTables() {
 	_, err = dao.pool.Exec(context.Background(),
 		"CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")
 	checkError(err, "Error creating index on search.resources data key name.")
+
+	createViewScript := strings.TrimSpace(`CREATE or REPLACE VIEW search.all_edges AS 
+	SELECT * from search.edges 
+	UNION
+	SELECT a.uid as sourceid , a.data->>'kind' as sourcekind, b.uid as destid, b.data->>'kind' as destkind, 
+	'deployedBy' as edgetype, a.cluster as cluster  
+	FROM search.resources a
+	INNER JOIN search.resources b
+	ON split_part(a.data->>'_hostingSubscription', '/', 1) = b.data->>'namespace'
+	AND split_part(a.data->>'_hostingSubscription', '/', 2) = b.data->>'name'
+	WHERE a.data->>'kind' = 'Subscription'
+	AND b.data->>'kind' = 'Subscription'
+	AND a.uid <> b.uid`)
+
+	_, err = dao.pool.Exec(context.Background(), createViewScript)
+	checkError(err, "Error creating all_edges view.")
 
 }
 
