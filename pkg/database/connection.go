@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/driftprogramming/pgxpoolmock"
@@ -77,31 +78,51 @@ func initializePool() pgxpoolmock.PgxPool {
 func (dao *DAO) InitializeTables() {
 	if config.Cfg.DevelopmentMode {
 		klog.Warning("Dropping search schema for development only. We must not see this message in production.")
-		_, err := dao.pool.Exec(context.Background(), "DROP SCHEMA IF EXISTS search CASCADE")
+		_, err := dao.pool.Exec(context.TODO(), "DROP SCHEMA IF EXISTS search CASCADE")
 		checkError(err, "Error dropping schema search.")
 	}
 
-	_, err := dao.pool.Exec(context.Background(), "CREATE SCHEMA IF NOT EXISTS search")
+	_, err := dao.pool.Exec(context.TODO(), "CREATE SCHEMA IF NOT EXISTS search")
 	checkError(err, "Error creating schema.")
-	_, err = dao.pool.Exec(context.Background(),
+	_, err = dao.pool.Exec(context.TODO(),
 		"CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
 	checkError(err, "Error creating table search.resources.")
-	_, err = dao.pool.Exec(context.Background(),
+	_, err = dao.pool.Exec(context.TODO(),
 		"CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")
 	checkError(err, "Error creating table search.edges.")
 
 	// Jsonb indexing data keys:
-	_, err = dao.pool.Exec(context.Background(),
+	_, err = dao.pool.Exec(context.TODO(),
 		"CREATE INDEX IF NOT EXISTS data_kind_idx ON search.resources USING GIN ((data -> 'kind'))")
 	checkError(err, "Error creating index on search.resources data key kind.")
 
-	_, err = dao.pool.Exec(context.Background(),
+	_, err = dao.pool.Exec(context.TODO(),
 		"CREATE INDEX IF NOT EXISTS data_namespace_idx ON search.resources USING GIN ((data -> 'namespace'))")
 	checkError(err, "Error creating index on search.resources data key namespace.")
 
-	_, err = dao.pool.Exec(context.Background(),
+	_, err = dao.pool.Exec(context.TODO(),
 		"CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")
 	checkError(err, "Error creating index on search.resources data key name.")
+
+	// This view is used to capture intercluster edges in order to surface all relationships on search page
+	// Join subscriptions on remote cluster to matching subscription on hub based on _hostingSubscription property.
+	// The remote subscription's _hostingSubscription property (namespace/name) should match
+	// the namespace and name of the hub subscription.
+	createViewScript := strings.TrimSpace(`CREATE or REPLACE VIEW search.all_edges AS 
+	SELECT * from search.edges 
+	UNION
+	SELECT a.uid as sourceid , a.data->>'kind' as sourcekind, b.uid as destid, b.data->>'kind' as destkind, 
+	'deployedBy' as edgetype, a.cluster as cluster  
+	FROM search.resources a
+	INNER JOIN search.resources b
+	ON split_part(a.data->>'_hostingSubscription', '/', 1) = b.data->>'namespace'
+	AND split_part(a.data->>'_hostingSubscription', '/', 2) = b.data->>'name'
+	WHERE a.data->>'kind' = 'Subscription'
+	AND b.data->>'kind' = 'Subscription'
+	AND a.uid <> b.uid`)
+
+	_, err = dao.pool.Exec(context.TODO(), createViewScript)
+	checkError(err, "Error creating all_edges view.")
 
 }
 

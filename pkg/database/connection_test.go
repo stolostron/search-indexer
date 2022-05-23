@@ -5,6 +5,7 @@ package database
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -12,6 +13,19 @@ import (
 )
 
 func Test_initializeTables(t *testing.T) {
+	createViewScript := strings.TrimSpace(`CREATE or REPLACE VIEW search.all_edges AS 
+	SELECT * from search.edges 
+	UNION
+	SELECT a.uid as sourceid , a.data->>'kind' as sourcekind, b.uid as destid, b.data->>'kind' as destkind, 
+	'deployedBy' as edgetype, a.cluster as cluster  
+	FROM search.resources a
+	INNER JOIN search.resources b
+	ON split_part(a.data->>'_hostingSubscription', '/', 1) = b.data->>'namespace'
+	AND split_part(a.data->>'_hostingSubscription', '/', 2) = b.data->>'name'
+	WHERE a.data->>'kind' = 'Subscription'
+	AND b.data->>'kind' = 'Subscription'
+	AND a.uid <> b.uid`)
+
 	// Prepare a mock DAO instance
 	dao, mockPool := buildMockDAO(t)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE SCHEMA IF NOT EXISTS search")).Return(nil, nil)
@@ -20,6 +34,7 @@ func Test_initializeTables(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_kind_idx ON search.resources USING GIN ((data -> 'kind'))")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_namespace_idx ON search.resources USING GIN ((data -> 'namespace'))")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq(createViewScript)).Return(nil, nil)
 
 	// Execute function test.
 	dao.InitializeTables()
