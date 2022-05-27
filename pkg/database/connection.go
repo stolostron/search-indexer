@@ -45,19 +45,13 @@ func NewDAO(p pgxpoolmock.PgxPool) DAO {
 func initializePool() pgxpoolmock.PgxPool {
 	cfg := config.Cfg
 
-	// dbConnString := "host=" + cfg.DBHost +
-	// 	" port=" + cfg.DBPort +
-	// 	" user=" + cfg.DBUser +
-	// 	" password=" + cfg.DBPass +
-	// 	" dbname=" + cfg.DBName +
-	// 	" sslmode=verify-ca"
 	dbConnString := fmt.Sprint(
 		"host=", cfg.DBHost,
 		" port=", cfg.DBPort,
 		" user=", cfg.DBUser,
 		" password=", cfg.DBPass,
 		" dbname=", cfg.DBName,
-		" sslmode=verify-ca",
+		" sslmode=require", //" sslmode=verify-ca",  https://www.postgresql.org/docs/current/libpq-connect.html
 	)
 
 	// Remove password from connection log.
