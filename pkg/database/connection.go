@@ -45,11 +45,29 @@ func NewDAO(p pgxpoolmock.PgxPool) DAO {
 func initializePool() pgxpoolmock.PgxPool {
 	cfg := config.Cfg
 
-	databaseUrl := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort, cfg.DBName)
-	klog.Infof("Connecting to PostgreSQL at: postgresql://%s:%s@%s:%d/%s",
-		cfg.DBUser, "*****", cfg.DBHost, cfg.DBPort, cfg.DBName)
+	// dbConnString := "host=" + cfg.DBHost +
+	// 	" port=" + cfg.DBPort +
+	// 	" user=" + cfg.DBUser +
+	// 	" password=" + cfg.DBPass +
+	// 	" dbname=" + cfg.DBName +
+	// 	" sslmode=verify-ca"
+	dbConnString := fmt.Sprint(
+		"host=", cfg.DBHost,
+		" port=", cfg.DBPort,
+		" user=", cfg.DBUser,
+		" password=", cfg.DBPass,
+		" dbname=", cfg.DBName,
+		" sslmode=verify-ca",
+	)
 
-	config, configErr := pgxpool.ParseConfig(databaseUrl)
+	// Remove password from connection log.
+	redactedDbConn := strings.ReplaceAll(dbConnString, " password="+cfg.DBPass, " password=[REDACTED]")
+	klog.Infof("Connecting to PostgreSQL using: %s", redactedDbConn)
+
+	config, configErr := pgxpool.ParseConfig(dbConnString)
+	klog.Infof("> DB Config: %+v", config)
+	klog.Infof(">> config.ConnConfig: %+v", config.ConnConfig)                     // DONT MERGE WITH THESE LOGS!
+	klog.Infof(">> config.ConnConfig.TLSConfig: %+v", config.ConnConfig.TLSConfig) // Only 4 debug. will print passwd
 	if configErr != nil {
 		klog.Fatal("Error parsing database connection configuration. ", configErr)
 	}
@@ -58,7 +76,7 @@ func initializePool() pgxpoolmock.PgxPool {
 	var conn *pgxpool.Pool
 	var err error
 	for {
-		conn, err = pgxpool.ConnectConfig(context.Background(), config)
+		conn, err = pgxpool.ConnectConfig(context.TODO(), config)
 		if err != nil {
 			// Max wait time is 30 sec
 			waitMS := int(math.Min(float64(retry*500), float64(cfg.MaxBackoffMS/10)))
