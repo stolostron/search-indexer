@@ -51,17 +51,14 @@ func initializePool() pgxpoolmock.PgxPool {
 		" user=", cfg.DBUser,
 		" password=", cfg.DBPass,
 		" dbname=", cfg.DBName,
-		" sslmode=require", //" sslmode=verify-ca",  https://www.postgresql.org/docs/current/libpq-connect.html
+		" sslmode=require", // https://www.postgresql.org/docs/current/libpq-connect.html
 	)
 
 	// Remove password from connection log.
-	redactedDbConn := strings.ReplaceAll(dbConnString, " password="+cfg.DBPass, " password=[REDACTED]")
+	redactedDbConn := strings.ReplaceAll(dbConnString, cfg.DBPass, "[REDACTED]")
 	klog.Infof("Connecting to PostgreSQL using: %s", redactedDbConn)
 
 	config, configErr := pgxpool.ParseConfig(dbConnString)
-	klog.Infof("> DB Config: %+v", config)
-	klog.Infof(">> config.ConnConfig: %+v", config.ConnConfig)                     // DONT MERGE WITH THESE LOGS!
-	klog.Infof(">> config.ConnConfig.TLSConfig: %+v", config.ConnConfig.TLSConfig) // Only 4 debug. will print passwd
 	if configErr != nil {
 		klog.Fatal("Error parsing database connection configuration. ", configErr)
 	}
