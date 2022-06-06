@@ -26,13 +26,13 @@ func initializeVars() {
 		"consoleURL":        "",
 		"cpu":               0,
 		"created":           "0001-01-01T00:00:00Z",
-		"kind":              "Cluster",
+		"kind":              "cluster",
 		"kubernetesVersion": "",
 		"memory":            0,
 		"name":              "name-foo",
 		"nodes":             0}
 	existingCluster = map[string]interface{}{"UID": "cluster__name-foo",
-		"Kind":       "Cluster",
+		"Kind":       "cluster",
 		"Properties": clusterProps}
 }
 func Test_UpsertCluster_NoUpdate(t *testing.T) {

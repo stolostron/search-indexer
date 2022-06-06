@@ -19,11 +19,11 @@ We are looking at the following queries which will need to use different operato
 
 <strong>Query A (with Gin index):</strong>
 
-`select data->'namespace' as namespace from search.resources where data @> '{"kind" : "Pod"}'`
+`select data->'namespace' as namespace from search.resources where data @> '{"kind" : "pod"}'`
 
 <strong>Query B (no index):</strong>
 
-`select data->'namespace' from search.resources where data ->> 'kind'= 'Pod'`
+`select data->'namespace' from search.resources where data ->> 'kind'= 'pod'`
 
 
 
@@ -31,13 +31,13 @@ We also created an index on two columns using the btree operator and use the fol
 
 <strong>Query C (BTREE Gin index):</strong>
 
-`select data->'namespace' as namespace from search.resources where data @> '{"kind" : "Pod"}' AND uid = 'someuniqueid';`
+`select data->'namespace' as namespace from search.resources where data @> '{"kind" : "pod"}' AND uid = 'someuniqueid';`
 
 which has alternative operator:
 
 <strong>Query D (no index):</strong>
 
-`select data->'namespace' as namespace from search.resources where data ->> 'kind'= 'Pod' AND uid = 'someuniqueid';`
+`select data->'namespace' as namespace from search.resources where data ->> 'kind'= 'pod' AND uid = 'someuniqueid';`
 
 
 | index on  |  index type | OC  | cost  | query
@@ -62,11 +62,11 @@ The following two queries were used for testing non-index key columns:
 
 <strong>Query D:</strong>
 
-`SELECT namespace from search.resources where kind = 'Pod';`
+`SELECT namespace from search.resources where kind = 'pod';`
 
 <strong>Query E:</strong>
 
-`SELECT namespace from search.resources where kind = 'Pod' AND uid = 'someuniqueid';`
+`SELECT namespace from search.resources where kind = 'pod' AND uid = 'someuniqueid';`
 
 | index on  |  index type | OC  | cost  | query
 |---|---|---|---|---|

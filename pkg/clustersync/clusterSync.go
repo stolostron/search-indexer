@@ -216,7 +216,7 @@ func transformManagedClusterInfo(managedClusterInfo *clusterv1beta1.ManagedClust
 	// Get properties from ManagedClusterInfo
 	props["consoleURL"] = managedClusterInfo.Status.ConsoleURL
 	props["nodes"] = int64(len(managedClusterInfo.Status.NodeList))
-	props["kind"] = "Cluster"
+	props["kind"] = "cluster"
 	props["name"] = managedClusterInfo.GetName()
 	// Disabled till RBAC implementation
 	// props["_clusterNamespace"] = managedClusterInfo.GetNamespace() // Needed for rbac mapping.
@@ -224,7 +224,7 @@ func transformManagedClusterInfo(managedClusterInfo *clusterv1beta1.ManagedClust
 	props = addAdditionalProperties(props)
 	// Create the resource
 	resource := model.Resource{
-		Kind:           "Cluster",
+		Kind:           "cluster",
 		UID:            string("cluster__" + managedClusterInfo.GetName()),
 		Properties:     props,
 		ResourceString: "managedclusterinfos", // Maps rbac to ManagedClusterInfo.
@@ -249,7 +249,7 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 		}
 	}
 
-	props["kind"] = "Cluster"
+	props["kind"] = "cluster"
 	props["name"] = managedCluster.GetName() // must match ManagedClusterInfo
 	// Disabled till RBAC implementation
 	// props["_clusterNamespace"] = managedCluster.GetName()     // maps to the namespace of ManagedClusterInfo
@@ -267,7 +267,7 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 	}
 	props = addAdditionalProperties(props)
 	resource := model.Resource{
-		Kind:           "Cluster",
+		Kind:           "cluster",
 		UID:            string("cluster__" + managedCluster.GetName()),
 		Properties:     props,
 		ResourceString: "managedclusterinfos", // Maps rbac to ManagedClusterInfo

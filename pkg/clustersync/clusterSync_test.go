@@ -73,13 +73,13 @@ func initializeVars() {
 		"apigroup":          "internal.open-cluster-management.io",
 		"cpu":               0,
 		"created":           "0001-01-01T00:00:00Z",
-		"kind":              "Cluster",
+		"kind":              "cluster",
 		"kubernetesVersion": "",
 		"memory":            "0",
 		"name":              "name-foo",
 	}
 	existingCluster = map[string]interface{}{"UID": "cluster__name-foo",
-		"Kind":       "Cluster",
+		"Kind":       "cluster",
 		"Properties": clusterProps}
 }
 
