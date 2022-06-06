@@ -15,6 +15,10 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 
 	// ADD RESOURCES
 	for _, resource := range event.AddResources {
+		if kind, ok := resource.Properties["kind"]; ok {
+			// convert kind to lowercase
+			resource.Properties["kind"] = strings.ToLower(kind.(string)) //kind is always string
+		}
 		data, _ := json.Marshal(resource.Properties)
 		batch.Queue(batchItem{
 			action: "addResource",

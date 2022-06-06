@@ -126,8 +126,8 @@ func (dao *DAO) InitializeTables() {
 	INNER JOIN search.resources b
 	ON split_part(a.data->>'_hostingSubscription', '/', 1) = b.data->>'namespace'
 	AND split_part(a.data->>'_hostingSubscription', '/', 2) = b.data->>'name'
-	WHERE a.data->>'kind' = 'Subscription'
-	AND b.data->>'kind' = 'Subscription'
+	WHERE a.data->>'kind' = 'subscription'
+	AND b.data->>'kind' = 'subscription'
 	AND a.uid <> b.uid`)
 
 	_, err = dao.pool.Exec(context.TODO(), createViewScript)
