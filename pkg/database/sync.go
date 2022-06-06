@@ -24,7 +24,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 			action: "addResource",
 			query:  "INSERT into search.resources values($1,$2,$3)",
 			uid:    resource.UID,
-			args:   []interface{}{resource.UID, clusterName, strings.ToLower(string(data))},
+			args:   []interface{}{resource.UID, clusterName, string(data)},
 		})
 	}
 
@@ -37,7 +37,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 			action: "updateResource",
 			query:  "UPDATE search.resources SET data=$2 WHERE uid=$1",
 			uid:    resource.UID,
-			args:   []interface{}{resource.UID, strings.ToLower(string(data))},
+			args:   []interface{}{resource.UID, string(data)},
 		})
 	}
 
