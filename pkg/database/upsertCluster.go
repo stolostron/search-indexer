@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -122,7 +123,7 @@ func (dao *DAO) UpsertCluster(resource model.Resource) {
 	data, _ := json.Marshal(resource.Properties)
 	clusterName := resource.Properties["name"].(string)
 	query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1"
-	args := []interface{}{resource.UID, string(data)}
+	args := []interface{}{resource.UID, strings.ToLower(string(data))}
 
 	// Insert cluster node if cluster does not exist in the DB
 	if !dao.clusterInDB(resource.UID) || !dao.clusterPropsUpToDate(resource.UID, resource) {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/driftprogramming/pgxpoolmock"
@@ -102,7 +103,7 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 	).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
+		gomock.Eq([]interface{}{"cluster__name-foo", strings.ToLower(string(expectedProps))}),
 	).Return(nil, nil)
 
 	processClusterUpsert(context.TODO(), obj)
@@ -133,7 +134,7 @@ func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
+		gomock.Eq([]interface{}{"cluster__name-foo", strings.ToLower(string(expectedProps))}),
 	).Return(nil, nil)
 
 	processClusterUpsert(context.TODO(), obj)

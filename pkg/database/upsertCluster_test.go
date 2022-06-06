@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -80,7 +81,7 @@ func Test_UpsertCluster_Update1(t *testing.T) {
 	expectedProps, _ := json.Marshal(currCluster.Properties)
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
+		gomock.Eq([]interface{}{"cluster__name-foo", strings.ToLower(string(expectedProps))}),
 	).Return(nil, nil)
 
 	// Execute function test.
@@ -127,7 +128,7 @@ func Test_UpsertCluster_Update2(t *testing.T) {
 
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
+		gomock.Eq([]interface{}{"cluster__name-foo", strings.ToLower(string(expectedProps))}),
 	).Return(nil, nil)
 
 	// Execute function test.
@@ -172,7 +173,7 @@ func Test_UpsertCluster_Insert(t *testing.T) {
 	expectedProps, _ := json.Marshal(currCluster.Properties)
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
+		gomock.Eq([]interface{}{"cluster__name-foo", strings.ToLower(string(expectedProps))}),
 	).Return(nil, nil)
 
 	// Execute function test.
