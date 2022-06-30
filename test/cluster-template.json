@@ -27,7 +27,7 @@
                 "memory": "32104404Ki",
                 "created": "2022-06-02T15:54:08Z",
                 "apigroup": "internal.open-cluster-management.io",
-                "consoleURL": "https://console-openshift-console.apps.sno-xxx-2xxxxxx-xxxxx.devxx.red-chesterfield.com",
+                "consoleURL": "https://console-openshift-console.apps.<<CLUSTER_NAME>>.basedomain.com",
                 "kubernetesVersion": "v1.23.3+e419edf",
                 "ManagedClusterJoined": "True",
                 "HubAcceptedManagedCluster": "True",
