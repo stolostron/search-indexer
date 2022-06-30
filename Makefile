@@ -38,7 +38,7 @@ test-send: ## Sends a simulated request for testing using cURL.
 N_CLUSTERS ?=2
 HOST ?= $(shell oc get route search-indexer -o custom-columns=host:.spec.host --no-headers -n open-cluster-management --ignore-not-found=true)
 ifeq ($(strip $(HOST)),)
-	CONFIGURATION_MSG = @echo \\n\\tThe search-api route was not found in the target cluster.\\n\
+	CONFIGURATION_MSG = @echo \\n\\tThe search-indexer route was not found in the target cluster.\\n\
 	\\tThis test will run against the local instance https://localhost:3010\\n\
 	\\tIf you want to run this test against a cluster, create the route with make test-scale-setup\\n;
 	
