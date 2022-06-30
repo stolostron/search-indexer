@@ -1,6 +1,41 @@
 {
     "addResources": [
         {
+            "uid": "cluster__<<CLUSTER_NAME>>",
+            "resourceString": "clusters",
+            "properties": {
+                "cpu": 8,
+                "kind": "Cluster",
+                "name": "<<CLUSTER_NAME>>",
+                "label": {
+                    "env": "dev",
+                    "name": "<<CLUSTER_NAME>>",
+                    "cloud": "Amazon",
+                    "vendor": "OpenShift",
+                    "clusterID": "abcd7696-da2f-46f5-8dc6-0357c4aacf5e",
+                    "openshiftVersion": "4.10.5",
+                    "cluster.open-cluster-management.io/clusterset": "auto-gitops-cluster-set",
+                    "feature.open-cluster-management.io/addon-work-manager": "available",
+                    "feature.open-cluster-management.io/addon-search-collector": "available",
+                    "feature.open-cluster-management.io/addon-application-manager": "available",
+                    "feature.open-cluster-management.io/addon-iam-policy-controller": "available",
+                    "feature.open-cluster-management.io/addon-cert-policy-controller": "available",
+                    "feature.open-cluster-management.io/addon-config-policy-controller": "available",
+                    "feature.open-cluster-management.io/addon-governance-policy-framework": "available"
+                },
+                "nodes": 1,
+                "memory": "32104404Ki",
+                "created": "2022-06-02T15:54:08Z",
+                "apigroup": "internal.open-cluster-management.io",
+                "consoleURL": "https://console-openshift-console.apps.sno-xxx-2xxxxxx-xxxxx.devxx.red-chesterfield.com",
+                "kubernetesVersion": "v1.23.3+e419edf",
+                "ManagedClusterJoined": "True",
+                "HubAcceptedManagedCluster": "True",
+                "ManagedClusterImportSucceeded": "True",
+                "ManagedClusterConditionAvailable": "True"
+             }
+        },
+        {
             "uid": "<<CLUSTER_NAME>>/e12c2ddd-4ac5-499d-b0e0-20242f508afd",
             "resourceString": "templates",
             "properties": {
