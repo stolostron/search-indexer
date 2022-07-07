@@ -38,6 +38,7 @@ type Config struct {
 	// RequestLimit          int    // Max number of concurrent requests. Used to prevent from overloading the database
 	// SkipClusterValidation string // Skips cluster validation. Intended only for performance tests.
 	DevelopmentMode bool
+	Crunchy         bool
 }
 
 // Reads config from environment.

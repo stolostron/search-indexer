@@ -53,7 +53,10 @@ func initializePool() pgxpoolmock.PgxPool {
 		" dbname=", cfg.DBName,
 		" sslmode=require", // https://www.postgresql.org/docs/current/libpq-connect.html
 	)
-
+	if cfg.Crunchy {
+		fmt.Println("Updating dbstring as connecting to crunchy db")
+		dbConnString = fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort, cfg.DBName)
+	}
 	// Remove password from connection log.
 	redactedDbConn := strings.ReplaceAll(dbConnString, cfg.DBPass, "[REDACTED]")
 	klog.Infof("Connecting to PostgreSQL using: %s", redactedDbConn)
