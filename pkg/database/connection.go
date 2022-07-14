@@ -45,15 +45,15 @@ func NewDAO(p pgxpoolmock.PgxPool) DAO {
 func initializePool() pgxpoolmock.PgxPool {
 	cfg := config.Cfg
 
-	// dbConnString := fmt.Sprint(
-	// 	"host=", cfg.DBHost,
-	// 	" port=", cfg.DBPort,
-	// 	" user=", cfg.DBUser,
-	// 	" password=", cfg.DBPass,
-	// 	" dbname=", cfg.DBName,
-	// 	" sslmode=require", // https://www.postgresql.org/docs/current/libpq-connect.html
-	// )
-	dbConnString := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort, cfg.DBName)
+	dbConnString := fmt.Sprint(
+		"host=", cfg.DBHost,
+		" port=", cfg.DBPort,
+		" user=", cfg.DBUser,
+		" password=", cfg.DBPass,
+		" dbname=", cfg.DBName,
+		// " sslmode=require", // https://www.postgresql.org/docs/current/libpq-connect.html
+	)
+	// dbConnString := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort, cfg.DBName)
 
 	// Remove password from connection log.
 	redactedDbConn := strings.ReplaceAll(dbConnString, cfg.DBPass, "[REDACTED]")
