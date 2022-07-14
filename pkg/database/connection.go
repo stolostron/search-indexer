@@ -118,7 +118,7 @@ func (dao *DAO) InitializeTables() {
 	// Join subscriptions on remote cluster to matching subscription on hub based on _hostingSubscription property.
 	// The remote subscription's _hostingSubscription property (namespace/name) should match
 	// the namespace and name of the hub subscription.
-	createViewScript := strings.TrimSpace(`CREATE MATERIALIZED VIEW IF NOT EXISTS search.all_edges AS 
+	createViewScript := strings.TrimSpace(`CREATE or REPLACE VIEW search.all_edges AS 
 	SELECT * from search.edges 
 	UNION
 	SELECT a.uid as sourceid , a.data->>'kind' as sourcekind, b.uid as destid, b.data->>'kind' as destkind, 
