@@ -45,14 +45,15 @@ func NewDAO(p pgxpoolmock.PgxPool) DAO {
 func initializePool() pgxpoolmock.PgxPool {
 	cfg := config.Cfg
 
-	dbConnString := fmt.Sprint(
-		"host=", cfg.DBHost,
-		" port=", cfg.DBPort,
-		" user=", cfg.DBUser,
-		" password=", cfg.DBPass,
-		" dbname=", cfg.DBName,
-		" sslmode=require", // https://www.postgresql.org/docs/current/libpq-connect.html
-	)
+	// dbConnString := fmt.Sprint(
+	// 	"host=", cfg.DBHost,
+	// 	" port=", cfg.DBPort,
+	// 	" user=", cfg.DBUser,
+	// 	" password=", cfg.DBPass,
+	// 	" dbname=", cfg.DBName,
+	// 	" sslmode=require", // https://www.postgresql.org/docs/current/libpq-connect.html
+	// )
+	dbConnString := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort, cfg.DBName)
 
 	// Remove password from connection log.
 	redactedDbConn := strings.ReplaceAll(dbConnString, cfg.DBPass, "[REDACTED]")
@@ -117,7 +118,7 @@ func (dao *DAO) InitializeTables() {
 	// Join subscriptions on remote cluster to matching subscription on hub based on _hostingSubscription property.
 	// The remote subscription's _hostingSubscription property (namespace/name) should match
 	// the namespace and name of the hub subscription.
-	createViewScript := strings.TrimSpace(`CREATE or REPLACE VIEW search.all_edges AS 
+	createViewScript := strings.TrimSpace(`CREATE MATERIALIZED VIEW IF NOT EXISTS search.all_edges AS 
 	SELECT * from search.edges 
 	UNION
 	SELECT a.uid as sourceid , a.data->>'kind' as sourcekind, b.uid as destid, b.data->>'kind' as destkind, 

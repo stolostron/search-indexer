@@ -35,7 +35,7 @@ docker-build: ## Build the docker image.
 test-send: ## Sends a simulated request for testing using cURL.
 	curl -k -d "@pkg/server/mocks/clusterA.json" -X POST https://localhost:3010/aggregator/clusters/clusterA/sync
 
-N_CLUSTERS ?=2
+N_CLUSTERS ?=1
 HOST ?= $(shell oc get route search-indexer -o custom-columns=host:.spec.host --no-headers -n open-cluster-management --ignore-not-found=true)
 ifeq ($(strip $(HOST)),)
 	CONFIGURATION_MSG = @echo \\n\\tThe search-indexer route was not found in the target cluster.\\n\
