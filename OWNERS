@@ -1,13 +1,16 @@
 approvers:
+  - Anxhela21
+  - dislbenn
   - jlpadilla
-  - xrajesh
   - SherinV
+  - xrajesh
+  - zlayne
+reviewers:
   - Anxhela21
   - atifshafi
-reviewers:
-  - jlpadilla
-  - xrajesh
-  - SherinV
   - dislbenn
+  - jlpadilla
+  - SherinV
+  - xrajesh
   - zlayne
-  - Anxhela21
+  
