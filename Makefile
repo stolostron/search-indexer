@@ -15,8 +15,7 @@ run: ## Run the service locally.
 
 .PHONY: lint
 lint: ## Run lint and gosec tool.
-	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.38.0
-	golangci-lint run
+	build/run-lint-check.sh
 	go mod tidy
 	gosec ./...
 
