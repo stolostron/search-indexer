@@ -5,3 +5,4 @@ sslcert/tls.key
 cover.html
 test/__pycache__/locustfile.cpython-39.pyc
 test/__pycache__/locust-clusters.cpython-39.pyc
+.DS_Store
