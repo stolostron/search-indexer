@@ -14,7 +14,7 @@ class ClusterBehavior(TaskSet):
 #  2. Update state.
 
     def send_full_state_payload(self):
-        with open("cluster-template.json", "r") as template_file:
+        with open("sno-template.json", "r") as template_file:
             template_string = template_file.read().replace("<<CLUSTER_NAME>>", self.user.name)
         f = io.StringIO(template_string)
         j = json.load(f)        
