@@ -18,9 +18,9 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 		data, _ := json.Marshal(resource.Properties)
 		batch.Queue(batchItem{
 			action: "addResource",
-			query:  "INSERT into search.resources values($1,$2,$3,$4)",
+			query:  "INSERT into search.resources values($1,$2,$3)",
 			uid:    resource.UID,
-			args:   []interface{}{resource.UID, clusterName, string(data), resource.ResourceString},
+			args:   []interface{}{resource.UID, clusterName, string(data)},
 		})
 	}
 
