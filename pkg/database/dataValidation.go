@@ -13,7 +13,7 @@ import (
 func (dao *DAO) ClusterTotals(clusterName string) (resources int, edges int) {
 	batch := &pgx.Batch{}
 	batch.Queue("SELECT count(*) FROM search.resources WHERE cluster=$1", clusterName)
-	batch.Queue("SELECT count(*) FROM search.edges WHERE cluster=$1", clusterName)
+	batch.Queue("SELECT count(*) FROM search.edges WHERE cluster=$1 and edgetype<>'interCluster'", clusterName)
 
 	br := dao.pool.SendBatch(context.Background(), batch)
 	defer br.Close()
