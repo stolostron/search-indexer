@@ -15,10 +15,6 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 
 	// ADD RESOURCES
 	for _, resource := range event.AddResources {
-		if kind, ok := resource.Properties["kind"]; ok {
-			// convert kind to lowercase
-			resource.Properties["kindLower"] = strings.ToLower(kind.(string)) //kind is always string
-		}
 		data, _ := json.Marshal(resource.Properties)
 		batch.Queue(batchItem{
 			action: "addResource",
@@ -32,10 +28,6 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 	// The collector enforces that a resource isn't added and updated in the same sync event.
 	// The uid and cluster fields will never get updated for a resource.
 	for _, resource := range event.UpdateResources {
-		if kind, ok := resource.Properties["kind"]; ok {
-			// convert kind to lowercase
-			resource.Properties["kindLower"] = strings.ToLower(kind.(string)) //kind is always string
-		}
 		data, _ := json.Marshal(resource.Properties)
 		batch.Queue(batchItem{
 			action: "updateResource",
