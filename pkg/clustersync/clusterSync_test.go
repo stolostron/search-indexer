@@ -70,7 +70,7 @@ func initializeVars() {
 	labelMap := map[string]string{"env": "dev"}
 	clusterProps := map[string]interface{}{
 		"label":             labelMap,
-		"apigroup":          "internal.open-cluster-management.io",
+		"apigroup":          managedClusterInfoApiGrp,
 		"kind_plural":       "managedclusterinfos",
 		"cpu":               0,
 		"created":           "0001-01-01T00:00:00Z",
@@ -259,7 +259,7 @@ func Test_AddAdditionalProps(t *testing.T) {
 	//execute function
 	updatedProps := addAdditionalProperties(props)
 	apigroup, apigroupPresent := updatedProps["apigroup"]
-	AssertEqual(t, apigroup, "internal.open-cluster-management.io", "Expected apigroup not found.")
+	AssertEqual(t, apigroup, managedClusterInfoApiGrp, "Expected apigroup not found.")
 	AssertEqual(t, apigroupPresent, true, "Expected apigroup to be set")
 	kindPlural, kindPluralPresent := updatedProps["kind_plural"]
 	AssertEqual(t, kindPlural, "managedclusterinfos", "Expected kindPlural not found.")
