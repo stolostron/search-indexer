@@ -249,3 +249,18 @@ func Test_ProcessClusterDeleteOnMCASearch(t *testing.T) {
 	AssertEqual(t, ok, true, "existingClustersCache should still have an entry for cluster foo")
 
 }
+
+func Test_AddAdditionalProps(t *testing.T) {
+	props := map[string]interface{}{}
+	props["kind"] = "Cluster"
+	props["name"] = "cluster1"
+
+	//execute function
+	updatedProps := addAdditionalProperties(props)
+	apigroup, apigroupPresent := updatedProps["apigroup"]
+	AssertEqual(t, apigroup, "internal.open-cluster-management.io", "Expected apigroup not found.")
+	AssertEqual(t, apigroupPresent, true, "Expected apigroup to be set")
+	kindPlural, kindPluralPresent := updatedProps["kind_plural"]
+	AssertEqual(t, kindPlural, "managedclusterinfos", "Expected kindPlural not found.")
+	AssertEqual(t, kindPluralPresent, true, "Expected kindPlural to be set")
+}
