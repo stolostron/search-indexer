@@ -33,6 +33,7 @@ const managedClusterGVR = "managedclusters.v1.cluster.open-cluster-management.io
 const managedClusterInfoGVR = "managedclusterinfos.v1beta1.internal.open-cluster-management.io"
 const managedClusterAddonGVR = "managedclusteraddons.v1alpha1.addon.open-cluster-management.io"
 const lockName = "search-indexer.open-cluster-management.io"
+const managedClusterInfoApiGrp = "internal.open-cluster-management.io"
 
 func ElectLeaderAndStart(ctx context.Context) {
 	client = config.Cfg.KubeClient
@@ -203,6 +204,10 @@ func addAdditionalProperties(props map[string]interface{}) map[string]interface{
 			}
 		}
 	}
+
+	// Map apigroup and kind to sync with ManagedClusterInfo for RBAC
+	props["apigroup"] = managedClusterInfoApiGrp
+	props["kind_plural"] = "managedclusterinfos"
 	return props
 }
 
@@ -220,7 +225,7 @@ func transformManagedClusterInfo(managedClusterInfo *clusterv1beta1.ManagedClust
 	props["name"] = managedClusterInfo.GetName()
 	// Disabled till RBAC implementation
 	// props["_clusterNamespace"] = managedClusterInfo.GetNamespace() // Needed for rbac mapping.
-	props["apigroup"] = "internal.open-cluster-management.io" // Maps rbac to ManagedClusterInfo
+	props["apigroup"] = managedClusterInfoApiGrp // Maps rbac to ManagedClusterInfo
 	props = addAdditionalProperties(props)
 	// Create the resource
 	resource := model.Resource{
@@ -253,7 +258,7 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 	props["name"] = managedCluster.GetName() // must match ManagedClusterInfo
 	// Disabled till RBAC implementation
 	// props["_clusterNamespace"] = managedCluster.GetName()     // maps to the namespace of ManagedClusterInfo
-	props["apigroup"] = "internal.open-cluster-management.io" // maps rbac to ManagedClusterInfo
+	props["apigroup"] = managedClusterInfoApiGrp // maps rbac to ManagedClusterInfo
 	props["created"] = managedCluster.GetCreationTimestamp().UTC().Format(time.RFC3339)
 
 	cpuCapacity := managedCluster.Status.Capacity["cpu"]
