@@ -71,6 +71,7 @@ func initializeVars() {
 	clusterProps := map[string]interface{}{
 		"label":             labelMap,
 		"apigroup":          "internal.open-cluster-management.io",
+		"kind_plural":       "managedclusterinfos",
 		"cpu":               0,
 		"created":           "0001-01-01T00:00:00Z",
 		"kind":              "Cluster",
