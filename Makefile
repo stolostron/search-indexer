@@ -37,7 +37,7 @@ test-send: ## Sends a simulated request for testing using cURL.
 	curl -k -d "@pkg/server/mocks/clusterA.json" -X POST https://localhost:3010/aggregator/clusters/clusterA/sync
 
 N_CLUSTERS ?=2
-HOST ?= $(shell oc get route search-indexer -o custom-columns=host:.spec.host --no-headers -n open-cluster-management --ignore-not-found=true)
+HOST ?= $(shell oc get route search-indexer -o custom-columns=host:.spec.host --no-headers -n open-cluster-management --ignore-not-found=true --request-timeout='1s')
 ifeq ($(strip $(HOST)),)
 	CONFIGURATION_MSG = @echo \\n\\tThe search-indexer route was not found in the target cluster.\\n\
 	\\tThis test will run against the local instance https://localhost:3010\\n\
