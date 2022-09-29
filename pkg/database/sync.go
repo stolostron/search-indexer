@@ -4,6 +4,7 @@ package database
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/stolostron/search-indexer/pkg/model"
@@ -39,24 +40,27 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 
 	// DELETE RESOURCES and all edges pointing to the resource.
 	if len(event.DeleteResources) > 0 {
+		params := make([]string, len(event.DeleteResources))
 		uids := make([]string, len(event.DeleteResources))
 		for i, resource := range event.DeleteResources {
+			params[i] = fmt.Sprintf("$%s", i)
 			uids[i] = resource.UID
 		}
+		paramStr := strings.Join(params, ",")
 
 		// TODO: Need better safety for delete errors.
 		// The current retry logic won't work well if there's an error here.
 		batch.Queue(batchItem{
 			action: "deleteResource",
-			query:  "DELETE from search.resources WHERE uid IN ($1)",
+			query:  fmt.Sprintf("DELETE from search.resources WHERE uid IN (%s)", paramStr),
 			uid:    strings.Join(uids, ", "),
-			args:   []interface{}{strings.Join(uids, ", ")},
+			args:   []interface{}{uids},
 		})
 		batch.Queue(batchItem{
 			action: "deleteResource",
-			query:  "DELETE from search.edges WHERE sourceId IN ($1) OR destId IN ($1)",
+			query:  fmt.Sprintf("DELETE from search.edges WHERE sourceId IN (%s) OR destId IN (%s)", paramStr, paramStr),
 			uid:    strings.Join(uids, ", "),
-			args:   []interface{}{strings.Join(uids, ", ")},
+			args:   []interface{}{uids},
 		})
 	}
 
