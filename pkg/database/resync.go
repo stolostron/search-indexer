@@ -14,7 +14,7 @@ import (
 //       recover from rare sync problems. At the moment this is good enough without adding complexity.
 func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
 	klog.Infof(
-		"Resync full state for cluster %s. This is normal, but it may signal a sync problem if it happens often.",
+		"Resync full state for cluster %s. This is normal, but it could be a problem if it happens often.",
 		clusterName)
 
 	_, err := dao.pool.Exec(context.TODO(), "DELETE from search.resources WHERE cluster=$1", clusterName)
