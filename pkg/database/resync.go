@@ -9,20 +9,21 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// Overrides the existing state of a cluster with the new data.
+// NOTE: This logic is not optimized. We use the simplest approach because this is a failsafe to
+//       recover from rare sync problems. At the moment this is good enough without adding complexity.
 func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
-	klog.Info("Resync full state for cluster ", clusterName)
+	klog.Infof(
+		"Resync full state for cluster %s. This is normal, but it could be a problem if it happens often.",
+		clusterName)
 
-	// FIXME: REMOVE THIS WORKAROUND. Deleting data for cluster instead of reconcilimg with existing state.
-	// klog.Warningf("FIXME: REMOVE THIS WORKAROUND. Deleting data for cluster [%s] instead of reconcilimg with existing state.", clusterName)
-	r, e := dao.pool.Exec(context.Background(), "DELETE from search.resources WHERE cluster=$1", clusterName)
-	klog.V(9).Infof("WORKAROUND. Deleting all resources for cluster [%s]. Result: %+v  Errors: %+v", clusterName, r, e)
-
-	r2, e2 := dao.pool.Exec(context.Background(), "DELETE from search.edges WHERE cluster=$1", clusterName)
-	klog.V(9).Infof("WORKAROUND. Deleting all edges for cluster [%s]. Result: %+v  Errors: %+v", clusterName, r2, e2)
-
+	_, err := dao.pool.Exec(context.TODO(), "DELETE from search.resources WHERE cluster=$1", clusterName)
+	if err != nil {
+		klog.Warningf("Error deleting resources during resync of cluster %s. Error: %+v", clusterName, err)
+	}
+	_, err = dao.pool.Exec(context.TODO(), "DELETE from search.edges WHERE cluster=$1", clusterName)
+	if err != nil {
+		klog.Warningf("Error deleting edges during resync of cluster %s. Error: %+v", clusterName, err)
+	}
 	dao.SyncData(event, clusterName, syncResponse)
-
-	// Get all the existing resources.
-	// r, e := pool.Exec(context.Background(), "SELECT uid FROM search.resources where cluster=$1", clusterName)
-	// klog.Infof("Got resuls %v %v", r, e)
 }
