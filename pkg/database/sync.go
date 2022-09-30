@@ -43,7 +43,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 		params := make([]string, len(event.DeleteResources))
 		uids := make([]string, len(event.DeleteResources))
 		for i, resource := range event.DeleteResources {
-			params[i] = fmt.Sprintf("$%s", i)
+			params[i] = fmt.Sprintf("$%d", i)
 			uids[i] = resource.UID
 		}
 		paramStr := strings.Join(params, ",")
