@@ -41,9 +41,9 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 	// DELETE RESOURCES and all edges pointing to the resource.
 	if len(event.DeleteResources) > 0 {
 		params := make([]string, len(event.DeleteResources))
-		uids := make([]string, len(event.DeleteResources))
+		uids := make([]interface{}, len(event.DeleteResources))
 		for i, resource := range event.DeleteResources {
-			params[i] = fmt.Sprintf("$%d", i)
+			params[i] = fmt.Sprintf("$%d", i+1)
 			uids[i] = resource.UID
 		}
 		paramStr := strings.Join(params, ",")
@@ -53,14 +53,16 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 		batch.Queue(batchItem{
 			action: "deleteResource",
 			query:  fmt.Sprintf("DELETE from search.resources WHERE uid IN (%s)", paramStr),
-			uid:    strings.Join(uids, ", "),
-			args:   []interface{}{uids},
+			uid:    fmt.Sprintf("%s", uids), //strings.Join(uids, ", "),
+			// args:   []interface{}{uids},
+			args: uids,
 		})
 		batch.Queue(batchItem{
 			action: "deleteResource",
 			query:  fmt.Sprintf("DELETE from search.edges WHERE sourceId IN (%s) OR destId IN (%s)", paramStr, paramStr),
-			uid:    strings.Join(uids, ", "),
-			args:   []interface{}{uids},
+			uid:    fmt.Sprintf("%s", uids), //strings.Join(uids, ", "),
+			// args:   []interface{}{uids},
+			args: uids,
 		})
 	}
 
