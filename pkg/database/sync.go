@@ -53,16 +53,14 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 		batch.Queue(batchItem{
 			action: "deleteResource",
 			query:  fmt.Sprintf("DELETE from search.resources WHERE uid IN (%s)", paramStr),
-			uid:    fmt.Sprintf("%s", uids), //strings.Join(uids, ", "),
-			// args:   []interface{}{uids},
-			args: uids,
+			uid:    fmt.Sprintf("%s", uids),
+			args:   uids,
 		})
 		batch.Queue(batchItem{
 			action: "deleteResource",
 			query:  fmt.Sprintf("DELETE from search.edges WHERE sourceId IN (%s) OR destId IN (%s)", paramStr, paramStr),
-			uid:    fmt.Sprintf("%s", uids), //strings.Join(uids, ", "),
-			// args:   []interface{}{uids},
-			args: uids,
+			uid:    fmt.Sprintf("%s", uids),
+			args:   uids,
 		})
 	}
 
