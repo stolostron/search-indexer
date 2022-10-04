@@ -69,15 +69,16 @@ func newTestUnstructured(apiVersion, kind, namespace, name, uid string) *unstruc
 func initializeVars() {
 	labelMap := map[string]string{"env": "dev"}
 	clusterProps := map[string]interface{}{
-		"label":             labelMap,
-		"apigroup":          managedClusterInfoApiGrp,
-		"kind_plural":       "managedclusterinfos",
-		"cpu":               0,
-		"created":           "0001-01-01T00:00:00Z",
-		"kind":              "Cluster",
-		"kubernetesVersion": "",
-		"memory":            "0",
-		"name":              "name-foo",
+		"label":               labelMap,
+		"apigroup":            managedClusterInfoApiGrp,
+		"kind_plural":         "managedclusterinfos",
+		"cpu":                 0,
+		"created":             "0001-01-01T00:00:00Z",
+		"kind":                "Cluster",
+		"kubernetesVersion":   "",
+		"memory":              "0",
+		"name":                "name-foo",
+		"_hubClusterResource": "true",
 	}
 	existingCluster = map[string]interface{}{"UID": "cluster__name-foo",
 		"Kind":       "Cluster",

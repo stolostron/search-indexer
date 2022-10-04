@@ -154,7 +154,7 @@ func processClusterUpsert(ctx context.Context, obj interface{}) {
 		managedCluster := clusterv1.ManagedCluster{}
 		err = json.Unmarshal(j, &managedCluster)
 		if err != nil {
-			klog.Warning("Failed to Unmarshal MangedCluster", err)
+			klog.Warning("Failed to Unmarshal ManagedCluster", err)
 		}
 		resource = transformManagedCluster(&managedCluster)
 	case "ManagedClusterInfo":
@@ -208,6 +208,7 @@ func addAdditionalProperties(props map[string]interface{}) map[string]interface{
 	// Map apigroup and kind to sync with ManagedClusterInfo for RBAC
 	props["apigroup"] = managedClusterInfoApiGrp
 	props["kind_plural"] = "managedclusterinfos"
+	props["_hubClusterResource"] = "true"
 	return props
 }
 
