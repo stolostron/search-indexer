@@ -79,7 +79,7 @@ func Test_UpsertCluster_Update1(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo"}),
 	).Return(mrows, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("uid" = '%[2]s')`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("r".uid = '%[2]s')`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
@@ -127,7 +127,7 @@ func Test_UpsertCluster_Update2(t *testing.T) {
 	).Return(mrows, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
 
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("uid" = '%[2]s')`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("r".uid = '%[2]s')`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
@@ -174,7 +174,7 @@ func Test_UpsertCluster_Insert(t *testing.T) {
 	).Return(nil, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
 
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("uid" = '%[2]s')`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("r".uid = '%[2]s')`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),

@@ -237,12 +237,12 @@ func goquDelete(tableName, columnName, arg string) (string, []interface{}, error
 // query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2)
 // ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1"
 func goquInsertUpdate(tableName string, args []interface{}) (string, []interface{}, error) {
-	schemaTable := goqu.S("search").Table(tableName)
+	schemaTable := goqu.S("search").Table(tableName).As("r")
 	ds := goqu.From(schemaTable)
 	sql, args, err := ds.Insert().
 		Rows(goqu.Record{"uid": args[0], "cluster": args[1], "data": args[2]}).
 		OnConflict(goqu.DoUpdate(
 			"uid",
-			goqu.C("data").Set(args[2])).Where(goqu.C("uid").Eq(args[0]))).ToSQL()
+			goqu.C("data").Set(args[2])).Where(goqu.L(`"r".uid`).Eq(args[0]))).ToSQL()
 	return sql, args, err
 }

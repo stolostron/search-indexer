@@ -105,7 +105,7 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo"}),
 	).Return(nil, nil)
 
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("uid" = '%[2]s')`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("r".uid = '%[2]s')`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
@@ -137,7 +137,7 @@ func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 	existingCluster["Properties"] = props
 	expectedProps, _ := json.Marshal(existingCluster["Properties"])
 
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("uid" = '%[2]s')`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("r".uid = '%[2]s')`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
