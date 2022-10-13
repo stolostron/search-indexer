@@ -22,7 +22,7 @@ func Test_initializeTables(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")).Return(nil, nil)
 
 	// Execute function test.
-	dao.InitializeTables()
+	dao.InitializeTables(context.Background())
 
 }
 

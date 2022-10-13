@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -46,7 +47,7 @@ func Test_UpsertCluster_NoUpdate(t *testing.T) {
 	dao, _ := buildMockDAO(t)
 
 	// Execute function test.
-	dao.UpsertCluster(currCluster)
+	dao.UpsertCluster(context.Background(), currCluster)
 	AssertEqual(t, len(existingClustersCache), 1, "existingClustersCache should have length of 1")
 	_, ok := ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
@@ -78,13 +79,14 @@ func Test_UpsertCluster_Update1(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo"}),
 	).Return(mrows, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("uid" = '%[2]s')`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
+		gomock.Eq(sql),
+		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 
 	// Execute function test.
-	dao.UpsertCluster(currCluster)
+	dao.UpsertCluster(context.Background(), currCluster)
 	AssertEqual(t, len(existingClustersCache), 1, "existingClustersCache should have length of 1")
 	currProps, clusterPresent := ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, clusterPresent, true, "existingClustersCache should have an entry for cluster foo")
@@ -125,13 +127,14 @@ func Test_UpsertCluster_Update2(t *testing.T) {
 	).Return(mrows, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
 
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("uid" = '%[2]s')`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
+		gomock.Eq(sql),
+		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 
 	// Execute function test.
-	dao.UpsertCluster(currCluster)
+	dao.UpsertCluster(context.Background(), currCluster)
 	AssertEqual(t, len(existingClustersCache), 1, "existingClustersCache should have length of 1")
 	currProps, clusterPresent := ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, clusterPresent, true, "existingClustersCache should have an entry for cluster foo")
@@ -170,13 +173,14 @@ func Test_UpsertCluster_Insert(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo"}),
 	).Return(nil, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
-	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
-	).Return(nil, nil)
 
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("uid" = '%[2]s')`, string(expectedProps), "cluster__name-foo")
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(sql),
+		gomock.Eq([]interface{}{}),
+	).Return(nil, nil)
 	// Execute function test.
-	dao.UpsertCluster(currCluster)
+	dao.UpsertCluster(context.Background(), currCluster)
 	AssertEqual(t, len(existingClustersCache), 1, "existingClustersCache should have length of 1")
 	_, ok := ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
@@ -202,7 +206,7 @@ func Test_clusterInDB_QueryErr(t *testing.T) {
 		gomock.Eq([]interface{}{"cluster__name-foo1"}),
 	).Return(nil, errors.New("Error fetching data"))
 	// Execute function test.
-	ok := dao.clusterInDB("cluster__name-foo1")
+	ok := dao.clusterInDB(context.Background(), "cluster__name-foo1")
 	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo1")
 
 }
@@ -220,8 +224,11 @@ func Test_DelClusterResources(t *testing.T) {
 	defer mockConn.Close(context.Background())
 	dao, mockPool := buildMockDAO(t)
 	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
-	mockConn.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
+	// mockConn.ExpectExec(`DELETE FROM "search"."resources" WHERE ("cluster" = 'name-foo')`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	// mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectCommit()
 	// Execute function test.
 	dao.DeleteClusterAndResources(context.TODO(), clusterName, false)
@@ -234,7 +241,6 @@ func Test_DelClusterResources(t *testing.T) {
 
 func Test_DelCluster(t *testing.T) {
 	clusterName := "name-foo"
-	clusterUID := "cluster__name-foo"
 	//Ensure there is an entry for cluster_foo in the cluster cache
 	UpdateClustersCache("cluster__name-foo", nil)
 
@@ -245,14 +251,16 @@ func Test_DelCluster(t *testing.T) {
 	defer mockConn.Close(context.Background())
 	dao, mockPool := buildMockDAO(t)
 	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
-	mockConn.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
 	mockConn.ExpectCommit()
 
 	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
-		gomock.Eq([]interface{}{clusterUID}),
+		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
+
 	// Execute function test.
 	dao.DeleteClusterAndResources(context.TODO(), clusterName, true)
 
@@ -264,7 +272,6 @@ func Test_DelCluster(t *testing.T) {
 // Test delete cluster resources from db
 func Test_DelClusterResourcesError(t *testing.T) {
 	clusterName := "name-foo"
-	clusterUID := "cluster__name-foo"
 
 	//Ensure there is an entry for cluster_foo in the cluster cache
 	UpdateClustersCache("cluster__name-foo", nil)
@@ -291,13 +298,20 @@ func Test_DelClusterResourcesError(t *testing.T) {
 				return mockConn, nil //return no error
 			}
 		})
-	mockConn.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
 	mockConn.ExpectCommit()
 
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq([]interface{}{}),
+	).Return(nil, nil)
+
 	// Expect deletecluster to be called twice. First time, return error. Second time, return success.
-	mockPool.EXPECT().Exec(context.TODO(), gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
-		gomock.Eq(clusterUID)).
+	mockPool.EXPECT().Exec(context.TODO(),
+		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq([]interface{}{})).
 		Times(2). //expect it to be called twice
 		DoAndReturn(func(con context.Context, sql string, clusterUID string) (pgconn.CommandTag, error) {
 

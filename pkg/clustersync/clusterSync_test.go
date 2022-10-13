@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
+	"regexp"
 	"testing"
 
 	"github.com/driftprogramming/pgxpoolmock"
@@ -102,9 +104,11 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 		gomock.Eq(`SELECT uid, data from search.resources where uid=$1`),
 		gomock.Eq([]interface{}{"cluster__name-foo"}),
 	).Return(nil, nil)
+
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("uid" = '%[2]s')`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
+		gomock.Eq(sql),
+		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 
 	processClusterUpsert(context.TODO(), obj)
@@ -133,9 +137,10 @@ func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 	existingCluster["Properties"] = props
 	expectedProps, _ := json.Marshal(existingCluster["Properties"])
 
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("uid" = '%[2]s')`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2) ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo", string(expectedProps)}),
+		gomock.Eq(sql),
+		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 
 	processClusterUpsert(context.TODO(), obj)
@@ -194,21 +199,20 @@ func Test_ProcessClusterDeleteOnMC(t *testing.T) {
 	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
 	// Prepare a mock DAO instance
 	dao = database.NewDAO(mockPool)
-	clusterName := "name-foo"
-	clusterUID := "cluster__name-foo"
+
 	mockConn, err := pgxmock.NewConn()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer mockConn.Close(context.Background())
 	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
-	mockConn.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectCommit()
 
 	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`DELETE FROM search.resources WHERE uid=$1`),
-		gomock.Eq([]interface{}{clusterUID}),
+		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 
 	processClusterDelete(context.TODO(), obj)
@@ -232,15 +236,15 @@ func Test_ProcessClusterDeleteOnMCASearch(t *testing.T) {
 	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
 	// Prepare a mock DAO instance
 	dao = database.NewDAO(mockPool)
-	clusterName := "name-foo"
+	// clusterName := "name-foo"
 	mockConn, err := pgxmock.NewConn()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer mockConn.Close(context.Background())
 	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
-	mockConn.ExpectExec(`DELETE FROM search.resources`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectCommit()
 
 	processClusterDelete(context.TODO(), obj)

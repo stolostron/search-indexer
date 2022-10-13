@@ -172,8 +172,8 @@ func processClusterUpsert(ctx context.Context, obj interface{}) {
 		return
 	}
 
-	// Upsert (attempt update, attempt insert on failure)
-	dao.UpsertCluster(resource)
+	// Upsert (attempt insert, update on failure)
+	dao.UpsertCluster(ctx, resource)
 
 	// A cluster can be offline due to resource shortage, network outage or other reasons. We are not deleting
 	// the cluster or resources if a cluster is offline to avoid unnecessary deletes and re-inserts in the database.
