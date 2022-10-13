@@ -84,32 +84,32 @@ func initializePool() pgxpoolmock.PgxPool {
 	return conn
 }
 
-func (dao *DAO) InitializeTables() {
+func (dao *DAO) InitializeTables(ctx context.Context) {
 	if config.Cfg.DevelopmentMode {
 		klog.Warning("Dropping search schema for development only. We must not see this message in production.")
-		_, err := dao.pool.Exec(context.TODO(), "DROP SCHEMA IF EXISTS search CASCADE")
+		_, err := dao.pool.Exec(ctx, "DROP SCHEMA IF EXISTS search CASCADE")
 		checkError(err, "Error dropping schema search.")
 	}
 
-	_, err := dao.pool.Exec(context.TODO(), "CREATE SCHEMA IF NOT EXISTS search")
+	_, err := dao.pool.Exec(ctx, "CREATE SCHEMA IF NOT EXISTS search")
 	checkError(err, "Error creating schema.")
-	_, err = dao.pool.Exec(context.TODO(),
+	_, err = dao.pool.Exec(ctx,
 		"CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
 	checkError(err, "Error creating table search.resources.")
-	_, err = dao.pool.Exec(context.TODO(),
+	_, err = dao.pool.Exec(ctx,
 		"CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")
 	checkError(err, "Error creating table search.edges.")
 
 	// Jsonb indexing data keys:
-	_, err = dao.pool.Exec(context.TODO(),
+	_, err = dao.pool.Exec(ctx,
 		"CREATE INDEX IF NOT EXISTS data_kind_idx ON search.resources USING GIN ((data -> 'kind'))")
 	checkError(err, "Error creating index on search.resources data key kind.")
 
-	_, err = dao.pool.Exec(context.TODO(),
+	_, err = dao.pool.Exec(ctx,
 		"CREATE INDEX IF NOT EXISTS data_namespace_idx ON search.resources USING GIN ((data -> 'namespace'))")
 	checkError(err, "Error creating index on search.resources data key namespace.")
 
-	_, err = dao.pool.Exec(context.TODO(),
+	_, err = dao.pool.Exec(ctx,
 		"CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")
 	checkError(err, "Error creating index on search.resources data key name.")
 }

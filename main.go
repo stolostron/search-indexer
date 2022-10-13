@@ -37,7 +37,7 @@ func main() {
 
 	// Initialize the database
 	dao := database.NewDAO(nil)
-	dao.InitializeTables()
+	dao.InitializeTables(ctx)
 
 	// Start cluster sync.
 	go clustersync.ElectLeaderAndStart(ctx)
