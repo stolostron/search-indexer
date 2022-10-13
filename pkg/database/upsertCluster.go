@@ -77,7 +77,7 @@ func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName strin
 
 		// Create the query
 		sql, args, err := goquDelete("resources", "cluster", clusterName)
-		checkError(err, fmt.Sprintf("Error creating delete cluster resources for %s.", clusterName))
+		checkError(err, fmt.Sprintf("Error creating query to delete cluster resources for %s.", clusterName))
 		if err != nil {
 			return err
 		}
@@ -93,7 +93,7 @@ func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName strin
 
 		// Create the query
 		sql, args, err = goquDelete("edges", "cluster", clusterName)
-		checkError(err, fmt.Sprintf("Error creating delete edges query for %s.", clusterName))
+		checkError(err, fmt.Sprintf("Error creating query to delete edges for %s.", clusterName))
 		if err != nil {
 			return err
 		}
@@ -127,7 +127,7 @@ func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterUID string) error {
 
 	// Create the query
 	sql, args, err := goquDelete("resources", "uid", clusterUID)
-	checkError(err, fmt.Sprintf("Error creating delete clusterNode query for %s.", clusterUID))
+	checkError(err, fmt.Sprintf("Error creating query to delete clusterNode for %s.", clusterUID))
 	if err != nil {
 		return err
 	}
@@ -233,10 +233,10 @@ func goquDelete(tableName, columnName, arg string) (string, []interface{}, error
 	return sql, args, err
 }
 
+// Create the upsert query
+// query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2)
+// ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1"
 func goquInsertUpdate(tableName string, args []interface{}) (string, []interface{}, error) {
-	// Create the query
-	// query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2)
-	// ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1"
 	schemaTable := goqu.S("search").Table(tableName)
 	ds := goqu.From(schemaTable)
 	sql, args, err := ds.Insert().
