@@ -236,7 +236,6 @@ func Test_ProcessClusterDeleteOnMCASearch(t *testing.T) {
 	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
 	// Prepare a mock DAO instance
 	dao = database.NewDAO(mockPool)
-	// clusterName := "name-foo"
 	mockConn, err := pgxmock.NewConn()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)

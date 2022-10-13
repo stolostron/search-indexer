@@ -144,9 +144,6 @@ func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterUID string) error {
 func (dao *DAO) UpsertCluster(ctx context.Context, resource model.Resource) {
 	data, _ := json.Marshal(resource.Properties)
 	clusterName := resource.Properties["name"].(string)
-	// query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2)
-	// ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1"
-	// args := []interface{}{resource.UID, string(data)}
 	sql, args, err := goquInsertUpdate("resources", []interface{}{resource.UID, "", string(data)})
 	checkError(err, fmt.Sprintf("Error creating insert/update cluster query for %s", clusterName))
 	if err != nil {

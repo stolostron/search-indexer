@@ -227,8 +227,6 @@ func Test_DelClusterResources(t *testing.T) {
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
-	// mockConn.ExpectExec(`DELETE FROM "search"."resources" WHERE ("cluster" = 'name-foo')`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	// mockConn.ExpectExec(`DELETE FROM search.edges`).WithArgs(clusterName).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectCommit()
 	// Execute function test.
 	dao.DeleteClusterAndResources(context.TODO(), clusterName, false)
