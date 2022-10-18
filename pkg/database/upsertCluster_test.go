@@ -75,8 +75,8 @@ func Test_UpsertCluster_Update1(t *testing.T) {
 	dao, mockPool := buildMockDAO(t)
 	mrows := newMockRows()
 	mockPool.EXPECT().Query(gomock.Any(),
-		gomock.Eq(`SELECT uid, data from search.resources where uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo"}),
+		gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq([]interface{}{}),
 	).Return(mrows, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
 	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("r".uid = '%[2]s')`, string(expectedProps), "cluster__name-foo")
@@ -122,8 +122,8 @@ func Test_UpsertCluster_Update2(t *testing.T) {
 	dao, mockPool := buildMockDAO(t)
 	mrows := newMockRows()
 	mockPool.EXPECT().Query(gomock.Any(),
-		gomock.Eq(`SELECT uid, data from search.resources where uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo"}),
+		gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq([]interface{}{}),
 	).Return(mrows, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
 
@@ -169,8 +169,8 @@ func Test_UpsertCluster_Insert(t *testing.T) {
 	//Clear cluster cache
 	existingClustersCache = make(map[string]interface{})
 	mockPool.EXPECT().Query(gomock.Any(),
-		gomock.Eq(`SELECT uid, data from search.resources where uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo"}),
+		gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
 
@@ -202,8 +202,8 @@ func Test_clusterInDB_QueryErr(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao, mockPool := buildMockDAO(t)
 	mockPool.EXPECT().Query(gomock.Any(),
-		gomock.Eq(`SELECT uid, data from search.resources where uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo1"}),
+		gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo1')`),
+		gomock.Eq([]interface{}{}),
 	).Return(nil, errors.New("Error fetching data"))
 	// Execute function test.
 	ok := dao.clusterInDB(context.Background(), "cluster__name-foo1")

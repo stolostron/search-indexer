@@ -4,6 +4,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
@@ -17,11 +18,20 @@ func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncRespon
 		"Resync full state for cluster %s. This is normal, but it could be a problem if it happens often.",
 		clusterName)
 
-	_, err := dao.pool.Exec(context.TODO(), "DELETE from search.resources WHERE cluster=$1", clusterName)
+	// DELETE from search.resources WHERE cluster=$1
+	delResourcesSql, args, delResourcesSqlErr := goquDelete("resources", "cluster", clusterName)
+	checkError(delResourcesSqlErr, fmt.Sprintf("Error creating query to delete cluster resources for %s.",
+		clusterName))
+
+	_, err := dao.pool.Exec(context.TODO(), delResourcesSql, args)
 	if err != nil {
 		klog.Warningf("Error deleting resources during resync of cluster %s. Error: %+v", clusterName, err)
 	}
-	_, err = dao.pool.Exec(context.TODO(), "DELETE from search.edges WHERE cluster=$1", clusterName)
+	// DELETE from search.edges WHERE cluster=$1
+	delEdgesSql, args, delEdgesSqlErr := goquDelete("edges", "cluster", clusterName)
+	checkError(delEdgesSqlErr, fmt.Sprintf("Error creating query to delete edges for %s.", clusterName))
+
+	_, err = dao.pool.Exec(context.TODO(), delEdgesSql, args)
 	if err != nil {
 		klog.Warningf("Error deleting edges during resync of cluster %s. Error: %+v", clusterName, err)
 	}
