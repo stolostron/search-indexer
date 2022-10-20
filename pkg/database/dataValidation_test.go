@@ -6,14 +6,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/doug-martin/goqu/v9"
 	pgx "github.com/jackc/pgx/v4"
 )
 
 func Test_ClusterTotals(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao, mockPool := buildMockDAO(t)
-	clusterName := "cluster_foo"
 	batch := &pgx.Batch{}
 	// mock Result
 	br := BatchResults{
@@ -23,15 +21,8 @@ func Test_ClusterTotals(t *testing.T) {
 		},
 	}
 	// mock queries
-	resourceCountSql, params, _ := goqu.From(goqu.S("search").Table("resources")).
-		Select(goqu.COUNT("*")).
-		Where(goqu.C("cluster").Eq(clusterName)).ToSQL()
-	batch.Queue(resourceCountSql, params)
-	edgeCountSql, params, _ := goqu.From(goqu.S("search").Table("edges")).
-		Select(goqu.COUNT("*")).
-		Where(goqu.C("cluster").Eq(clusterName),
-			goqu.C("edgetype").Neq("interCluster")).ToSQL()
-	batch.Queue(edgeCountSql, params)
+	batch.Queue(`SELECT COUNT(*) FROM "search"."resources" WHERE ("cluster" = 'cluster_foo')`, []interface{}{})
+	batch.Queue(`SELECT COUNT(*) FROM "search"."edges" WHERE (("cluster" = 'cluster_foo') AND ("edgetype" != 'interCluster'))`, []interface{}{})
 
 	mockPool.EXPECT().SendBatch(context.Background(), batch).Return(br)
 	// Execute function test.
