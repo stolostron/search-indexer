@@ -101,8 +101,8 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 	expectedProps, _ := json.Marshal(existingCluster["Properties"])
 
 	mockPool.EXPECT().Query(gomock.Any(),
-		gomock.Eq(`SELECT uid, data from search.resources where uid=$1`),
-		gomock.Eq([]interface{}{"cluster__name-foo"}),
+		gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 
 	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("r".uid = '%[2]s')`, string(expectedProps), "cluster__name-foo")

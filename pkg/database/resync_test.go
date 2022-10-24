@@ -17,8 +17,8 @@ func Test_ResyncData(t *testing.T) {
 	dao, mockPool := buildMockDAO(t)
 
 	// Mock PosgreSQL apis
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DELETE from search.resources WHERE cluster=$1"), gomock.Eq("test-cluster")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("DELETE from search.edges WHERE cluster=$1"), gomock.Eq("test-cluster")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq(`DELETE FROM "search"."resources" WHERE ("cluster" = 'test-cluster')`), gomock.Eq([]interface{}{})).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq(`DELETE FROM "search"."edges" WHERE ("cluster" = 'test-cluster')`), gomock.Eq([]interface{}{})).Return(nil, nil)
 	br := BatchResults{}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br)
 
@@ -40,7 +40,7 @@ func Test_ResyncData_errors(t *testing.T) {
 	dao, mockPool := buildMockDAO(t)
 
 	// Mock PosgreSQL apis
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Eq("test-cluster")).Return(nil, errors.New("Delete error")).Times(2)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Eq([]interface{}{})).Return(nil, errors.New("Delete error")).Times(2)
 	br := BatchResults{}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br)
 
