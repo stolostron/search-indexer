@@ -24,7 +24,7 @@ func (dao *DAO) ClusterTotals(clusterName string) (resources int, edges int) {
 		clusterName, err))
 	klog.V(4).Infof("Data validation query for resource count in cluster %s - sql: %s args: %+v",
 		clusterName, resourceCountSql, params)
-	batch.Queue(resourceCountSql, params)
+	batch.Queue(resourceCountSql, params...)
 
 	// Sample query: SELECT count(*) FROM search.edges WHERE cluster=$1 and edgetype<>'interCluster'
 	edgeCountSql, params, err := goqu.From(goqu.S("search").Table("edges")).
@@ -35,7 +35,7 @@ func (dao *DAO) ClusterTotals(clusterName string) (resources int, edges int) {
 		clusterName, edgeCountSql, params)
 	checkError(err, fmt.Sprintf("Error creating query to count edges in cluster %s:%s ",
 		clusterName, err))
-	batch.Queue(edgeCountSql, params)
+	batch.Queue(edgeCountSql, params...)
 
 	br := dao.pool.SendBatch(context.Background(), batch)
 	defer br.Close()

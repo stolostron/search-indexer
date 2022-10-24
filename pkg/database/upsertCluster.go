@@ -184,7 +184,7 @@ func (dao *DAO) clusterInDB(ctx context.Context, clusterUID string) bool {
 		}
 		klog.V(4).Infof("Query to check if the cluster node %s is in the database - sql: %s args: %+v",
 			clusterUID, sql, args)
-		rows, err := dao.pool.Query(ctx, sql, args)
+		rows, err := dao.pool.Query(ctx, sql, args...)
 		if err != nil {
 			klog.Errorf("Error while fetching cluster %s from database: %s", clusterUID, err.Error())
 			return false // insert/update the cluster node in db

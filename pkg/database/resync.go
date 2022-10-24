@@ -23,7 +23,7 @@ func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncRespon
 	checkError(delResourcesSqlErr, fmt.Sprintf("Error creating query to delete cluster resources for %s.",
 		clusterName))
 
-	_, err := dao.pool.Exec(context.TODO(), delResourcesSql, args)
+	_, err := dao.pool.Exec(context.TODO(), delResourcesSql, args...)
 	if err != nil {
 		klog.Warningf("Error deleting resources during resync of cluster %s. Error: %+v", clusterName, err)
 	}
@@ -31,7 +31,7 @@ func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncRespon
 	delEdgesSql, args, delEdgesSqlErr := goquDelete("edges", "cluster", clusterName)
 	checkError(delEdgesSqlErr, fmt.Sprintf("Error creating query to delete edges for %s.", clusterName))
 
-	_, err = dao.pool.Exec(context.TODO(), delEdgesSql, args)
+	_, err = dao.pool.Exec(context.TODO(), delEdgesSql, args...)
 	if err != nil {
 		klog.Warningf("Error deleting edges during resync of cluster %s. Error: %+v", clusterName, err)
 	}
