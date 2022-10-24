@@ -114,7 +114,7 @@ func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName strin
 		}
 		klog.V(4).Infof("Query to delete cluster resources for %s - sql: %s args: %+v", clusterName, sql, args)
 
-		if res, err := tx.Exec(ctx, sql, args); err != nil {
+		if res, err := tx.Exec(ctx, sql, args...); err != nil {
 			checkErrorAndRollback(err,
 				fmt.Sprintf("Error deleting resources from search.resources for clusterName %s.", clusterName), tx, ctx)
 			return err
@@ -130,7 +130,7 @@ func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName strin
 			return err
 		}
 		// Delete edges for cluster from DB
-		if res, err := tx.Exec(ctx, sql, args); err != nil {
+		if res, err := tx.Exec(ctx, sql, args...); err != nil {
 			checkErrorAndRollback(err,
 				fmt.Sprintf("Error deleting edges from search.edges for clusterName %s.", clusterName), tx, ctx)
 			return err
@@ -165,7 +165,7 @@ func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterUID string) error {
 	}
 	klog.V(4).Infof("Query to delete clusterNode for %s - sql: %s args: %+v", clusterUID, sql, args)
 
-	if res, err := dao.pool.Exec(ctx, sql, args); err != nil {
+	if res, err := dao.pool.Exec(ctx, sql, args...); err != nil {
 		checkError(err, fmt.Sprintf("Error deleting cluster %s from search.resources.", clusterUID))
 		return err
 	} else {
