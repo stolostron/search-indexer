@@ -81,6 +81,7 @@ func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName strin
 		if err != nil {
 			return err
 		}
+		klog.V(4).Infof("Query to delete cluster resources for %s - sql: %s args: %+v", clusterName, sql, args)
 
 		if res, err := tx.Exec(ctx, sql, args); err != nil {
 			checkErrorAndRollback(err,
@@ -131,6 +132,7 @@ func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterUID string) error {
 	if err != nil {
 		return err
 	}
+	klog.V(4).Infof("Query to delete clusterNode for %s - sql: %s args: %+v", clusterUID, sql, args)
 
 	if res, err := dao.pool.Exec(ctx, sql, args); err != nil {
 		checkError(err, fmt.Sprintf("Error deleting cluster %s from search.resources.", clusterUID))
@@ -150,6 +152,7 @@ func (dao *DAO) UpsertCluster(ctx context.Context, resource model.Resource) {
 		//TO DO: store the pending cluster resource in cache and retry in case of error
 		return
 	}
+	klog.V(4).Infof("Query to insert/update cluster for %s - sql: %s args: %+v", clusterName, sql, args)
 	// Insert cluster node if cluster does not exist in the DB
 	if !dao.clusterInDB(ctx, resource.UID) || !dao.clusterPropsUpToDate(resource.UID, resource) {
 		_, err := dao.pool.Exec(ctx, sql, args...)
@@ -179,6 +182,7 @@ func (dao *DAO) clusterInDB(ctx context.Context, clusterUID string) bool {
 			klog.Errorf("Error creating query to check if the cluster node %s is in the database", clusterUID)
 			return false // insert/update the cluster node in db
 		}
+		klog.V(4).Infof("Query to check if the cluster node %s is in the database - sql: %s args: %+v", sql, args)
 		rows, err := dao.pool.Query(ctx, sql, args)
 		if err != nil {
 			klog.Errorf("Error while fetching cluster %s from database: %s", clusterUID, err.Error())
