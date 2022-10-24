@@ -81,6 +81,7 @@ func (dao *DAO) DeleteClusterResourcesTxn(ctx context.Context, clusterName strin
 		if err != nil {
 			return err
 		}
+		klog.V(4).Infof("Query to delete cluster resources for %s - sql: %s args: %+v", clusterName, sql, args)
 
 		if res, err := tx.Exec(ctx, sql, args); err != nil {
 			checkErrorAndRollback(err,
@@ -131,6 +132,7 @@ func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterUID string) error {
 	if err != nil {
 		return err
 	}
+	klog.V(4).Infof("Query to delete clusterNode for %s - sql: %s args: %+v", clusterUID, sql, args)
 
 	if res, err := dao.pool.Exec(ctx, sql, args); err != nil {
 		checkError(err, fmt.Sprintf("Error deleting cluster %s from search.resources.", clusterUID))
@@ -150,6 +152,7 @@ func (dao *DAO) UpsertCluster(ctx context.Context, resource model.Resource) {
 		//TO DO: store the pending cluster resource in cache and retry in case of error
 		return
 	}
+	klog.V(4).Infof("Query to insert/update cluster for %s - sql: %s args: %+v", clusterName, sql, args)
 	// Insert cluster node if cluster does not exist in the DB
 	if !dao.clusterInDB(ctx, resource.UID) || !dao.clusterPropsUpToDate(resource.UID, resource) {
 		_, err := dao.pool.Exec(ctx, sql, args...)
@@ -170,10 +173,21 @@ func (dao *DAO) clusterInDB(ctx context.Context, clusterUID string) bool {
 	if !ok {
 		klog.V(3).Infof("Cluster [%s] is not in existingClustersCache. Updating cache with latest state from database.",
 			clusterUID)
-		query := "SELECT uid, data from search.resources where uid=$1"
-		rows, err := dao.pool.Query(ctx, query, clusterUID)
+
+		// Create the query
+		sql, args, err := goqu.From(goqu.S("search").Table("resources")).
+			Select(goqu.C("uid"), goqu.C("data")).
+			Where(goqu.C("uid").Eq(clusterUID)).ToSQL()
+		if err != nil {
+			klog.Errorf("Error creating query to check if the cluster node %s is in the database", clusterUID)
+			return false // insert/update the cluster node in db
+		}
+		klog.V(4).Infof("Query to check if the cluster node %s is in the database - sql: %s args: %+v",
+			clusterUID, sql, args)
+		rows, err := dao.pool.Query(ctx, sql, args...)
 		if err != nil {
 			klog.Errorf("Error while fetching cluster %s from database: %s", clusterUID, err.Error())
+			return false // insert/update the cluster node in db
 		}
 
 		if rows != nil {
@@ -183,7 +197,7 @@ func (dao *DAO) clusterInDB(ctx context.Context, clusterUID string) bool {
 				var data interface{}
 				err := rows.Scan(&uid, &data)
 				if err != nil {
-					klog.Errorf("Error %s retrieving rows for query:%s", err.Error(), query)
+					klog.Errorf("Error %s retrieving rows for clusterInDB query:%s", err.Error(), sql)
 				} else {
 					UpdateClustersCache(uid, data)
 				}
@@ -224,9 +238,10 @@ func (dao *DAO) clusterPropsUpToDate(clusterUID string, resource model.Resource)
 
 func goquDelete(tableName, columnName, arg string) (string, []interface{}, error) {
 	// Create the query
-	schemaTable := goqu.S("search").Table(tableName)
-	ds := goqu.From(schemaTable)
-	sql, args, err := ds.Delete().Where(goqu.C(columnName).Eq(arg)).ToSQL()
+	sql, args, err := goqu.From(
+		goqu.S("search").Table(tableName)).
+		Delete().
+		Where(goqu.C(columnName).Eq(arg)).ToSQL()
 	return sql, args, err
 }
 
@@ -234,12 +249,13 @@ func goquDelete(tableName, columnName, arg string) (string, []interface{}, error
 // query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2)
 // ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1"
 func goquInsertUpdate(tableName string, args []interface{}) (string, []interface{}, error) {
-	schemaTable := goqu.S("search").Table(tableName).As("r")
-	ds := goqu.From(schemaTable)
-	sql, args, err := ds.Insert().
+	sql, args, err := goqu.From(
+		goqu.S("search").Table(tableName).As("r")).
+		Insert().
 		Rows(goqu.Record{"uid": args[0], "cluster": args[1], "data": args[2]}).
-		OnConflict(goqu.DoUpdate(
-			"uid",
-			goqu.C("data").Set(args[2])).Where(goqu.L(`"r".uid`).Eq(args[0]))).ToSQL()
+		OnConflict(goqu.DoUpdate("uid",
+			goqu.C("data").Set(args[2])).
+			Where(goqu.L(`"r".uid`).Eq(args[0]))).ToSQL()
+
 	return sql, args, err
 }
