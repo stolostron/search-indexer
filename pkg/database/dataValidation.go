@@ -43,12 +43,12 @@ func (dao *DAO) ClusterTotals(clusterName string) (resources int, edges int) {
 	resourcesRow := br.QueryRow()
 	resourcesErr := resourcesRow.Scan(&resources)
 	if resourcesErr != nil {
-		klog.Error("Error reading total resources for cluster ", clusterName)
+		klog.Error("Error reading total resources for cluster ", clusterName, " err: ", resourcesErr)
 	}
 	edgesRow := br.QueryRow()
 	edgesErr := edgesRow.Scan(&edges)
 	if edgesErr != nil {
-		klog.Error("Error reading total edges for cluster ", clusterName)
+		klog.Error("Error reading total edges for cluster ", clusterName, " err: ", edgesErr)
 	}
 
 	return resources, edges
