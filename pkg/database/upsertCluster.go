@@ -12,13 +12,44 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/model"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 )
+
+var managedClusterResourceGvr = schema.GroupVersionResource{
+	Group:    "cluster.open-cluster-management.io",
+	Version:  "v1",
+	Resource: "managedclusters",
+}
 
 func (dao *DAO) DeleteClusterAndResources(ctx context.Context, clusterName string, deleteClusterNode bool) {
 	clusterUID := string("cluster__" + clusterName)
 	if err := dao.deleteWithRetry(dao.DeleteClusterResourcesTxn, ctx, clusterName); err == nil {
 		klog.V(2).Infof("Successfully deleted resources and edges for cluster %s from database!", clusterName)
+
+		// we want to confirm that the resources are deleted (in case indexer goes offline)
+		// get all managed clusters (can use same method as in sharedcache)
+
+		//track all managed clusters:
+		managedClusters := make(map[string]struct{})
+
+		// get all managed clusters via dynamic client:
+		resourceObj, err := config.GetDynamicClient().Resource(managedClusterResourceGvr).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			klog.Warning("Error resolving ManagedClusters with dynamic client", err.Error())
+		}
+
+		for _, item := range resourceObj.Items {
+			// Add to list if it is not local-cluster
+			if item.GetName() != "local-cluster" { //need to find a different method
+				managedClusters[item.GetName()] = struct{}{}
+			}
+		}
+
+		klog.V(3).Info("List of managed clusters in shared data: ", managedClusters)
+		fmt.Println("List of managed clusters in shared data: ", managedClusters)
+
 	}
 
 	if deleteClusterNode {
