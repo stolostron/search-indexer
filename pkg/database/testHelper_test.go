@@ -44,6 +44,7 @@ type BatchResults struct {
 	mockErrorOnClose bool // Return an error on Close()
 	mockErrorOnExec  bool // Return an error on Exec()
 	mockErrorOnQuery bool // Return an error on Query()
+	MockRows
 }
 
 func (s BatchResults) Exec() (pgconn.CommandTag, error) {
@@ -61,7 +62,7 @@ func (s BatchResults) Query() (pgx.Rows, error) {
 	return nil, e
 }
 func (s BatchResults) QueryRow() pgx.Row {
-	return nil
+	return &s.MockRows
 }
 func (s BatchResults) QueryFunc(scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
 	return nil, nil
@@ -102,9 +103,15 @@ func (r *MockRows) Next() bool {
 }
 
 func (r *MockRows) Scan(dest ...interface{}) error {
-	*dest[0].(*string) = r.mockData[r.index-1]["uid"].(string)
-	props, _ := r.mockData[r.index-1]["data"].(map[string]interface{})
-	dest[1] = props
+	// For Test_UpsertCluster_Update1 test
+	if len(dest) == 2 { // uid and data
+		*dest[0].(*string) = r.mockData[r.index-1]["uid"].(string)
+		props, _ := r.mockData[r.index-1]["data"].(map[string]interface{})
+		dest[1] = props
+		// for Test_ClusterTotals test
+	} else if len(dest) == 1 { // count
+		*dest[0].(*int) = r.mockData[r.index-1]["count"].(int)
+	}
 	return nil
 }
 
