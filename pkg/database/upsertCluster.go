@@ -18,12 +18,12 @@ import (
 func (dao *DAO) DeleteClusterAndResources(ctx context.Context, clusterName string, deleteClusterNode bool) {
 	clusterUID := string("cluster__" + clusterName)
 	if err := dao.deleteWithRetry(dao.DeleteClusterResourcesTxn, ctx, clusterName); err == nil {
-		klog.V(2).Infof("Successfully deleted resources and edges for cluster %s from database!", clusterName)
+		klog.Infof("Successfully deleted resources and edges for cluster %s from database!", clusterName)
 	}
 
 	if deleteClusterNode {
 		if err := dao.deleteWithRetry(dao.DeleteClusterTxn, ctx, clusterUID); err == nil {
-			klog.V(2).Infof("Successfully deleted cluster node %s from database!", clusterName)
+			klog.Infof("Successfully deleted cluster node %s from database!", clusterName)
 			// Delete cluster from existing clusters cache
 			DeleteClustersCache(clusterUID)
 		}
