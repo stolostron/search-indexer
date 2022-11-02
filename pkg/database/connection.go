@@ -112,6 +112,21 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 	_, err = dao.pool.Exec(ctx,
 		"CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")
 	checkError(err, "Error creating index on search.resources data key name.")
+
+	_, err = dao.pool.Exec(ctx,
+		"CREATE INDEX IF NOT EXISTS data_cluster_idx ON search.resources USING btree (cluster)")
+	checkError(err, "Error creating index on search.resources cluster.")
+
+	_, err = dao.pool.Exec(ctx,
+		"CREATE INDEX IF NOT EXISTS data_composite_idx ON search.resources USING GIN "+
+			"((data -> '_hubClusterResource'::text), (data -> 'namespace'::text), "+
+			"(data -> 'apigroup'::text), (data -> 'kind_plural'::text))")
+	checkError(err, "Error creating index on search.resources data composite.")
+
+	_, err = dao.pool.Exec(ctx,
+		"CREATE INDEX IF NOT EXISTS data_hubCluster_idx ON search.resources USING GIN "+
+			"((data ->  '_hubClusterResource')) WHERE data ? '_hubClusterResource'")
+	checkError(err, "Error creating index on search.resources data key _hubClusterResource.")
 }
 
 func checkError(err error, logMessage string) {
