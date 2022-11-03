@@ -5,6 +5,7 @@ package clustersync
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -314,4 +315,50 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 		return
 	}
 	dao.DeleteClusterAndResources(ctx, clusterName, deleteClusterNode)
+	// call this function to confirm indexer deletes cluster even if offline/disconnected from db:
+	clusterRemaining := confirmDelete(ctx, clusterName)
+
+	for _, cluster := range clusterRemaining {
+		dao.DeleteClusterAndResources(ctx, cluster, false)
+	}
+}
+
+var managedClusterResourceGvr = schema.GroupVersionResource{
+	Group:    "cluster.open-cluster-management.io",
+	Version:  "v1",
+	Resource: "managedclusters",
+}
+
+func confirmDelete(ctx context.Context, clusterName string) []string {
+	//track deleted managed clusters and all managed clusters:
+	var deletedManagedClusters, managedClusters []string
+
+	deletedManagedClusters = append(deletedManagedClusters, clusterName)
+
+	// get all managed clusters via dynamic client:
+	resourceObj, err := config.GetDynamicClient().Resource(managedClusterResourceGvr).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		klog.Warning("Error resolving ManagedClusters with dynamic client", err.Error())
+	}
+
+	for _, item := range resourceObj.Items {
+		// Add to list if it is not local-cluster
+		if item.GetName() != "local-cluster" { //need to find a different method
+			managedClusters = append(managedClusters, item.GetName())
+		}
+	}
+
+	var needToDelete []string
+
+	for _, mClusters := range managedClusters { //iterate all managed clusters from client
+		for _, dmClusters := range deletedManagedClusters { //iterate all clusters with delete event (todo: cache clusters that have delete event)
+			if mClusters == dmClusters { //if a cluster exists that has delete event
+				needToDelete = append(needToDelete, mClusters) //push cluster to delete func again to catch case where indexer misses (make list of these remaining clusters)
+				fmt.Printf("Found cluster that should be deleted! Cluster found: %s", mClusters)
+			}
+		}
+	}
+
+	return needToDelete
+
 }
