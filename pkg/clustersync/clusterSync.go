@@ -5,7 +5,6 @@ package clustersync
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -315,11 +314,17 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 		return
 	}
 	dao.DeleteClusterAndResources(ctx, clusterName, deleteClusterNode)
-	// call this function to confirm indexer deletes cluster even if offline/disconnected from db:
-	clusterRemaining := confirmDelete(ctx, clusterName)
 
-	for _, cluster := range clusterRemaining {
-		dao.DeleteClusterAndResources(ctx, cluster, false)
+	// call this function to confirm indexer deletes cluster even if offline/disconnected from db:
+	clusterRemaining, err := confirmDelete(ctx, clusterName)
+	if err != nil {
+		klog.Warning("Error confirming cluster deletion", err.Error())
+	} else if len(clusterRemaining) > 0 {
+		for _, cluster := range clusterRemaining {
+			dao.DeleteClusterAndResources(ctx, cluster, false)
+		}
+	} else {
+		klog.V(3).Infof("Managed Cluster data deleted successfully.")
 	}
 }
 
@@ -329,9 +334,10 @@ var managedClusterResourceGvr = schema.GroupVersionResource{
 	Resource: "managedclusters",
 }
 
-func confirmDelete(ctx context.Context, clusterName string) []string {
+func confirmDelete(ctx context.Context, clusterName string) ([]string, error) {
+
 	//track deleted managed clusters and all managed clusters:
-	var deletedManagedClusters, managedClusters []string
+	var deletedManagedClusters, managedClusters, needToDelete []string
 
 	deletedManagedClusters = append(deletedManagedClusters, clusterName)
 
@@ -339,26 +345,29 @@ func confirmDelete(ctx context.Context, clusterName string) []string {
 	resourceObj, err := config.GetDynamicClient().Resource(managedClusterResourceGvr).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		klog.Warning("Error resolving ManagedClusters with dynamic client", err.Error())
+		return nil, err
 	}
 
 	for _, item := range resourceObj.Items {
-		// Add to list if it is not local-cluster
-		if item.GetName() != "local-cluster" { //need to find a different method
+		if item.GetName() != "local-cluster" { //TODO: need better method instead of using name.
 			managedClusters = append(managedClusters, item.GetName())
 		}
 	}
+	klog.V(5).Infof("Managed Clusters reported from kube client: ", managedClusters)
 
-	var needToDelete []string
-
-	for _, mClusters := range managedClusters { //iterate all managed clusters from client
-		for _, dmClusters := range deletedManagedClusters { //iterate all clusters with delete event (todo: cache clusters that have delete event)
-			if mClusters == dmClusters { //if a cluster exists that has delete event
-				needToDelete = append(needToDelete, mClusters) //push cluster to delete func again to catch case where indexer misses (make list of these remaining clusters)
-				fmt.Printf("Found cluster that should be deleted! Cluster found: %s", mClusters)
+	// Iterate managed clusters reported by kube client and managed clusters with delete event.
+	// If find match we push remaining cluser to delete func
+	for _, mClusters := range managedClusters {
+		for _, dmClusters := range deletedManagedClusters {
+			if mClusters == dmClusters {
+				needToDelete = append(needToDelete, mClusters)
+				klog.V(3).Infof("Found Managed Cluster data that should be deleted! Cluster found: %s", mClusters)
+			} else {
+				klog.V(3).Infof("Managed Cluster data successfully deleted from database.")
 			}
 		}
 	}
 
-	return needToDelete
+	return needToDelete, nil
 
 }

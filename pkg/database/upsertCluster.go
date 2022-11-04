@@ -24,7 +24,7 @@ func (dao *DAO) DeleteClusterAndResources(ctx context.Context, clusterName strin
 
 	if deleteClusterNode {
 		if err := dao.deleteWithRetry(dao.DeleteClusterTxn, ctx, clusterUID); err == nil {
-			fmt.Println("Successfully deleted cluster node %s from database!", clusterName)
+			klog.V(2).Infof("Successfully deleted cluster node %s from database!", clusterName)
 			// Delete cluster from existing clusters cache
 			DeleteClustersCache(clusterUID)
 		}
