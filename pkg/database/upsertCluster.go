@@ -262,7 +262,7 @@ func goquInsertUpdate(tableName string, args []interface{}) (string, []interface
 	return sql, args, err
 }
 
-// TO DO rename function to check for missed deleted clusters:
+// Query database for managed clusters:
 func (dao *DAO) GetManagedCluster(ctx context.Context) ([]string, error) {
 
 	schemaTable := goqu.S("search").Table("resources")
