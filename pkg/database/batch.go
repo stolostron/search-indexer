@@ -66,7 +66,7 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 
 	closeErr := br.Close()
 	if closeErr != nil {
-		// klog.Error("Error closing batch result.", closeErr)
+		klog.Error("Error closing batch result.", closeErr)
 	}
 
 	// Process errors.
@@ -74,7 +74,7 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 	if execErr != nil && len(items) == 1 {
 
 		errorItem := items[0]
-		// klog.Errorf("ERROR processing batchItem.  %+v", errorItem)
+		klog.Errorf("ERROR processing batchItem.  %+v", errorItem)
 
 		var errorArray *[]model.SyncError
 		switch errorItem.action {

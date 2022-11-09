@@ -175,7 +175,7 @@ func processClusterUpsert(ctx context.Context, obj interface{}) {
 	// Upsert (attempt insert, update on failure)
 	dao.UpsertCluster(ctx, resource)
 
-	// call this function to confirm indexer deletes cluster even if offline/disconnected from db:
+	// call this function to confirm deleted cluster data doesn't remain in db:
 	clusterRemaining, err := confirmDelete(ctx)
 	if err != nil {
 		klog.Warning("Error confirming cluster deletion", err.Error())
@@ -327,17 +327,6 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 	}
 	dao.DeleteClusterAndResources(ctx, clusterName, deleteClusterNode)
 
-	// // call this function to confirm indexer deletes cluster even if offline/disconnected from db:
-	// clusterRemaining, err := confirmDelete(ctx, clusterName)
-	// if err != nil {
-	// 	klog.Warning("Error confirming cluster deletion", err.Error())
-	// } else if len(clusterRemaining) > 0 {
-	// 	for _, cluster := range clusterRemaining {
-	// 		dao.DeleteClusterAndResources(ctx, cluster, false)
-	// 	}
-	// } else {
-	// 	klog.V(3).Infof("Managed Cluster data deleted successfully.")
-	// }
 }
 
 var managedClusterResourceGvr = schema.GroupVersionResource{
@@ -362,7 +351,11 @@ func confirmDelete(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	for _, item := range resourceObj.Items {
-		if item.GetName() != "local-cluster" { //TODO: need better method instead of using name.
+
+		// Here we want all managed clusters that have the search-collector addon available
+		// TO DO: need better method instead of using name.
+		if item.GetName() != "local-cluster" &&
+			item.GetLabels()["feature.open-cluster-management.io/addon-search-collector"] == "available" {
 			managedClustersFromClient = append(managedClustersFromClient, item.GetName())
 		}
 	}
