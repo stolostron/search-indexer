@@ -51,6 +51,16 @@ func ElectLeaderAndStart(ctx context.Context) {
 func syncClusters(ctx context.Context) {
 	klog.Info("Attempting to sync clusters. Begin ClusterWatch routine")
 
+	// Confirm delete event not missed if indexer goes offline:
+	clusterRemaining, err := confirmDelete(ctx)
+	if err != nil {
+		klog.Warning("Error confirming cluster deletion", err.Error())
+	} else if len(clusterRemaining) > 0 {
+		for _, cluster := range clusterRemaining {
+			dao.DeleteClusterAndResources(ctx, cluster, false)
+		}
+	}
+
 	dynamicFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient,
 		time.Duration(config.Cfg.RediscoverRateMS)*time.Millisecond)
 
@@ -174,18 +184,6 @@ func processClusterUpsert(ctx context.Context, obj interface{}) {
 
 	// Upsert (attempt insert, update on failure)
 	dao.UpsertCluster(ctx, resource)
-
-	// Confirm deleted cluster data doesn't remain in db:
-	clusterRemaining, err := confirmDelete(ctx)
-	if err != nil {
-		klog.Warning("Error confirming cluster deletion", err.Error())
-	} else if len(clusterRemaining) > 0 {
-		for _, cluster := range clusterRemaining {
-			dao.DeleteClusterAndResources(ctx, cluster, false)
-		}
-	} else {
-		klog.V(5).Infof("Managed Cluster data deleted successfully.")
-	}
 
 	// A cluster can be offline due to resource shortage, network outage or other reasons. We are not deleting
 	// the cluster or resources if a cluster is offline to avoid unnecessary deletes and re-inserts in the database.
@@ -337,10 +335,8 @@ var managedClusterResourceGvr = schema.GroupVersionResource{
 
 // finds lingering data in database from deleted/detached clusters or clusters with search-collector-addon disabled:
 func confirmDelete(ctx context.Context) ([]string, error) {
-	var managedClustersFromClient, needToDelete []string
-
-	managedClustersFromDB, _ := dao.GetManagedCluster(ctx)
-	klog.V(5).Infof("Managed Clusters reported from database: ", managedClustersFromDB)
+	var needToDelete []string
+	managedClustersFromClient := make(map[string]struct{})
 
 	// get all managed clusters via dynamic client:
 	resourceObj, err := config.GetDynamicClient().Resource(managedClusterResourceGvr).List(ctx, metav1.ListOptions{})
@@ -351,24 +347,28 @@ func confirmDelete(ctx context.Context) ([]string, error) {
 	for _, item := range resourceObj.Items {
 
 		// Here we want all managed clusters that have the search-collector addon available
-		// TO DO: need better method instead of using name.
-		if item.GetName() != "local-cluster" &&
+		if item.GetName() != "local-cluster" && // TO DO: need better method instead of using name.
 			item.GetLabels()["feature.open-cluster-management.io/addon-search-collector"] == "available" {
-			managedClustersFromClient = append(managedClustersFromClient, item.GetName())
+			managedClustersFromClient[item.GetName()] = struct{}{}
 		}
 	}
-	klog.V(5).Infof("Managed Clusters reported from kube client: ", managedClustersFromClient)
+	klog.Infof("Managed Clusters reported from kube client: ", managedClustersFromClient)
 
-	// Iterate managed clusters reported by kube client and managed clusters with delete event.
-	// If find match we push remaining cluser to delete func
-	for _, mClusters := range managedClustersFromClient {
-		for _, dmClusters := range managedClustersFromDB {
-			if mClusters != dmClusters {
-				needToDelete = append(needToDelete, dmClusters)
-				klog.V(3).Infof("Found Managed Cluster data in database that should be deleted! Cluster found: %s", dmClusters)
-			} else {
-				klog.V(5).Infof("Managed Cluster data successfully deleted from database.")
-			}
+	// get all managed clusters from db:
+	managedClustersFromDB, err := dao.GetManagedCluster(ctx)
+	if err != nil {
+		klog.Errorf("Error getting managed clusters names from database. %s", err)
+		return nil, err
+	} else {
+		klog.Infof("Managed Clusters reported from database: ", managedClustersFromDB)
+	}
+	for _, dmCluster := range managedClustersFromDB {
+		if _, exist := managedClustersFromClient[dmCluster]; !exist {
+			// At this point the cluster exists in DB, but not in the list from client.
+			needToDelete = append(needToDelete, dmCluster)
+			klog.V(3).Infof("Found Managed Cluster data in database that should be deleted! Cluster found: %s", dmCluster)
+		} else {
+			klog.V(5).Infof("Managed Cluster data successfully deleted from database.")
 		}
 	}
 

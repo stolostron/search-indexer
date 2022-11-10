@@ -272,14 +272,14 @@ func (dao *DAO) GetManagedCluster(ctx context.Context) ([]string, error) {
 	//select distinct cluster from search.resources;
 	query, params, err := ds.Select("cluster").Distinct().ToSQL()
 	if err != nil {
-		klog.Errorf("Error building Search query: %s", err.Error())
+		klog.Errorf("Error building select distinct cluster query: %s", err.Error())
 		return nil, err
 	}
 	klog.Infof("Query database for managed clusters: [%s] ", query)
 
 	rows, err := dao.pool.Query(ctx, query, params...)
 	if err != nil {
-		klog.Errorf("Error resolving managed clusters query [%s] with args [%+v]. Error: [%+v]", query, err)
+		klog.Errorf("Error resolving managed clusters query [%s] with params [%+v]. Error: [%+v]", query, params, err)
 		return nil, err
 	}
 
@@ -288,7 +288,7 @@ func (dao *DAO) GetManagedCluster(ctx context.Context) ([]string, error) {
 		var mc string
 		err = rows.Scan(&mc)
 		if err != nil {
-			klog.Errorf("Error %s scanning value for getPropertyTypes:%s", err.Error(), query)
+			klog.Errorf("Error reading cluster names. Error: %s Query: %s", err.Error(), query)
 			continue
 		}
 		if mc != "" && mc != "local-cluster" { //exclude the local cluster and cluster node
