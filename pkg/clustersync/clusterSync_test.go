@@ -248,6 +248,8 @@ func Test_ProcessClusterDeleteOnMCASearch(t *testing.T) {
 
 	processClusterDelete(context.TODO(), obj)
 
+	// confirmDelete(context.TODO())
+
 	// Once processClusterDelete is done, existingClustersCache should still have an entry for cluster foo
 	// as we are not deleting it until MC is deleted.
 	_, ok := database.ReadClustersCache("cluster__name-foo")

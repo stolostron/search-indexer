@@ -328,3 +328,32 @@ func Test_DelClusterResourcesError(t *testing.T) {
 	_, ok := ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
 }
+
+func Test_GetManagedCluster(t *testing.T) {
+	// Prepare a mock DAO instance
+	clusterName := "cluster__name-foo"
+
+	//Ensure there is an entry for cluster_foo in the cluster cache
+	UpdateClustersCache("cluster__name-foo", nil)
+
+	mockConn, err := pgxmock.NewConn()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer mockConn.Close(context.Background())
+	dao, mockPool := buildMockDAO(t)
+	mrows := newMockRows()
+
+	mockPool.EXPECT().Query(gomock.Any(),
+		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),
+		gomock.Eq([]interface{}{}),
+	).Return(mrows, nil)
+
+	// Execute function test.
+	mc, err := dao.GetManagedCluster(context.Background())
+
+	for _, c := range mc {
+		AssertEqual(t, clusterName, c, "Cluster cluster__name-foo doesn't exist in database")
+
+	}
+}

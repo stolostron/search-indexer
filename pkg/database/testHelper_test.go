@@ -85,8 +85,9 @@ func buildMockDAO(t *testing.T) (DAO, *pgxpoolmock.MockPgxPool) {
 }
 
 type MockRows struct {
-	mockData []map[string]interface{}
-	index    int
+	mockData      []map[string]interface{}
+	index         int
+	columnHeaders []string
 }
 
 func (r *MockRows) Close() {}
@@ -104,14 +105,32 @@ func (r *MockRows) Next() bool {
 
 func (r *MockRows) Scan(dest ...interface{}) error {
 	// For Test_UpsertCluster_Update1 test
+
 	if len(dest) == 2 { // uid and data
 		*dest[0].(*string) = r.mockData[r.index-1]["uid"].(string)
 		props, _ := r.mockData[r.index-1]["data"].(map[string]interface{})
 		dest[1] = props
-		// for Test_ClusterTotals test
-	} else if len(dest) == 1 { // count
-		*dest[0].(*int) = r.mockData[r.index-1]["count"].(int)
+	} else {
+		for i := range dest {
+			switch v := dest[i].(type) {
+			case *int:
+				// for Test_ClusterTotals test
+				*dest[0].(*int) = r.mockData[r.index-1]["count"].(int)
+			case *string:
+				*dest[i].(*string) = r.mockData[r.index-1][r.columnHeaders[i]].(string)
+			case *map[string]interface{}:
+				*dest[i].(*map[string]interface{}) = r.mockData[r.index-1][r.columnHeaders[i]].(map[string]interface{})
+			case *interface{}:
+				dest[i] = r.mockData[r.index-1][r.columnHeaders[i]]
+			case nil:
+				klog.Info("error type %T", v)
+			default:
+				klog.Info("unexpected type %T", v)
+
+			}
+		}
 	}
+
 	return nil
 }
 
@@ -120,20 +139,25 @@ func (r *MockRows) Values() ([]interface{}, error) { return nil, nil }
 func (r *MockRows) RawValues() [][]byte { return nil }
 
 func newMockRows() *MockRows {
-	clusterResource := `{"uid":"cluster__name-foo", "data":{"apigroup":"internal.open-cluster-management.io", "consoleURL":"", "cpu":0, "created":"0001-01-01T00:00:00Z", "kind":"Cluster", "kubernetesVersion":"", "memory":0, "name":"name-foo", "nodes":0}}`
 
+	clusterResource := `{"uid":"cluster__name-foo", "data":{"apigroup":"internal.open-cluster-management.io", "consoleURL":"", "cpu":0, "created":"0001-01-01T00:00:00Z", "kind":"Cluster", "kubernetesVersion":"", "memory":0, "name":"name-foo", "nodes":0}, "cluster":"cluster-foo"}`
+	var columnHeaders []string
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(clusterResource), &data); err != nil {
 		klog.Error("Error unmarhsaling mockrows")
 		panic(err)
 	}
+	for k := range data {
+		columnHeaders = append(columnHeaders, k)
 
+	}
 	mockData := make([]map[string]interface{}, 0)
 	mockData = append(mockData, data)
 
 	return &MockRows{
-		mockData: mockData,
-		index:    0,
+		mockData:      mockData,
+		index:         0,
+		columnHeaders: columnHeaders,
 	}
 }
 
