@@ -35,6 +35,12 @@ const managedClusterAddonGVR = "managedclusteraddons.v1alpha1.addon.open-cluster
 const lockName = "search-indexer.open-cluster-management.io"
 const managedClusterInfoApiGrp = "internal.open-cluster-management.io"
 
+var managedClusterResourceGvr = schema.GroupVersionResource{
+	Group:    "cluster.open-cluster-management.io",
+	Version:  "v1",
+	Resource: "managedclusters",
+}
+
 func ElectLeaderAndStart(ctx context.Context) {
 	client = config.Cfg.KubeClient
 	podName := config.Cfg.PodName
@@ -50,16 +56,6 @@ func ElectLeaderAndStart(ctx context.Context) {
 // Watches ManagedCluster objects and updates the database with a Cluster node.
 func syncClusters(ctx context.Context) {
 	klog.Info("Attempting to sync clusters. Begin ClusterWatch routine")
-
-	// Confirm delete event not missed if indexer goes offline:
-	clusterRemaining, err := confirmDelete(ctx)
-	if err != nil {
-		klog.Warning("Error confirming cluster deletion", err.Error())
-	} else if len(clusterRemaining) > 0 {
-		for _, cluster := range clusterRemaining {
-			dao.DeleteClusterAndResources(ctx, cluster, false)
-		}
-	}
 
 	dynamicFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient,
 		time.Duration(config.Cfg.RediscoverRateMS)*time.Millisecond)
@@ -80,6 +76,16 @@ func syncClusters(ctx context.Context) {
 	managedClusterInformer := dynamicFactory.ForResource(*managedClusterGvr).Informer()
 	managedClusterInfoInformer := dynamicFactory.ForResource(*managedClusterInfoGvr).Informer()
 	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
+
+	// Confirm delete event not missed if indexer goes offline:
+	clusterRemaining, err := confirmDelete(ctx, &managedClusterResourceGvr)
+	if err != nil {
+		klog.Warning("Error confirming cluster deletion", err.Error())
+	} else if len(clusterRemaining) > 0 {
+		for _, cluster := range clusterRemaining {
+			dao.DeleteClusterAndResources(ctx, cluster, false)
+		}
+	}
 
 	// Create handlers for events
 	handlers := cache.ResourceEventHandlerFuncs{
@@ -327,19 +333,13 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 
 }
 
-var managedClusterResourceGvr = schema.GroupVersionResource{
-	Group:    "cluster.open-cluster-management.io",
-	Version:  "v1",
-	Resource: "managedclusters",
-}
-
 // finds lingering data in database from deleted/detached clusters or clusters with search-collector-addon disabled:
-func confirmDelete(ctx context.Context) ([]string, error) {
+func confirmDelete(ctx context.Context, managedClusterGvr *schema.GroupVersionResource) ([]string, error) {
 	var needToDelete []string
 	managedClustersFromClient := make(map[string]struct{})
 
 	// get all managed clusters via dynamic client:
-	resourceObj, err := config.GetDynamicClient().Resource(managedClusterResourceGvr).List(ctx, metav1.ListOptions{})
+	resourceObj, err := dynamicClient.Resource(*managedClusterGvr).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		klog.Warning("Error resolving ManagedClusters with dynamic client", err.Error())
 		return nil, err

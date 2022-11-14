@@ -42,7 +42,12 @@ func fakeDynamicClient() *fake.FakeDynamicClient {
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{Group: "cluster.open-cluster-management.io", Version: "v1", Kind: "ManagedCluster"},
 		&unstructured.UnstructuredList{})
 
-	dyn := fake.NewSimpleDynamicClient(scheme, newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedClusterInfo", "name-foo", "name-foo", ""),
+	// scheme.AddKnownTypeWithName(schema.GroupVersionResource{Group: "clusters-open-cluster-management.io", Version: "v1", Resource: "managedclusters"},
+	// &unstructured.UnstructuredList{})
+
+	dyn := fake.NewSimpleDynamicClient(scheme,
+
+		newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedClusterInfo", "name-foo", "name-foo", ""),
 		newTestUnstructured(managedclustergroupAPIVersion, "ManagedCluster", "", "name-foo", ""),
 		newTestUnstructured(managedclustergroupAPIVersion, "ManagedCluster", "", "name-foo-error", ""))
 	_, err := dyn.Resource(*managedClusterGvr).Get(context.TODO(), "name-foo", v1.GetOptions{})
@@ -248,8 +253,6 @@ func Test_ProcessClusterDeleteOnMCASearch(t *testing.T) {
 
 	processClusterDelete(context.TODO(), obj)
 
-	// confirmDelete(context.TODO())
-
 	// Once processClusterDelete is done, existingClustersCache should still have an entry for cluster foo
 	// as we are not deleting it until MC is deleted.
 	_, ok := database.ReadClustersCache("cluster__name-foo")
@@ -270,4 +273,53 @@ func Test_AddAdditionalProps(t *testing.T) {
 	kindPlural, kindPluralPresent := updatedProps["kind_plural"]
 	AssertEqual(t, kindPlural, "managedclusterinfos", "Expected kindPlural not found.")
 	AssertEqual(t, kindPluralPresent, true, "Expected kindPlural to be set")
+}
+
+type error interface {
+	Error() string
+}
+
+// test for when the postgres connection fails and comes back and invokes confirmDelete func:
+func Test_ProcessClusterDelete_DB_Outage(t *testing.T) {
+	initializeVars()
+	//Ensure there is an entry for cluster_foo in the cluster cache
+	database.UpdateClustersCache("cluster__name-foo", nil)
+	// obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedClusterInfo", "name-foo", "name-foo", "test-mc-uid")
+
+	dynamicClient = fakeDynamicClient()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
+	// Prepare a mock DAO instance
+	dao = database.NewDAO(mockPool)
+
+	mockConn, err := pgxmock.NewConn()
+	// mock postgres connection err:
+	err = errors.New("Mock DB Error")
+	if err != nil {
+		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer mockConn.Close(context.Background())
+	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectCommit()
+
+	// craete new connection:
+	mockConn, err = pgxmock.NewConn()
+	defer mockConn.Close(context.Background())
+
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq([]interface{}{}),
+	).Return(nil, nil)
+
+	// resync clusters to trigger confirm delete func
+	syncClusters(context.Background())
+
+	//Once processClusterDelete is done, existingClustersCache should not have an entry for cluster foo
+	_, ok := database.ReadClustersCache("cluster__name-foo")
+	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
+
 }
