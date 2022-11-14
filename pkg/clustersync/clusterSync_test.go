@@ -27,6 +27,7 @@ import (
 const managedclusterinfogroupAPIVersion = "internal.open-cluster-management.io/v1beta1"
 const managedclustergroupAPIVersion = "cluster.open-cluster-management.io/v1"
 const managedclusteraddongroupAPIVersion = "addon.open-cluster-management.io/v1alpha1"
+const managedclusters = "managedclusters.open-cluster-management/v1alpha1"
 
 var managedClusterGvr *schema.GroupVersionResource
 var managedClusterInfoGvr *schema.GroupVersionResource
@@ -42,11 +43,16 @@ func fakeDynamicClient() *fake.FakeDynamicClient {
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{Group: "cluster.open-cluster-management.io", Version: "v1", Kind: "ManagedCluster"},
 		&unstructured.UnstructuredList{})
 
-	// scheme.AddKnownTypeWithName(schema.GroupVersionResource{Group: "clusters-open-cluster-management.io", Version: "v1", Resource: "managedclusters"},
-	// &unstructured.UnstructuredList{})
+	scheme.AddKnownTypes(schema.GroupVersionResource{Group: "clusters-open-cluster-management.io", Version: "v1", Resource: "managedclusters"}.GroupVersion(),
+		&unstructured.UnstructuredList{})
+
+	// testmc := &clusterv1.ManagedCluster{
+	// 	TypeMeta:   v1.TypeMeta{Kind: "ManagedCluster"},
+	// 	ObjectMeta: v1.ObjectMeta{Name: "name-foo"},
+	// }
 
 	dyn := fake.NewSimpleDynamicClient(scheme,
-
+		newTestUnstructured(managedclusters, "ManagedCluster", "", "name-foo", ""),
 		newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedClusterInfo", "name-foo", "name-foo", ""),
 		newTestUnstructured(managedclustergroupAPIVersion, "ManagedCluster", "", "name-foo", ""),
 		newTestUnstructured(managedclustergroupAPIVersion, "ManagedCluster", "", "name-foo-error", ""))
@@ -282,12 +288,12 @@ type error interface {
 // test for when the postgres connection fails and comes back and invokes confirmDelete func:
 func Test_ProcessClusterDelete_DB_Outage(t *testing.T) {
 	initializeVars()
+	// obj := newTestUnstructured(managedclusteraddongroupAPIVersion, "ManagedClusterAddOn", "name-foo", "search-collector", "test-mc-uid")
+
 	//Ensure there is an entry for cluster_foo in the cluster cache
 	database.UpdateClustersCache("cluster__name-foo", nil)
-	// obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedClusterInfo", "name-foo", "name-foo", "test-mc-uid")
 
-	dynamicClient = fakeDynamicClient()
-
+	dynamicClient := fakeDynamicClient()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
@@ -301,6 +307,8 @@ func Test_ProcessClusterDelete_DB_Outage(t *testing.T) {
 		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer mockConn.Close(context.Background())
+
+	//create delete event
 	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
@@ -311,15 +319,14 @@ func Test_ProcessClusterDelete_DB_Outage(t *testing.T) {
 	defer mockConn.Close(context.Background())
 
 	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq(`DELETE FROM "search"."resources" WHERE "uid" = 'cluster__name-foo'`),
 		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 
-	// resync clusters to trigger confirm delete func
-	syncClusters(context.Background())
-
+	// resync clusters to trigger confirm delete func and delete cluster
+	confirmDelete(context.TODO(), dynamicClient)
 	//Once processClusterDelete is done, existingClustersCache should not have an entry for cluster foo
-	_, ok := database.ReadClustersCache("cluster__name-foo")
+	_, ok := database.ReadClustersCache("name-foo")
 	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
 
 }

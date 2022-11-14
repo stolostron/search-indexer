@@ -57,6 +57,16 @@ func ElectLeaderAndStart(ctx context.Context) {
 func syncClusters(ctx context.Context) {
 	klog.Info("Attempting to sync clusters. Begin ClusterWatch routine")
 
+	// Confirm delete event not missed if indexer goes offline:
+	clusterRemaining, err := confirmDelete(ctx, dynamicClient)
+	if err != nil {
+		klog.Warning("Error confirming cluster deletion", err.Error())
+	} else if len(clusterRemaining) > 0 {
+		for _, cluster := range clusterRemaining {
+			dao.DeleteClusterAndResources(ctx, cluster, false)
+		}
+	}
+
 	dynamicFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient,
 		time.Duration(config.Cfg.RediscoverRateMS)*time.Millisecond)
 
@@ -76,16 +86,6 @@ func syncClusters(ctx context.Context) {
 	managedClusterInformer := dynamicFactory.ForResource(*managedClusterGvr).Informer()
 	managedClusterInfoInformer := dynamicFactory.ForResource(*managedClusterInfoGvr).Informer()
 	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
-
-	// Confirm delete event not missed if indexer goes offline:
-	clusterRemaining, err := confirmDelete(ctx, &managedClusterResourceGvr)
-	if err != nil {
-		klog.Warning("Error confirming cluster deletion", err.Error())
-	} else if len(clusterRemaining) > 0 {
-		for _, cluster := range clusterRemaining {
-			dao.DeleteClusterAndResources(ctx, cluster, false)
-		}
-	}
 
 	// Create handlers for events
 	handlers := cache.ResourceEventHandlerFuncs{
@@ -334,12 +334,12 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 }
 
 // finds lingering data in database from deleted/detached clusters or clusters with search-collector-addon disabled:
-func confirmDelete(ctx context.Context, managedClusterGvr *schema.GroupVersionResource) ([]string, error) {
+func confirmDelete(ctx context.Context, dynamicClient dynamic.Interface) ([]string, error) {
 	var needToDelete []string
 	managedClustersFromClient := make(map[string]struct{})
 
 	// get all managed clusters via dynamic client:
-	resourceObj, err := dynamicClient.Resource(*managedClusterGvr).List(ctx, metav1.ListOptions{})
+	resourceObj, err := dynamicClient.Resource(managedClusterResourceGvr).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		klog.Warning("Error resolving ManagedClusters with dynamic client", err.Error())
 		return nil, err
