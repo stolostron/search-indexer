@@ -286,20 +286,25 @@ type error interface {
 }
 
 // test for when the postgres connection fails and comes back and invokes confirmDelete func:
-func Test_ProcessClusterDelete_DB_Outage(t *testing.T) {
+func Test_ProcessClusterDelete(t *testing.T) {
 	//ensure cluster in cache exists
 	initializeVars()
 	database.UpdateClustersCache("cluster__name-foo", existingCluster["Properties"])
 	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedCluster", "name-foo", "name-foo", "test-mc-uid")
 	obj2 := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedCluster", "remaining-managed-foo", "remaining-managed-foo", "test-mc-uid")
 
-	// Prepare a mock DAO instance and mock client:
-
 	//create resources in with client:
 	dynamicClient := fakeDynamicClient()
-	dynamicClient.Resource(*managedClusterGvr).Namespace("name-foo").Create(context.TODO(), obj, v1.CreateOptions{})
-	dynamicClient.Resource(managedClusterResourceGvr).Namespace("name-foo").Create(context.TODO(), obj2, v1.CreateOptions{})
+	_, clientErr := dynamicClient.Resource(*managedClusterGvr).Namespace("name-foo").Create(context.TODO(), obj, v1.CreateOptions{})
+	if clientErr != nil {
+		t.Errorf("an error '%s' has occured while trying to create resources", clientErr)
+	}
+	_, clientErr = dynamicClient.Resource(*managedClusterGvr).Namespace("remaining-managed-foo").Create(context.TODO(), obj2, v1.CreateOptions{})
+	if clientErr != nil {
+		t.Errorf("an error '%s' has occured while trying to create resources", clientErr)
+	}
 
+	// Prepare a mock DAO instance
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
@@ -312,8 +317,11 @@ func Test_ProcessClusterDelete_DB_Outage(t *testing.T) {
 		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	// after pg outage, mock kubernetes delete event for managed cluster name-foo
-	// get all managed clusters via dynamic client:
-	dynamicClient.Resource(managedClusterResourceGvr).Namespace("name-foo").Delete(context.TODO(), "name-foo", v1.DeleteOptions{})
+	clientErr = dynamicClient.Resource(*managedClusterGvr).Namespace("name-foo").Delete(context.TODO(), "name-foo", v1.DeleteOptions{})
+	if clientErr != nil {
+		t.Errorf("an error '%s' has occured while trying to delete resources", clientErr)
+
+	}
 
 	defer mockConn.Close(context.Background())
 	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
@@ -331,6 +339,9 @@ func Test_ProcessClusterDelete_DB_Outage(t *testing.T) {
 
 	// re-connect db with new connection:
 	mockConn, err = pgxmock.NewConn()
+	if err != nil {
+		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer mockConn.Close(context.Background())
 
 	// mrows := NewMockRows().ToPgxRows()
@@ -343,10 +354,12 @@ func Test_ProcessClusterDelete_DB_Outage(t *testing.T) {
 	).Return(pgxRows, nil)
 
 	// Execute function test
-	confirmDelete(context.TODO(), dynamicClient)
+	mc, _ := confirmDelete(context.TODO(), dynamicClient, *managedClusterGvr)
 
 	//Once processClusterDelete is done, existingClustersCache should not have an entry for cluster foo
-	_, ok := database.ReadClustersCache("name-foo")
-	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
+	for _, c := range mc {
+		_, ok := database.ReadClustersCache(c)
+		AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
+	}
 
 }

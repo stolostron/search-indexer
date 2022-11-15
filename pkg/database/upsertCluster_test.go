@@ -350,7 +350,7 @@ func Test_GetManagedCluster(t *testing.T) {
 	).Return(mrows, nil)
 
 	// Execute function test.
-	mc, err := dao.GetManagedCluster(context.Background())
+	mc, _ := dao.GetManagedCluster(context.Background())
 
 	for _, c := range mc {
 		AssertEqual(t, clusterName, c, "Cluster cluster__name-foo doesn't exist in database")
