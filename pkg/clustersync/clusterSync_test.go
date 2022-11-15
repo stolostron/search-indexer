@@ -27,7 +27,7 @@ import (
 const managedclusterinfogroupAPIVersion = "internal.open-cluster-management.io/v1beta1"
 const managedclustergroupAPIVersion = "cluster.open-cluster-management.io/v1"
 const managedclusteraddongroupAPIVersion = "addon.open-cluster-management.io/v1alpha1"
-const managedclusters = "managedclusters.open-cluster-management/v1alpha1"
+const managedclusters = "managedclusters.open-cluster-management/v1"
 
 var managedClusterGvr *schema.GroupVersionResource
 var managedClusterInfoGvr *schema.GroupVersionResource
@@ -287,44 +287,64 @@ type error interface {
 
 // test for when the postgres connection fails and comes back and invokes confirmDelete func:
 func Test_ProcessClusterDelete_DB_Outage(t *testing.T) {
+	//ensure cluster in cache exists
 	initializeVars()
-	// obj := newTestUnstructured(managedclusteraddongroupAPIVersion, "ManagedClusterAddOn", "name-foo", "search-collector", "test-mc-uid")
+	database.UpdateClustersCache("cluster__name-foo", existingCluster["Properties"])
+	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedCluster", "name-foo", "name-foo", "test-mc-uid")
+	obj2 := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedCluster", "remaining-managed-foo", "remaining-managed-foo", "test-mc-uid")
 
-	//Ensure there is an entry for cluster_foo in the cluster cache
-	database.UpdateClustersCache("cluster__name-foo", nil)
+	// Prepare a mock DAO instance and mock client:
 
+	//create resources in with client:
 	dynamicClient := fakeDynamicClient()
+	dynamicClient.Resource(*managedClusterGvr).Namespace("name-foo").Create(context.TODO(), obj, v1.CreateOptions{})
+	dynamicClient.Resource(managedClusterResourceGvr).Namespace("name-foo").Create(context.TODO(), obj2, v1.CreateOptions{})
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
-	// Prepare a mock DAO instance
 	dao = database.NewDAO(mockPool)
-
 	mockConn, err := pgxmock.NewConn()
+
 	// mock postgres connection err:
-	err = errors.New("Mock DB Error")
+	// err = errors.New("Mock DB Error")
 	if err != nil {
 		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mockConn.Close(context.Background())
+	// after pg outage, mock kubernetes delete event for managed cluster name-foo
+	// get all managed clusters via dynamic client:
+	dynamicClient.Resource(managedClusterResourceGvr).Namespace("name-foo").Delete(context.TODO(), "name-foo", v1.DeleteOptions{})
 
-	//create delete event
+	defer mockConn.Close(context.Background())
 	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectCommit()
 
-	// craete new connection:
-	mockConn, err = pgxmock.NewConn()
-	defer mockConn.Close(context.Background())
-
 	mockPool.EXPECT().Exec(gomock.Any(),
-		gomock.Eq(`DELETE FROM "search"."resources" WHERE "uid" = 'cluster__name-foo'`),
+		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
 		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 
-	// resync clusters to trigger confirm delete func and delete cluster
+	//delete managed cluster:
+	processClusterDelete(context.Background(), obj)
+
+	// re-connect db with new connection:
+	mockConn, err = pgxmock.NewConn()
+	defer mockConn.Close(context.Background())
+
+	// mrows := NewMockRows().ToPgxRows()
+	columns := []string{"cluster"}
+	pgxRows := pgxpoolmock.NewRows(columns).AddRow("name-foo").AddRow("local-cluster").ToPgxRows()
+
+	mockPool.EXPECT().Query(gomock.Any(),
+		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),
+		gomock.Eq([]interface{}{}),
+	).Return(pgxRows, nil)
+
+	// Execute function test
 	confirmDelete(context.TODO(), dynamicClient)
+
 	//Once processClusterDelete is done, existingClustersCache should not have an entry for cluster foo
 	_, ok := database.ReadClustersCache("name-foo")
 	AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
