@@ -285,7 +285,7 @@ type error interface {
 	Error() string
 }
 
-func Test_ProcessClusterDeleteRemainingCluster(t *testing.T) {
+func Test_ConfirmDelete(t *testing.T) {
 	//ensure cluster in cache exists
 	initializeVars()
 
