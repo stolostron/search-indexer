@@ -31,25 +31,24 @@ const managedclusters = "managedclusters.open-cluster-management/v1"
 
 var managedClusterGvr *schema.GroupVersionResource
 var managedClusterInfoGvr *schema.GroupVersionResource
+var managedClusterAddonGvr *schema.GroupVersionResource
 var existingCluster map[string]interface{}
 
 func fakeDynamicClient() *fake.FakeDynamicClient {
 	managedClusterGvr, _ = schema.ParseResourceArg(managedClusterGVR)
 	managedClusterInfoGvr, _ = schema.ParseResourceArg(managedClusterInfoGVR)
+	managedClusterAddonGvr, _ = schema.ParseResourceArg(managedClusterAddonGVR)
+
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypes(managedClusterGvr.GroupVersion())
 	scheme.AddKnownTypes(managedClusterInfoGvr.GroupVersion())
+	scheme.AddKnownTypes(managedClusterAddonGvr.GroupVersion())
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{Group: "cluster.open-cluster-management.io", Version: "v1", Kind: "ManagedCluster"},
 		&unstructured.UnstructuredList{})
 
 	scheme.AddKnownTypes(schema.GroupVersionResource{Group: "clusters-open-cluster-management.io", Version: "v1", Resource: "managedclusters"}.GroupVersion(),
 		&unstructured.UnstructuredList{})
-
-	// testmc := &clusterv1.ManagedCluster{
-	// 	TypeMeta:   v1.TypeMeta{Kind: "ManagedCluster"},
-	// 	ObjectMeta: v1.ObjectMeta{Name: "name-foo"},
-	// }
 
 	dyn := fake.NewSimpleDynamicClient(scheme,
 		newTestUnstructured(managedclusters, "ManagedCluster", "", "name-foo", ""),
@@ -79,6 +78,7 @@ func newTestUnstructured(apiVersion, kind, namespace, name, uid string) *unstruc
 		},
 	}
 }
+
 func initializeVars() {
 	labelMap := map[string]string{"env": "dev"}
 	clusterProps := map[string]interface{}{
@@ -285,21 +285,31 @@ type error interface {
 	Error() string
 }
 
-// test for when the postgres connection fails and comes back and invokes confirmDelete func:
-func Test_ProcessClusterDelete(t *testing.T) {
+func Test_ProcessClusterDeleteRemainingCluster(t *testing.T) {
 	//ensure cluster in cache exists
 	initializeVars()
-	database.UpdateClustersCache("cluster__name-foo", existingCluster["Properties"])
-	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedCluster", "name-foo", "name-foo", "test-mc-uid")
-	obj2 := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedCluster", "remaining-managed-foo", "remaining-managed-foo", "test-mc-uid")
 
-	//create resources in with client:
+	//add cluster to cache:
+	database.UpdateClustersCache("cluster__name-foo", existingCluster["Properties"])              //this one is in kube
+	database.UpdateClustersCache("cluster__remaining-managed-foo", existingCluster["Properties"]) //this one is not in kube - "remaining cluster"
+
+	//managed cluster objs to create in with kube client:
+	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedCluster", "name-foo", "name-foo", "test-mc-uid")
+	//search-addon for managed cluster name-foo:
+	obj3 := newTestUnstructured(managedclusteraddongroupAPIVersion, "ManagedClusterAddOn", "name-foo", "search-collector", "test-mc-uid")
+	//add label to identify addon:
+	label := make(map[string]string)
+	label["feature.open-cluster-management.io/addon-search-collector"] = "available"
+	obj.SetLabels(label)
+	//create obj in with client:
 	dynamicClient := fakeDynamicClient()
 	_, clientErr := dynamicClient.Resource(*managedClusterGvr).Namespace("name-foo").Create(context.TODO(), obj, v1.CreateOptions{})
 	if clientErr != nil {
 		t.Errorf("an error '%s' has occured while trying to create resources", clientErr)
 	}
-	_, clientErr = dynamicClient.Resource(*managedClusterGvr).Namespace("remaining-managed-foo").Create(context.TODO(), obj2, v1.CreateOptions{})
+	//create the addon in namespace name-foo:
+	_, clientErr = dynamicClient.Resource(*managedClusterAddonGvr).Namespace("name-foo").Create(context.TODO(), obj3, v1.CreateOptions{})
+
 	if clientErr != nil {
 		t.Errorf("an error '%s' has occured while trying to create resources", clientErr)
 	}
@@ -310,17 +320,8 @@ func Test_ProcessClusterDelete(t *testing.T) {
 	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
 	dao = database.NewDAO(mockPool)
 	mockConn, err := pgxmock.NewConn()
-
-	// mock postgres connection err:
-	// err = errors.New("Mock DB Error")
 	if err != nil {
 		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	// after pg outage, mock kubernetes delete event for managed cluster name-foo
-	clientErr = dynamicClient.Resource(*managedClusterGvr).Namespace("name-foo").Delete(context.TODO(), "name-foo", v1.DeleteOptions{})
-	if clientErr != nil {
-		t.Errorf("an error '%s' has occured while trying to delete resources", clientErr)
-
 	}
 
 	defer mockConn.Close(context.Background())
@@ -333,20 +334,12 @@ func Test_ProcessClusterDelete(t *testing.T) {
 		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
 		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
-
 	//delete managed cluster:
 	processClusterDelete(context.Background(), obj)
 
-	// re-connect db with new connection:
-	mockConn, err = pgxmock.NewConn()
-	if err != nil {
-		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer mockConn.Close(context.Background())
-
 	// mrows := NewMockRows().ToPgxRows()
 	columns := []string{"cluster"}
-	pgxRows := pgxpoolmock.NewRows(columns).AddRow("name-foo").AddRow("local-cluster").ToPgxRows()
+	pgxRows := pgxpoolmock.NewRows(columns).AddRow("name-foo").AddRow("remaining-managed-foo").ToPgxRows()
 
 	mockPool.EXPECT().Query(gomock.Any(),
 		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),

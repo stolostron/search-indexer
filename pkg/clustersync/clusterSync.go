@@ -360,7 +360,7 @@ func confirmDelete(ctx context.Context, dynamicClient dynamic.Interface, gvr sch
 		if _, exist := managedClustersFromClient[dmCluster]; !exist {
 			// At this point the cluster exists in DB, but not in the list from client.
 			needToDelete = append(needToDelete, dmCluster)
-			klog.V(3).Infof("Found Managed Cluster data in database that should be deleted! Cluster found: %s", dmCluster)
+			klog.Infof("Found Managed Cluster data in database that should be deleted! Cluster found: %s", dmCluster)
 		} else {
 			klog.V(5).Infof("Managed Cluster data successfully deleted from database.")
 		}
