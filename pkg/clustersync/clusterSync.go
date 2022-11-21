@@ -328,11 +328,12 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 }
 
 // finds lingering data in database from deleted/detached clusters or clusters with search-collector-addon disabled:
-func findStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interface, gvr schema.GroupVersionResource) ([]string, error) {
+func findStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interface,
+	gvr schema.GroupVersionResource) ([]string, error) {
 	var needToDelete []string
 	managedClustersFromClient := make(map[string]struct{})
 
-	// get all managed clusters via dynamic client:
+	// get all managed clusters from kube client:
 	resourceObj, err := dynamicClient.Resource(gvr).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		klog.Warning("Error resolving ManagedClusters with dynamic client", err.Error())

@@ -285,13 +285,14 @@ type error interface {
 	Error() string
 }
 
+// Find stale cluster resources, if found, delete them
 func Test_FindStaleClustersAndDelete(t *testing.T) {
 	//ensure cluster in cache exists
 	initializeVars()
 
-	//add cluster to cache:
-	database.UpdateClustersCache("cluster__name-foo", existingCluster["Properties"])              //this one is in kube
-	database.UpdateClustersCache("cluster__remaining-managed-foo", existingCluster["Properties"]) //this one is not in kube - "remaining cluster"
+	//add two clusters to cache one that will exist in kube and one that will not exist in kube
+	database.UpdateClustersCache("cluster__name-foo", existingCluster["Properties"])
+	database.UpdateClustersCache("cluster__remaining-managed-foo", existingCluster["Properties"])
 
 	//managed cluster objs to create in with kube client:
 	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedCluster", "name-foo", "name-foo", "test-mc-uid")
@@ -337,7 +338,6 @@ func Test_FindStaleClustersAndDelete(t *testing.T) {
 	//delete managed cluster:
 	processClusterDelete(context.Background(), obj)
 
-	// mrows := NewMockRows().ToPgxRows()
 	columns := []string{"cluster"}
 	pgxRows := pgxpoolmock.NewRows(columns).AddRow("name-foo").AddRow("remaining-managed-foo").ToPgxRows()
 
@@ -349,7 +349,7 @@ func Test_FindStaleClustersAndDelete(t *testing.T) {
 	// Execute function test
 	mc, _ := findStaleClusterResources(context.TODO(), dynamicClient, *managedClusterGvr)
 
-	//Once processClusterDelete is done, existingClustersCache should not have an entry for cluster foo
+	//Once findStaleClusterResources is done, existingClustersCache should not have an entry for cluster-foo
 	for _, c := range mc {
 		_, ok := database.ReadClustersCache(c)
 		AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
