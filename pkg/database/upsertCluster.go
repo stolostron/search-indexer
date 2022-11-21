@@ -275,7 +275,7 @@ func (dao *DAO) GetManagedClusters(ctx context.Context) ([]string, error) {
 		klog.Errorf("Error building select distinct cluster query: %s", err.Error())
 		return nil, err
 	}
-	klog.Infof("Query database for managed clusters: [%s] ", query)
+	klog.V(4).Infof("Query database for managed clusters: [%s] ", query)
 
 	rows, err := dao.pool.Query(ctx, query, params...)
 	if err != nil {
