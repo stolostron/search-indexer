@@ -346,11 +346,16 @@ func Test_FindStaleClustersAndDelete(t *testing.T) {
 		gomock.Eq([]interface{}{}),
 	).Return(pgxRows, nil)
 
-	// Execute function test
+	// Execute function test - the clusters in mc are to be deleted
 	mc, _ := findStaleClusterResources(context.TODO(), dynamicClient, *managedClusterGvr)
 
-	//Once findStaleClusterResources is done, existingClustersCache should not have an entry for cluster-foo
+	//ensure that the remaining clusters are deleted from db
 	for _, c := range mc {
+
+		if c != "remaining-managed-foo" {
+			t.Errorf("Remaining cluster does not match. Expected: remaining-managed-foo Got: %s", c)
+		}
+
 		_, ok := database.ReadClustersCache(c)
 		AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
 	}
