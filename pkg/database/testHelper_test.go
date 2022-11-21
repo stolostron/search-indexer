@@ -140,7 +140,7 @@ func (r *MockRows) RawValues() [][]byte { return nil }
 
 func newMockRows() *MockRows {
 
-	clusterResource := `{"uid":"cluster__name-foo", "data":{"apigroup":"internal.open-cluster-management.io", "consoleURL":"", "cpu":0, "created":"0001-01-01T00:00:00Z", "kind":"Cluster", "kubernetesVersion":"", "memory":0, "name":"name-foo", "nodes":0}, "cluster":"cluster-foo"}`
+	clusterResource := `{"uid":"cluster__name-foo", "data":{"apigroup":"internal.open-cluster-management.io", "consoleURL":"", "cpu":0, "created":"0001-01-01T00:00:00Z", "kind":"Cluster", "kubernetesVersion":"", "memory":0, "name":"name-foo", "nodes":0}}`
 	var columnHeaders []string
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(clusterResource), &data); err != nil {
