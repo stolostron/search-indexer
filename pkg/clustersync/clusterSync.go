@@ -72,7 +72,10 @@ func syncClusters(ctx context.Context) {
 	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
 	// Confirm delete event not missed if indexer OR db goes offline:
-	deleteStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
+	err := deleteStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
+	if err != nil {
+		klog.Warning("Error deleting stale clusters resources", err.Error())
+	}
 
 	// Create handlers for events
 	handlers := cache.ResourceEventHandlerFuncs{
@@ -106,7 +109,8 @@ func deleteStaleClusterResources(ctx context.Context, dynamicClient dynamic.Inte
 	managedClusterGvr schema.GroupVersionResource) error {
 	clusterRemaining, err := findStaleClusterResources(ctx, dynamicClient, managedClusterGvr)
 	if err != nil {
-		klog.Warning("Error confirming cluster deletion", err.Error())
+		klog.Warning("Error finding stale cluster resources", err.Error())
+		return err
 	} else if len(clusterRemaining) > 0 {
 		for _, cluster := range clusterRemaining {
 			dao.DeleteClusterAndResources(ctx, cluster, false)
