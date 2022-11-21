@@ -286,7 +286,7 @@ type error interface {
 }
 
 // Find stale cluster resources, if found, delete them
-func Test_FindStaleClustersAndDelete(t *testing.T) {
+func Test_DeleteStaleClustersResources(t *testing.T) {
 	//ensure cluster in cache exists
 	initializeVars()
 
@@ -361,6 +361,75 @@ func Test_FindStaleClustersAndDelete(t *testing.T) {
 			t.Errorf("Remaining cluster does not match. Expected: remaining-managed-foo Got: %s", c)
 		}
 
+		_, ok := database.ReadClustersCache(c)
+		AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
+	}
+
+}
+
+//Mock database outage:
+func Test_DeleteStaleClustersResources_DB_Outage(t *testing.T) {
+	//ensure cluster in cache exists
+	initializeVars()
+
+	//add two clusters to cache one that will exist in kube and one that will not exist in kube
+	database.UpdateClustersCache("cluster__name-foo", existingCluster["Properties"])
+	database.UpdateClustersCache("cluster__remaining-managed-foo", existingCluster["Properties"])
+
+	//managed cluster obj to create in with kube client:
+	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedCluster", "name-foo", "name-foo", "test-mc-uid")
+
+	//add label to identify addon:
+	label := make(map[string]string)
+	label["feature.open-cluster-management.io/addon-search-collector"] = "available"
+	obj.SetLabels(label)
+
+	//create obj in with client:
+	dynamicClient := fakeDynamicClient()
+	_, clientErr := dynamicClient.Resource(*managedClusterGvr).Namespace("name-foo").Create(context.TODO(), obj, v1.CreateOptions{})
+	if clientErr != nil {
+		t.Errorf("an error '%s' has occured while trying to create resources", clientErr)
+	}
+
+	// Prepare a mock DAO instance
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
+	dao = database.NewDAO(mockPool)
+	mockConn, err := pgxmock.NewConn()
+	//mock db error
+	fakeErr := errors.New("Mock DB Error")
+	if err != nil {
+		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+
+	defer mockConn.Close(context.Background())
+	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, fakeErr).Times(1).Return(mockConn, nil).Times(1) // return mock error
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mockConn.ExpectCommit()
+
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq([]interface{}{}),
+	).Return(nil, nil)
+	//delete managed cluster:
+
+	processClusterDelete(context.Background(), obj)
+
+	columns := []string{"cluster"}
+	pgxRows := pgxpoolmock.NewRows(columns).AddRow("name-foo").AddRow("remaining-managed-foo").ToPgxRows()
+
+	mockPool.EXPECT().Query(gomock.Any(),
+		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),
+		gomock.Eq([]interface{}{}),
+	).Return(pgxRows, nil)
+
+	// Execute function test
+	mc, _ := findStaleClusterResources(context.TODO(), dynamicClient, *managedClusterGvr)
+
+	//Once findStaleClusterResources is done, existingClustersCache should not have an entry for remaining-managed-foo
+	for _, c := range mc {
 		_, ok := database.ReadClustersCache(c)
 		AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
 	}
