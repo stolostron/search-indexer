@@ -72,7 +72,7 @@ func syncClusters(ctx context.Context) {
 	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
 	// Confirm delete event not missed if indexer OR db goes offline:
-	clusterRemaining, err := confirmDelete(ctx, dynamicClient, *managedClusterGvr)
+	clusterRemaining, err := findStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
 	if err != nil {
 		klog.Warning("Error confirming cluster deletion", err.Error())
 	} else if len(clusterRemaining) > 0 {
@@ -328,7 +328,7 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 }
 
 // finds lingering data in database from deleted/detached clusters or clusters with search-collector-addon disabled:
-func confirmDelete(ctx context.Context, dynamicClient dynamic.Interface, gvr schema.GroupVersionResource) ([]string, error) {
+func findStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interface, gvr schema.GroupVersionResource) ([]string, error) {
 	var needToDelete []string
 	managedClustersFromClient := make(map[string]struct{})
 
@@ -340,7 +340,7 @@ func confirmDelete(ctx context.Context, dynamicClient dynamic.Interface, gvr sch
 	}
 	for _, item := range resourceObj.Items {
 		// Here we want all managed clusters that have the search-collector addon available
-		if item.GetName() != "local-cluster" && // TO DO: need better method instead of using name.
+		if item.GetLabels()["local-cluster"] != "true" &&
 			item.GetLabels()["feature.open-cluster-management.io/addon-search-collector"] == "available" {
 			managedClustersFromClient[item.GetName()] = struct{}{}
 		}
@@ -348,20 +348,18 @@ func confirmDelete(ctx context.Context, dynamicClient dynamic.Interface, gvr sch
 	klog.V(3).Infof("Managed Clusters reported from kube client: ", managedClustersFromClient)
 
 	// get all managed clusters from db:
-	managedClustersFromDB, err := dao.GetManagedCluster(ctx)
+	managedClustersFromDB, err := dao.GetManagedClusters(ctx)
 	if err != nil {
 		klog.Errorf("Error getting managed clusters names from database. %s", err)
 		return nil, err
-	} else {
-		klog.V(3).Infof("Managed Clusters reported from database: ", managedClustersFromDB)
 	}
+	klog.V(3).Infof("Managed Clusters reported from database: ", managedClustersFromDB)
+
 	for _, dmCluster := range managedClustersFromDB {
 		if _, exist := managedClustersFromClient[dmCluster]; !exist {
 			// At this point the cluster exists in DB, but not in the list from client.
 			needToDelete = append(needToDelete, dmCluster)
-			klog.V(3).Infof("Found Managed Cluster data in database that should be deleted! Cluster found: %s", dmCluster)
-		} else {
-			klog.V(5).Infof("Managed Cluster data successfully deleted from database.")
+			klog.V(1).Infof("Found Managed Cluster data in database that should be deleted! Cluster found: %s", dmCluster)
 		}
 	}
 

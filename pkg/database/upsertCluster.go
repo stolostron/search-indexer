@@ -263,7 +263,7 @@ func goquInsertUpdate(tableName string, args []interface{}) (string, []interface
 }
 
 // Query database for managed clusters:
-func (dao *DAO) GetManagedCluster(ctx context.Context) ([]string, error) {
+func (dao *DAO) GetManagedClusters(ctx context.Context) ([]string, error) {
 
 	schemaTable := goqu.S("search").Table("resources")
 	ds := goqu.From(schemaTable)

@@ -285,7 +285,7 @@ type error interface {
 	Error() string
 }
 
-func Test_ConfirmDelete(t *testing.T) {
+func Test_FindStaleClustersAndDelete(t *testing.T) {
 	//ensure cluster in cache exists
 	initializeVars()
 
@@ -347,7 +347,7 @@ func Test_ConfirmDelete(t *testing.T) {
 	).Return(pgxRows, nil)
 
 	// Execute function test
-	mc, _ := confirmDelete(context.TODO(), dynamicClient, *managedClusterGvr)
+	mc, _ := findStaleClusterResources(context.TODO(), dynamicClient, *managedClusterGvr)
 
 	//Once processClusterDelete is done, existingClustersCache should not have an entry for cluster foo
 	for _, c := range mc {
