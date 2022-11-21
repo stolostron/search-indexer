@@ -344,14 +344,19 @@ func Test_FindStaleClustersAndDelete(t *testing.T) {
 	mockPool.EXPECT().Query(gomock.Any(),
 		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),
 		gomock.Eq([]interface{}{}),
-	).Return(pgxRows, nil)
+	).Return(pgxRows, nil).Times(2)
 
 	// Execute function test - the clusters in mc are to be deleted
 	mc, _ := findStaleClusterResources(context.TODO(), dynamicClient, *managedClusterGvr)
 
+	err = deleteStaleClusterResources(context.TODO(), dynamicClient, *managedClusterGvr)
+	if err != nil {
+		t.Errorf("Error processing delete for remaining cluster: %s", err)
+	}
+
 	//ensure that the remaining clusters are deleted from db
 	for _, c := range mc {
-
+		fmt.Println(c)
 		if c != "remaining-managed-foo" {
 			t.Errorf("Remaining cluster does not match. Expected: remaining-managed-foo Got: %s", c)
 		}

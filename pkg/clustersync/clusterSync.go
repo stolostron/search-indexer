@@ -72,14 +72,7 @@ func syncClusters(ctx context.Context) {
 	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
 	// Confirm delete event not missed if indexer OR db goes offline:
-	clusterRemaining, err := findStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
-	if err != nil {
-		klog.Warning("Error confirming cluster deletion", err.Error())
-	} else if len(clusterRemaining) > 0 {
-		for _, cluster := range clusterRemaining {
-			dao.DeleteClusterAndResources(ctx, cluster, false)
-		}
-	}
+	deleteStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
 
 	// Create handlers for events
 	handlers := cache.ResourceEventHandlerFuncs{
@@ -107,6 +100,19 @@ func syncClusters(ctx context.Context) {
 	go stopAndStartInformer(ctx, "internal.open-cluster-management.io/v1beta1", managedClusterInfoInformer)
 	go stopAndStartInformer(ctx, "addon.open-cluster-management.io/v1alpha1", managedClusterAddonInformer)
 
+}
+
+func deleteStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interface,
+	managedClusterGvr schema.GroupVersionResource) error {
+	clusterRemaining, err := findStaleClusterResources(ctx, dynamicClient, managedClusterGvr)
+	if err != nil {
+		klog.Warning("Error confirming cluster deletion", err.Error())
+	} else if len(clusterRemaining) > 0 {
+		for _, cluster := range clusterRemaining {
+			dao.DeleteClusterAndResources(ctx, cluster, false)
+		}
+	}
+	return err
 }
 
 // Stop and Start informer according to Rediscover Rate
