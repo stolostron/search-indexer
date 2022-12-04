@@ -71,6 +71,12 @@ func syncClusters(ctx context.Context) {
 	managedClusterInfoInformer := dynamicFactory.ForResource(*managedClusterInfoGvr).Informer()
 	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
+	// Confirm delete event not missed if indexer OR db goes offline:
+	err := deleteStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
+	if err != nil {
+		klog.Warning("Error deleting stale clusters resources", err.Error())
+	}
+
 	// Create handlers for events
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -97,6 +103,20 @@ func syncClusters(ctx context.Context) {
 	go stopAndStartInformer(ctx, "internal.open-cluster-management.io/v1beta1", managedClusterInfoInformer)
 	go stopAndStartInformer(ctx, "addon.open-cluster-management.io/v1alpha1", managedClusterAddonInformer)
 
+}
+
+func deleteStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interface,
+	managedClusterGvr schema.GroupVersionResource) error {
+	clusterRemaining, err := findStaleClusterResources(ctx, dynamicClient, managedClusterGvr)
+	if err != nil {
+		klog.Warning("Error finding stale cluster resources", err.Error())
+		return err
+	} else if len(clusterRemaining) > 0 {
+		for _, cluster := range clusterRemaining {
+			dao.DeleteClusterAndResources(ctx, cluster, false)
+		}
+	}
+	return err
 }
 
 // Stop and Start informer according to Rediscover Rate
@@ -314,4 +334,46 @@ func processClusterDelete(ctx context.Context, obj interface{}) {
 		return
 	}
 	dao.DeleteClusterAndResources(ctx, clusterName, deleteClusterNode)
+
+}
+
+// finds lingering data in database from deleted/detached clusters or clusters with search-collector-addon disabled:
+func findStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interface,
+	gvr schema.GroupVersionResource) ([]string, error) {
+	var needToDelete []string
+	managedClustersFromClient := make(map[string]struct{})
+
+	// get all managed clusters from kube client:
+	resourceObj, err := dynamicClient.Resource(gvr).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		klog.Warning("Error resolving ManagedClusters with dynamic client", err.Error())
+		return nil, err
+	}
+	for _, item := range resourceObj.Items {
+		// Here we want all managed clusters that have the search-collector addon available
+		if item.GetLabels()["local-cluster"] != "true" && //note: need better method instead of using name local-cluster.
+			item.GetLabels()["feature.open-cluster-management.io/addon-search-collector"] == "available" {
+			managedClustersFromClient[item.GetName()] = struct{}{}
+		}
+	}
+	klog.V(3).Infof("Managed Clusters reported from kube client: ", managedClustersFromClient)
+
+	// get all managed clusters from db:
+	managedClustersFromDB, err := dao.GetManagedClusters(ctx)
+	if err != nil {
+		klog.Errorf("Error getting managed clusters names from database. %s", err)
+		return nil, err
+	}
+	klog.V(3).Infof("Managed Clusters reported from database: ", managedClustersFromDB)
+
+	for _, dmCluster := range managedClustersFromDB {
+		if _, exist := managedClustersFromClient[dmCluster]; !exist {
+			// At this point the cluster exists in DB, but not in the list from client.
+			needToDelete = append(needToDelete, dmCluster)
+			klog.V(1).Infof("Found Managed Cluster data in database that should be deleted! Cluster found: %s", dmCluster)
+		}
+	}
+
+	return needToDelete, nil
+
 }

@@ -19,6 +19,7 @@ func (dao *DAO) DeleteClusterAndResources(ctx context.Context, clusterName strin
 	clusterUID := string("cluster__" + clusterName)
 	if err := dao.deleteWithRetry(dao.DeleteClusterResourcesTxn, ctx, clusterName); err == nil {
 		klog.V(2).Infof("Successfully deleted resources and edges for cluster %s from database!", clusterName)
+
 	}
 
 	if deleteClusterNode {
@@ -32,6 +33,7 @@ func (dao *DAO) DeleteClusterAndResources(ctx context.Context, clusterName strin
 
 func (dao *DAO) deleteWithRetry(deleteFunction func(context.Context, string) error,
 	ctx context.Context, clusterName string) error {
+
 	retry := 0
 	cfg := config.Cfg
 
@@ -258,4 +260,41 @@ func goquInsertUpdate(tableName string, args []interface{}) (string, []interface
 			Where(goqu.L(`"r".uid`).Eq(args[0]))).ToSQL()
 
 	return sql, args, err
+}
+
+// Query database for managed clusters:
+func (dao *DAO) GetManagedClusters(ctx context.Context) ([]string, error) {
+
+	schemaTable := goqu.S("search").Table("resources")
+	ds := goqu.From(schemaTable)
+	var managedClusters []string
+
+	//select distinct cluster from search.resources;
+	query, params, err := ds.Select("cluster").Distinct().ToSQL()
+	if err != nil {
+		klog.Errorf("Error building select distinct cluster query: %s", err.Error())
+		return nil, err
+	}
+	klog.V(4).Infof("Query database for managed clusters: [%s] ", query)
+
+	rows, err := dao.pool.Query(ctx, query, params...)
+	if err != nil {
+		klog.Errorf("Error resolving managed clusters query [%s] with params [%+v]. Error: [%+v]", query, params, err)
+		return nil, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var mc string
+		err = rows.Scan(&mc)
+		if err != nil {
+			klog.Errorf("Error reading cluster names. Error: %s Query: %s", err.Error(), query)
+			continue
+		}
+		if mc != "" && mc != "local-cluster" { //exclude the local cluster and cluster node
+			managedClusters = append(managedClusters, mc)
+		}
+
+	}
+	return managedClusters, nil
 }
