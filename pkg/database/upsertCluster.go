@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
+	"github.com/doug-martin/goqu/v9/exp"
 	"github.com/jackc/pgx/v4"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/model"
@@ -148,7 +149,7 @@ func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterUID string) error {
 func (dao *DAO) UpsertCluster(ctx context.Context, resource model.Resource) {
 	data, _ := json.Marshal(resource.Properties)
 	clusterName := resource.Properties["name"].(string)
-	sql, args, err := goquInsertUpdate("resources", []interface{}{resource.UID, "", string(data)})
+	sql, args, err := goquInsertUpdate("resources", []interface{}{resource.UID, clusterName, string(data)})
 	checkError(err, fmt.Sprintf("Error creating insert/update cluster query for %s", clusterName))
 	if err != nil {
 		//TO DO: store the pending cluster resource in cache and retry in case of error
@@ -239,11 +240,17 @@ func (dao *DAO) clusterPropsUpToDate(clusterUID string, resource model.Resource)
 }
 
 func goquDelete(tableName, columnName, arg string) (string, []interface{}, error) {
+	var whereDs []exp.Expression
+	whereDs = append(whereDs, goqu.C(columnName).Eq(arg))
+	if columnName == "cluster" && tableName == "resources" {
+		whereDs = append(whereDs, goqu.C("uid").Neq(string("cluster__"+arg))) // do not delete the cluster node
+	}
+
 	// Create the query
 	sql, args, err := goqu.From(
 		goqu.S("search").Table(tableName)).
 		Delete().
-		Where(goqu.C(columnName).Eq(arg)).ToSQL()
+		Where(whereDs...).ToSQL()
 	return sql, args, err
 }
 
