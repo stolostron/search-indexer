@@ -20,7 +20,7 @@ func (dao *DAO) ClusterTotals(clusterName string) (resources int, edges int) {
 		Select(goqu.COUNT("*")).
 		Where(
 			goqu.C("cluster").Eq(clusterName),
-			goqu.C("uid").Neq(string("cluster__"+clusterName))). // Ignore the cluster pseudonode, not a kube resource.
+			goqu.C("uid").Neq(string("cluster__"+clusterName))). // Ignore cluster pseudo-node, not a kube resource.
 		ToSQL()
 
 	checkError(err, fmt.Sprintf("Error creating query to count resources in cluster %s:%s ",
