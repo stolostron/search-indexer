@@ -18,7 +18,10 @@ func (dao *DAO) ClusterTotals(clusterName string) (resources int, edges int) {
 	// Sample query: SELECT count(*) FROM search.resources WHERE cluster=$1
 	resourceCountSql, params, err := goqu.From(goqu.S("search").Table("resources")).
 		Select(goqu.COUNT("*")).
-		Where(goqu.C("cluster").Eq(clusterName)).ToSQL()
+		Where(
+			goqu.C("cluster").Eq(clusterName),
+			goqu.C("uid").Neq(string("cluster__"+clusterName))). // Ignore cluster pseudo-node, not a kube resource.
+		ToSQL()
 
 	checkError(err, fmt.Sprintf("Error creating query to count resources in cluster %s:%s ",
 		clusterName, err))

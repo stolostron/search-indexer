@@ -21,7 +21,7 @@ func Test_ClusterTotals(t *testing.T) {
 		},
 	}
 	// mock queries
-	batch.Queue(`SELECT COUNT(*) FROM "search"."resources" WHERE ("cluster" = 'cluster_foo')`, []interface{}{}...)
+	batch.Queue(`SELECT COUNT(*) FROM "search"."resources" WHERE (("cluster" = 'cluster_foo') AND ("uid" != 'cluster__cluster_foo'))`, []interface{}{}...)
 	batch.Queue(`SELECT COUNT(*) FROM "search"."edges" WHERE (("cluster" = 'cluster_foo') AND ("edgetype" != 'interCluster'))`, []interface{}{}...)
 
 	mockPool.EXPECT().SendBatch(context.Background(), batch).Return(br)
