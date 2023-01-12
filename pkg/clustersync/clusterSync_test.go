@@ -85,6 +85,7 @@ func initializeVars() {
 		"label":               labelMap,
 		"apigroup":            managedClusterInfoApiGrp,
 		"kind_plural":         "managedclusterinfos",
+		"addon":               map[string]string{"application-manager": "false", "cert-policy-controller": "false", "cluster-proxy": "false", "config-policy-controller": "false", "governance-policy-framework": "false", "iam-policy-controller": "false", "observability-controller": "false", "search-collector": "false", "work-manager": "false"},
 		"cpu":                 0,
 		"created":             "0001-01-01T00:00:00Z",
 		"kind":                "Cluster",
