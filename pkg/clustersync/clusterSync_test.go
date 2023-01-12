@@ -63,8 +63,6 @@ func fakeDynamicClient() *fake.FakeDynamicClient {
 }
 
 func newTestUnstructured(apiVersion, kind, namespace, name, uid string) *unstructured.Unstructured {
-	labels := make(map[string]interface{})
-	labels["env"] = "dev"
 	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": apiVersion,
@@ -73,16 +71,32 @@ func newTestUnstructured(apiVersion, kind, namespace, name, uid string) *unstruc
 				"namespace": namespace,
 				"name":      name,
 				"uid":       uid,
-				"labels":    labels,
+				"labels": map[string]interface{}{
+					"env": "dev",
+					"feature.open-cluster-management.io/addon-search-collector": "available",
+				},
 			},
 		},
 	}
 }
 
 func initializeVars() {
-	labelMap := map[string]string{"env": "dev"}
 	clusterProps := map[string]interface{}{
-		"label":               labelMap,
+		"label": map[string]string{
+			"env": "dev",
+			"feature.open-cluster-management.io/addon-search-collector": "available",
+		},
+		"addon": map[string]string{
+			"application-manager":         "false",
+			"cert-policy-controller":      "false",
+			"cluster-proxy":               "false",
+			"config-policy-controller":    "false",
+			"governance-policy-framework": "false",
+			"iam-policy-controller":       "false",
+			"observability-controller":    "false",
+			"search-collector":            "true",
+			"work-manager":                "false",
+		},
 		"apigroup":            managedClusterInfoApiGrp,
 		"kind_plural":         "managedclusterinfos",
 		"cpu":                 0,

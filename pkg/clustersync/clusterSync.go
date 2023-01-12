@@ -35,6 +35,18 @@ const managedClusterAddonGVR = "managedclusteraddons.v1alpha1.addon.open-cluster
 const lockName = "search-indexer.open-cluster-management.io"
 const managedClusterInfoApiGrp = "internal.open-cluster-management.io"
 
+var allAddons = [9]string{
+	"application-manager",
+	"cert-policy-controller",
+	"cluster-proxy",
+	"config-policy-controller",
+	"governance-policy-framework",
+	"iam-policy-controller",
+	"observability-controller",
+	"search-collector",
+	"work-manager",
+}
+
 func ElectLeaderAndStart(ctx context.Context) {
 	client = config.Cfg.KubeClient
 	podName := config.Cfg.PodName
@@ -272,6 +284,10 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 		err := json.Unmarshal(clusterLabels, &labelMap)
 		if err == nil {
 			props["label"] = labelMap
+
+			// Extract the enabled addons from labels
+			props["addon"] = getEnabledAddons(labelMap) // maps to the enabled addons on the cluster
+
 		}
 	}
 
@@ -376,4 +392,19 @@ func findStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interf
 
 	return needToDelete, nil
 
+}
+
+// find the enabled addons from the cluster labels
+func getEnabledAddons(labelMap map[string]interface{}) map[string]interface{} {
+
+	enabledAddons := make(map[string]interface{}, len(allAddons))
+	for _, addon := range allAddons {
+		addonLabelName := "feature.open-cluster-management.io/addon-" + addon
+		if _, ok := labelMap[addonLabelName]; ok {
+			enabledAddons[addon] = "true"
+		} else {
+			enabledAddons[addon] = "false"
+		}
+	}
+	return enabledAddons
 }
