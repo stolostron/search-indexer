@@ -102,7 +102,7 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 
 	//History
 	_, err = dao.pool.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS search.resources_hist (uid TEXT PRIMARY KEY, cluster TEXT, updated TIMESTAMP, deleted BOOLEAN, PRIMARY KEY(uid, updated))")
+		"CREATE TABLE IF NOT EXISTS search.resources_hist (uid TEXT, cluster TEXT, updated TIMESTAMP, deleted BOOLEAN, PRIMARY KEY(uid, updated))")
 	checkError(err, "Error creating table search.resources_hist.")
 	_, err = dao.pool.Exec(ctx,
 		"CREATE TABLE IF NOT EXISTS search.edges_hist (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, updated TIMESTAMP, deleted BOOLEAN, PRIMARY KEY(sourceId, destId, edgeType, deleted))")
