@@ -10,6 +10,7 @@ type Resource struct {
 	UID            string `json:"uid,omitempty"`
 	ResourceString string `json:"resourceString,omitempty"`
 	Properties     map[string]interface{}
+	Time           int64
 }
 
 // Describes a relationship between resources

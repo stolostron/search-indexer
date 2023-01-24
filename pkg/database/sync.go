@@ -18,13 +18,15 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 	// ADD RESOURCES
 	for _, resource := range event.AddResources {
 		data, _ := json.Marshal(resource.Properties)
-		updatedTime := resource.Properties["Time"]
+		updatedTime := time.Unix(resource.Time, 0)
+
 		batch.Queue(batchItem{
 			action: "addResource",
 			query:  "INSERT into search.resources values($1,$2,$3)",
 			uid:    resource.UID,
 			args:   []interface{}{resource.UID, clusterName, string(data)},
 		})
+
 		batch.Queue(batchItem{
 			action: "addResource",
 			query:  "INSERT into search.resources_hist as r (uid, cluster, updated) values($1,$2,$3) ON CONFLICT (uid, updated) DO NOTHING",
@@ -38,7 +40,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 	// The uid and cluster fields will never get updated for a resource.
 	for _, resource := range event.UpdateResources {
 		data, _ := json.Marshal(resource.Properties)
-		updatedTime := resource.Properties["Time"]
+		updatedTime := time.Unix(resource.Time, 0)
 
 		batch.Queue(batchItem{
 			action: "updateResource",
@@ -46,6 +48,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 			uid:    resource.UID,
 			args:   []interface{}{resource.UID, string(data)},
 		})
+
 		batch.Queue(batchItem{
 			action: "updateResource",
 			query:  "INSERT into search.resources_hist values($1,$2,$3)",
