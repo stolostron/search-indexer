@@ -2,8 +2,6 @@
 
 package model
 
-import "time"
-
 // Resource - Describes a resource (node)
 type Resource struct {
 	Kind           string `json:"kind,omitempty"`
@@ -60,5 +58,5 @@ type SyncError struct {
 // DeleteResourceEvent - Contains the information needed to delete an existing resource.
 type DeleteResourceEvent struct {
 	UID  string `json:"uid,omitempty"`
-	Time time.Time
+	Time int64
 }

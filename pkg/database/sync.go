@@ -64,7 +64,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 		for i, resource := range event.DeleteResources {
 			params[i] = fmt.Sprintf("$%d", i+1)
 			uids[i] = resource.UID
-			deletedTime := resource.Time
+			deletedTime := time.Unix(resource.Time, 0)
 			batch.Queue(batchItem{
 				action: "deleteResource",
 				query:  "INSERT into search.resources_hist values($1,$2,$3,$4)",
