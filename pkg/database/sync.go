@@ -14,11 +14,11 @@ import (
 func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
 
 	batch := NewBatchWithRetry(dao, syncResponse)
-	updatedTime := time.Now()
+	var deleted bool = true
 	// ADD RESOURCES
 	for _, resource := range event.AddResources {
 		data, _ := json.Marshal(resource.Properties)
-		// updatedTime := resource.Properties["updated"]
+		updatedTime := resource.Properties["Time"]
 		batch.Queue(batchItem{
 			action: "addResource",
 			query:  "INSERT into search.resources values($1,$2,$3)",
@@ -27,7 +27,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 		})
 		batch.Queue(batchItem{
 			action: "addResource",
-			query:  "INSERT into search.resources_hist as r (uid, cluster, updated) values($1,$2,$3) ON CONFLICT (uid, cluster) DO NOTHING",
+			query:  "INSERT into search.resources_hist as r (uid, cluster, updated) values($1,$2,$3) ON CONFLICT (uid, updated) DO NOTHING",
 			uid:    resource.UID,
 			args:   []interface{}{resource.UID, clusterName, updatedTime},
 		})
@@ -38,7 +38,8 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 	// The uid and cluster fields will never get updated for a resource.
 	for _, resource := range event.UpdateResources {
 		data, _ := json.Marshal(resource.Properties)
-		// updatedTime := resource.Properties["updated"]
+		updatedTime := resource.Properties["Time"]
+
 		batch.Queue(batchItem{
 			action: "updateResource",
 			query:  "UPDATE search.resources SET data=$2 WHERE uid=$1",
@@ -57,15 +58,15 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 	if len(event.DeleteResources) > 0 {
 		params := make([]string, len(event.DeleteResources))
 		uids := make([]interface{}, len(event.DeleteResources))
-		// updatedTime := time.Now()
 		for i, resource := range event.DeleteResources {
 			params[i] = fmt.Sprintf("$%d", i+1)
 			uids[i] = resource.UID
+			deletedTime := resource.Time
 			batch.Queue(batchItem{
 				action: "deleteResource",
 				query:  "INSERT into search.resources_hist values($1,$2,$3,$4)",
 				uid:    resource.UID,
-				args:   []interface{}{resource.UID, clusterName, updatedTime, true},
+				args:   []interface{}{resource.UID, clusterName, deletedTime, deleted},
 			})
 		}
 		paramStr := strings.Join(params, ",")
@@ -88,7 +89,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 
 	// ADD EDGES
 	for _, edge := range event.AddEdges {
-		// updatedTime := time.Now()
+		updatedTime := time.Now()
 		batch.Queue(batchItem{
 			action: "addEdge",
 			query:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6)",
@@ -97,7 +98,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 
 		batch.Queue(batchItem{
 			action: "addEdge",
-			query:  "INSERT into search.edges_hist as r (sourceId, sourceKind, destId, destKind, edgeType, cluster, updated) values($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (sourceId, destId, edgeType) DO NOTHING",
+			query:  "INSERT into search.edges_hist as r (sourceId, sourceKind, destId, destKind, edgeType, cluster, updated) values($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (sourceId, destId, edgeType, deleted) DO NOTHING",
 			uid:    edge.SourceUID,
 			args:   []interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName, updatedTime}})
 	}
@@ -107,6 +108,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 
 	// DELETE EDGES
 	for _, edge := range event.DeleteEdges {
+		updatedTime := time.Now()
 		batch.Queue(batchItem{
 			action: "deleteEdge",
 			query:  "DELETE from search.edges WHERE sourceId=$1 AND destId=$2 AND edgeType=$3",
@@ -117,7 +119,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 			action: "deleteEdge",
 			query:  "INSERT into search.edges_hist values($1,$2,$3,$4,$5,$6,$7,$8)",
 			uid:    edge.SourceUID,
-			args:   []interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName, updatedTime, true}})
+			args:   []interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName, updatedTime, deleted}})
 
 	}
 
