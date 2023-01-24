@@ -98,9 +98,9 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 
 		batch.Queue(batchItem{
 			action: "addEdge",
-			query:  "INSERT into search.edges_hist as r (sourceId, sourceKind, destId, destKind, edgeType, cluster, updated) values($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (sourceId, destId, edgeType, deleted) DO NOTHING",
+			query:  "INSERT into search.edges_hist as r (sourceId, sourceKind, destId, destKind, edgeType, cluster, updated, deleted) values($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (sourceId, destId, edgeType, deleted) DO NOTHING",
 			uid:    edge.SourceUID,
-			args:   []interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName, updatedTime}})
+			args:   []interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName, updatedTime, !deleted}})
 	}
 
 	// UPDATE EDGES
