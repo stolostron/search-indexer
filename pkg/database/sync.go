@@ -51,7 +51,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 
 		batch.Queue(batchItem{
 			action: "updateResource",
-			query:  "INSERT into search.resources_hist values($1,$2,$3)",
+			query:  "INSERT into search.resources_hist values($1,$2,$3) ON CONFLICT (uid, updated) DO NOTHING",
 			uid:    resource.UID,
 			args:   []interface{}{resource.UID, clusterName, updatedTime},
 		})
@@ -67,7 +67,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 			deletedTime := time.Unix(resource.Time, 0)
 			batch.Queue(batchItem{
 				action: "deleteResource",
-				query:  "INSERT into search.resources_hist values($1,$2,$3,$4)",
+				query:  "INSERT into search.resources_hist values($1,$2,$3,$4) ON CONFLICT (uid, updated) DO NOTHING",
 				uid:    resource.UID,
 				args:   []interface{}{resource.UID, clusterName, deletedTime, deleted},
 			})
