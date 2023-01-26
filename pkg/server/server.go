@@ -23,10 +23,12 @@ func (s *ServerConfig) StartAndListen(ctx context.Context) {
 	router := mux.NewRouter()
 	router.HandleFunc("/liveness", LivenessProbe).Methods("GET")
 	router.HandleFunc("/readiness", ReadinessProbe).Methods("GET")
-	router.HandleFunc("/aggregator/clusters/{id}/sync", s.SyncResources).Methods("POST")
-
-	// Export metrics
 	router.Path("/metrics").Handler(promhttp.Handler())
+
+	// Add middleware to the /aggregator subroute.
+	syncSubrouter := router.PathPrefix("/aggregator").Subrouter()
+	syncSubrouter.Use(ValidateRequestMiddleware)
+	syncSubrouter.HandleFunc("/clusters/{id}/sync", s.SyncResources).Methods("POST")
 
 	// Configure TLS
 	cfg := &tls.Config{

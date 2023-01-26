@@ -35,7 +35,7 @@ type Config struct {
 	MaxBackoffMS   int // Maximum backoff in ms to wait after db connection error
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
 	RediscoverRateMS int // time in MS we should check on cluster resource type
-	// RequestLimit          int    // Max number of concurrent requests. Used to prevent from overloading the database
+	RequestLimit     int // Max number of concurrent requests. Used to prevent from overloading the database
 	// SkipClusterValidation string // Skips cluster validation. Intended only for performance tests.
 	DevelopmentMode bool
 }
@@ -55,11 +55,11 @@ func new() *Config {
 		PodNamespace:    getEnv("POD_NAMESPACE", "open-cluster-management"),
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		Version:         COMPONENT_VERSION,
-		// Use 5min for delete cluster activities and 30 seconds for db reconnect retry
+		// Use 5 min for delete cluster activities and 30 seconds for db reconnect retry
 		MaxBackoffMS: getEnvAsInt("MAX_BACKOFF_MS", 300000), // 5 min
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
 		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 300000), // 5 min
-		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
+		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 50),
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
 	}
 
