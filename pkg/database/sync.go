@@ -76,6 +76,13 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 
 		// TODO: Need better safety for delete errors.
 		// The current retry logic won't work well if there's an error here.
+		// delete_hist
+		batch.Queue(batchItem{
+			action: "storedeleteResource",
+			query:  fmt.Sprintf("INSERT into search.delete_hist select uid, data from search.resources WHERE uid IN (%s) ON CONFLICT (uid) DO NOTHING", paramStr),
+			uid:    fmt.Sprintf("%s", uids),
+			args:   uids,
+		})
 		batch.Queue(batchItem{
 			action: "deleteResource",
 			query:  fmt.Sprintf("DELETE from search.resources WHERE uid IN (%s)", paramStr),
