@@ -24,7 +24,8 @@ func ValidateRequestMiddleware(next http.Handler) http.Handler {
 		clusterName := params["id"]
 
 		if t, exists := pendingRequests[clusterName]; exists {
-			klog.Warningf("Rejecting request from %s because there's a pending request processing for %s", clusterName, time.Since(t))
+			klog.Warningf("Rejecting request from %s because there's a previous request processing. Duration: %s",
+				clusterName, time.Since(t))
 			http.Error(w, "A previous request from this cluster is processing, retry later.", http.StatusTooManyRequests)
 			return
 		}
