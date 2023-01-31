@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/stolostron/search-indexer/pkg/metrics"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
@@ -14,8 +15,9 @@ import (
 // NOTE: This logic is not optimized. We use the simplest approach because this is a failsafe to
 //       recover from rare sync problems. At the moment this is good enough without adding complexity.
 func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
+	defer metrics.SlowLog(fmt.Sprintf("Slow Resync from cluster %s", clusterName), 0)()
 	klog.Infof(
-		"Resync full state for cluster %s. This is normal, but it could be a problem if it happens often.",
+		"Received Resync for cluster %s. This is normal, but it could be a problem if it happens often.",
 		clusterName)
 
 	// DELETE from search.resources WHERE cluster=$1
@@ -36,4 +38,6 @@ func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncRespon
 		klog.Warningf("Error deleting edges during resync of cluster %s. Error: %+v", clusterName, err)
 	}
 	dao.SyncData(event, clusterName, syncResponse)
+
+	klog.V(1).Infof("Completed resync of cluster %s", clusterName)
 }

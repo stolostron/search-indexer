@@ -28,7 +28,7 @@ var poolSingleton pgxpoolmock.PgxPool
 func NewDAO(p pgxpoolmock.PgxPool) DAO {
 	// Crete DAO with default values.
 	dao := DAO{
-		batchSize: 500,
+		batchSize: config.Cfg.DBBatchSize,
 	}
 	if p != nil {
 		dao.pool = p

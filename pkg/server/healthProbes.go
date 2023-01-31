@@ -11,13 +11,13 @@ import (
 
 // LivenessProbe is used to check if this service is alive.
 func LivenessProbe(w http.ResponseWriter, r *http.Request) {
-	klog.V(2).Info("livenessProbe")
+	klog.V(6).Info("livenessProbe")
 	fmt.Fprint(w, "OK")
 }
 
 // ReadinessProbe checks if database is available.
 func ReadinessProbe(w http.ResponseWriter, r *http.Request) {
-	klog.V(2).Info("readinessProbe - TODO Check database connection.")
+	klog.V(6).Info("readinessProbe - TODO Check database connection.")
 
 	// TODO - Implement probe.
 

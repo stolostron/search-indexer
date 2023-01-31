@@ -13,13 +13,14 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const COMPONENT_VERSION = "2.5.0"
+const COMPONENT_VERSION = "2.7.0"
 
 var DEVELOPMENT_MODE = false // Do not change this. See config_development.go to enable.
 var Cfg = new()
 
 // Struct to hold our configuratioin
 type Config struct {
+	DBBatchSize    int // Batch size used to write to DB.
 	DBHost         string
 	DBPort         int
 	DBName         string
@@ -31,6 +32,7 @@ type Config struct {
 	PodName        string
 	PodNamespace   string
 	ServerAddress  string // Web server address
+	SlowLog        int    // Logs when operations are slower than the specified time duration in ms. Default 500ms
 	Version        string
 	MaxBackoffMS   int // Maximum backoff in ms to wait after db connection error
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
@@ -44,6 +46,7 @@ type Config struct {
 func new() *Config {
 	conf := &Config{
 		DevelopmentMode: DEVELOPMENT_MODE, // Do not read this from ENV. See config_development.go to enable.
+		DBBatchSize:     getEnvAsInt("DB_BATCH_SIZE", 500),
 		DBHost:          getEnv("DB_HOST", "localhost"),
 		DBPort:          getEnvAsInt("DB_PORT", 5432),
 		DBName:          getEnv("DB_NAME", ""),
@@ -54,6 +57,7 @@ func new() *Config {
 		PodName:         getEnv("POD_NAME", "local-dev"),
 		PodNamespace:    getEnv("POD_NAMESPACE", "open-cluster-management"),
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
+		SlowLog:         getEnvAsInt("SLOW_LOG", int(300)),
 		Version:         COMPONENT_VERSION,
 		// Use 5 min for delete cluster activities and 30 seconds for db reconnect retry
 		MaxBackoffMS: getEnvAsInt("MAX_BACKOFF_MS", 300000), // 5 min
