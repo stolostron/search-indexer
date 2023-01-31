@@ -17,7 +17,7 @@ import (
 func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
 	defer metrics.SlowLog(fmt.Sprintf("Slow Resync from cluster %s", clusterName), 0)()
 	klog.Infof(
-		"Received Resync for cluster %s. This is normal, but it could be a problem if it happens often.",
+		"Starting Resync of cluster %s. This is normal, but it could be a problem if it happens often.",
 		clusterName)
 
 	// DELETE from search.resources WHERE cluster=$1
