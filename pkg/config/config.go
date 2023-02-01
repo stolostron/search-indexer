@@ -57,7 +57,7 @@ func new() *Config {
 		PodName:         getEnv("POD_NAME", "local-dev"),
 		PodNamespace:    getEnv("POD_NAMESPACE", "open-cluster-management"),
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
-		SlowLog:         getEnvAsInt("SLOW_LOG", int(500)), // 500 ms
+		SlowLog:         getEnvAsInt("SLOW_LOG", int(1000)), // 1 second
 		Version:         COMPONENT_VERSION,
 		// Use 5 min for delete cluster activities and 30 seconds for db reconnect retry
 		MaxBackoffMS: getEnvAsInt("MAX_BACKOFF_MS", 300000), // 5 min
