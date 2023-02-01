@@ -62,6 +62,7 @@ func initializePool() pgxpoolmock.PgxPool {
 	if configErr != nil {
 		klog.Fatal("Error parsing database connection configuration. ", configErr)
 	}
+	config.MaxConns = int32(cfg.MaxConns)
 
 	retry := 0
 	var conn *pgxpool.Pool
