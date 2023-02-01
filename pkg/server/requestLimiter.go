@@ -17,13 +17,13 @@ var pendingRequests = map[string]time.Time{}
 var pendingLock = sync.RWMutex{}
 
 // Checks if we are able to accept the incoming request.
-func ValidateRequestMiddleware(next http.Handler) http.Handler {
+func requestLimiterMiddleware(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		clusterName := params["id"]
 
-		klog.V(6).Info("Requests processing: ", len(pendingRequests))
+		klog.V(6).Info("Checking is we can process incoming request. Existing pending requests: ", len(pendingRequests))
 
 		if t, exists := pendingRequests[clusterName]; exists {
 			klog.Warningf("Rejecting request from %s because there's a previous request processing. Duration: %s",
@@ -34,7 +34,7 @@ func ValidateRequestMiddleware(next http.Handler) http.Handler {
 
 		if len(pendingRequests) >= config.Cfg.RequestLimit && clusterName != "local-cluster" {
 			klog.Warningf("Too many pending requests (%d). Rejecting sync from %s", len(pendingRequests), clusterName)
-			http.Error(w, "Aggregator has many pending requests, retry later.", http.StatusTooManyRequests)
+			http.Error(w, "Indexer has too many pending requests, retry later.", http.StatusTooManyRequests)
 			return
 		}
 

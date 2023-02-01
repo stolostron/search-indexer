@@ -27,7 +27,7 @@ func (s *ServerConfig) StartAndListen(ctx context.Context) {
 
 	// Add middleware to the /aggregator subroute.
 	syncSubrouter := router.PathPrefix("/aggregator").Subrouter()
-	syncSubrouter.Use(ValidateRequestMiddleware)
+	syncSubrouter.Use(requestLimiterMiddleware)
 	syncSubrouter.HandleFunc("/clusters/{id}/sync", s.SyncResources).Methods("POST")
 
 	// Configure TLS
