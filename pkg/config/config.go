@@ -26,6 +26,7 @@ type Config struct {
 	DBUser         string
 	DBPass         string
 	HTTPTimeout    int // timeout when the http server should drop connections
+	MaxConns       int
 	KubeConfigPath string
 	KubeClient     *kubernetes.Clientset
 	PodName        string
@@ -50,6 +51,7 @@ func new() *Config {
 		DBUser:          getEnv("DB_USER", ""),
 		DBPass:          getEnv("DB_PASS", ""),
 		HTTPTimeout:     getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
+		MaxConns:        getEnvAsInt("MAX_CONNS", int(30)),
 		KubeConfigPath:  getKubeConfigPath(),
 		PodName:         getEnv("POD_NAME", "local-dev"),
 		PodNamespace:    getEnv("POD_NAMESPACE", "open-cluster-management"),
