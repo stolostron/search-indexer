@@ -22,12 +22,12 @@ var Cfg = new()
 type Config struct {
 	DBBatchSize    int // Batch size used to write to DB.
 	DBHost         string
+	DBMaxConns     int // Max size of DB connection pool.
 	DBPort         int
 	DBName         string
 	DBUser         string
 	DBPass         string
 	HTTPTimeout    int // timeout when the http server should drop connections
-	MaxConns       int
 	KubeConfigPath string
 	KubeClient     *kubernetes.Clientset
 	PodName        string
@@ -49,12 +49,12 @@ func new() *Config {
 		DevelopmentMode: DEVELOPMENT_MODE, // Do not read this from ENV. See config_development.go to enable.
 		DBBatchSize:     getEnvAsInt("DB_BATCH_SIZE", 500),
 		DBHost:          getEnv("DB_HOST", "localhost"),
+		DBMaxConns:      getEnvAsInt("MAX_CONNS", int(30)),
 		DBPort:          getEnvAsInt("DB_PORT", 5432),
 		DBName:          getEnv("DB_NAME", ""),
 		DBUser:          getEnv("DB_USER", ""),
 		DBPass:          getEnv("DB_PASS", ""),
 		HTTPTimeout:     getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
-		MaxConns:        getEnvAsInt("MAX_CONNS", int(30)),
 		KubeConfigPath:  getKubeConfigPath(),
 		PodName:         getEnv("POD_NAME", "local-dev"),
 		PodNamespace:    getEnv("POD_NAMESPACE", "open-cluster-management"),
