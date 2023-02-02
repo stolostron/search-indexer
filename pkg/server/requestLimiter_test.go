@@ -12,6 +12,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Verify that request is accepted with 3 pending requests.
+func Test_requestLimiterMiddleware(t *testing.T) {
+	// Mock 3 requests.
+	pendingRequests = map[string]time.Time {"A": time.Now(), "B": time.Now(), "C": time.Now()}
+
+	requestLimiterHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	req := httptest.NewRequest("POST", "https://localhost:3010/aggregator/clusters/cluster1/sync", nil)
+	res := httptest.NewRecorder()
+
+	requestLimiterHandler(res, req)
+	middleware := requestLimiterMiddleware(requestLimiterHandler)
+
+	middleware.ServeHTTP(res, req)
+
+	// Validate response code and messsage.
+	assert.Equal(t, http.StatusOK, res.Code)
+}
+
 // Verify that request is rejected when there's a pending request form the same cluster.
 func Test_requestLimiterMiddleware_existingRequest(t *testing.T) {
 	// Mock a pending request from cluster.
