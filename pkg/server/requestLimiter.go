@@ -23,7 +23,7 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 		params := mux.Vars(r)
 		clusterName := params["id"]
 
-		klog.V(6).Info("Checking is we can process incoming request. Existing pending requests: ", len(pendingRequests))
+		klog.V(6).Info("Checking if we can process incoming request. Existing pending requests: ", len(pendingRequests))
 
 		if t, exists := pendingRequests[clusterName]; exists {
 			klog.Warningf("Rejecting request from %s because there's a previous request processing. Duration: %s",
