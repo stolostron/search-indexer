@@ -49,7 +49,7 @@ func new() *Config {
 		DevelopmentMode: DEVELOPMENT_MODE, // Do not read this from ENV. See config_development.go to enable.
 		DBBatchSize:     getEnvAsInt("DB_BATCH_SIZE", 500),
 		DBHost:          getEnv("DB_HOST", "localhost"),
-		DBMaxConns:      getEnvAsInt("MAX_CONNS", int(30)),
+		DBMaxConns:      getEnvAsInt("DB_MAX_CONNS", int(30)),
 		DBPort:          getEnvAsInt("DB_PORT", 5432),
 		DBName:          getEnv("DB_NAME", ""),
 		DBUser:          getEnv("DB_USER", ""),
