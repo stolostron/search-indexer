@@ -33,7 +33,7 @@ type Config struct {
 	PodName        string
 	PodNamespace   string
 	ServerAddress  string // Web server address
-	SlowLog        int    // Logs when operations are slower than the specified time duration in ms. Default 500ms
+	SlowLog        int    // Log operations slower than the specified time in ms. Default 1000ms
 	Version        string
 	MaxBackoffMS   int // Maximum backoff in ms to wait after db connection error
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
