@@ -15,7 +15,7 @@ import (
 // Verify that request is accepted with 3 pending requests.
 func Test_requestLimiterMiddleware(t *testing.T) {
 	// Mock 3 pending requests.
-	pendingRequests = map[string]time.Time {"A": time.Now(), "B": time.Now(), "C": time.Now()}
+	requestsProcessing = map[string]time.Time {"A": time.Now(), "B": time.Now(), "C": time.Now()}
 
 	requestLimiterHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 	req := httptest.NewRequest("POST", "https://localhost:3010/aggregator/clusters/cluster1/sync", nil)
@@ -35,7 +35,7 @@ func Test_requestLimiterMiddleware_existingRequest(t *testing.T) {
 	// Mock a pending request from cluster.
 	// NOTE: Omitting the cluster name to keep the test simple, otherwise we would need to mock
 	// the mux router so the handler can read the cluster {id} from the route.
-	pendingRequests = map[string]time.Time {"": time.Now()}
+	requestsProcessing = map[string]time.Time {"": time.Now()}
 
 	// Mock Request and Response.
 	requestLimiterHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
@@ -58,9 +58,9 @@ func Test_requestLimiterMiddleware_existingRequest(t *testing.T) {
 // Verify that request is rejected when there's 50 or more pending requests.
 func Test_requestLimiterMiddleware_with50PendingRequests(t *testing.T) {
 	// Mock 50 pending requests.
-	pendingRequests = map[string]time.Time {}
+	requestsProcessing = map[string]time.Time {}
 	for i:=0; i<50; i++{
-		pendingRequests["cluster" + strconv.Itoa(i)] = time.Now()
+		requestsProcessing["cluster" + strconv.Itoa(i)] = time.Now()
 	}
 
 	requestLimiterHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})

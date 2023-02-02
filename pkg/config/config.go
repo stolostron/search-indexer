@@ -22,7 +22,7 @@ var Cfg = new()
 type Config struct {
 	DBBatchSize    int // Batch size used to write to DB.
 	DBHost         string
-	DBMaxConns     int // Max size of DB connection pool.
+	DBMaxConns     int // Max size of DB connection pool. Default: 30
 	DBPort         int
 	DBName         string
 	DBUser         string

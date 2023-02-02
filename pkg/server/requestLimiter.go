@@ -13,8 +13,8 @@ import (
 	"github.com/stolostron/search-indexer/pkg/config"
 )
 
-var pendingRequests = map[string]time.Time{}
-var pendingLock = sync.RWMutex{}
+var requestsProcessing = map[string]time.Time{}
+var lock = sync.RWMutex{}
 
 // Checks if we are able to accept the incoming request.
 func requestLimiterMiddleware(next http.Handler) http.Handler {
@@ -23,29 +23,29 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 		params := mux.Vars(r)
 		clusterName := params["id"]
 
-		klog.V(6).Info("Checking if we can process incoming request. Existing pending requests: ", len(pendingRequests))
+		klog.V(6).Info("Checking if we can process incoming request. Current requests: ", len(requestsProcessing))
 
-		if t, exists := pendingRequests[clusterName]; exists {
+		if t, exists := requestsProcessing[clusterName]; exists {
 			klog.Warningf("Rejecting request from %s because there's a previous request processing. Duration: %s",
 				clusterName, time.Since(t))
 			http.Error(w, "A previous request from this cluster is processing, retry later.", http.StatusTooManyRequests)
 			return
 		}
 
-		if len(pendingRequests) >= config.Cfg.RequestLimit && clusterName != "local-cluster" {
-			klog.Warningf("Too many pending requests (%d). Rejecting sync from %s", len(pendingRequests), clusterName)
+		if len(requestsProcessing) >= config.Cfg.RequestLimit && clusterName != "local-cluster" {
+			klog.Warningf("Too many pending requests (%d). Rejecting sync from %s", len(requestsProcessing), clusterName)
 			http.Error(w, "Indexer has too many pending requests, retry later.", http.StatusTooManyRequests)
 			return
 		}
 
-		pendingLock.Lock()
-		pendingRequests[clusterName] = time.Now()
-		pendingLock.Unlock()
+		lock.Lock()
+		requestsProcessing[clusterName] = time.Now()
+		lock.Unlock()
 
 		defer func() {
-			pendingLock.Lock()
-			delete(pendingRequests, clusterName)
-			pendingLock.Unlock()
+			lock.Lock()
+			delete(requestsProcessing, clusterName)
+			lock.Unlock()
 		}()
 
 		next.ServeHTTP(w, r)
