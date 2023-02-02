@@ -14,7 +14,7 @@ import (
 
 // Verify that request is accepted with 3 pending requests.
 func Test_requestLimiterMiddleware(t *testing.T) {
-	// Mock 3 requests.
+	// Mock 3 pending requests.
 	pendingRequests = map[string]time.Time {"A": time.Now(), "B": time.Now(), "C": time.Now()}
 
 	requestLimiterHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
@@ -33,8 +33,8 @@ func Test_requestLimiterMiddleware(t *testing.T) {
 // Verify that request is rejected when there's a pending request form the same cluster.
 func Test_requestLimiterMiddleware_existingRequest(t *testing.T) {
 	// Mock a pending request from cluster.
-	// Note: Omitting the cluster name to keep the test simple, otherwise we need to mock the mux
-	// router so the handler can read the cluster {id} from the route.
+	// NOTE: Omitting the cluster name to keep the test simple, otherwise we would need to mock
+	// the mux router so the handler can read the cluster {id} from the route.
 	pendingRequests = map[string]time.Time {"": time.Now()}
 
 	// Mock Request and Response.
