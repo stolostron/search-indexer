@@ -40,7 +40,7 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 
 		requestTrackerLock.Lock()
 		requestTracker[clusterName] = time.Now()
-		requestTrackerLock.Lock()
+		requestTrackerLock.Unlock()
 
 		defer func() {
 			requestTrackerLock.Lock()
