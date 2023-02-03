@@ -25,9 +25,13 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 
 		klog.V(6).Info("Checking if we can process incoming request. Current requests: ", len(requestTracker))
 
-		if t, exists := requestTracker[clusterName]; exists {
+		requestTrackerLock.RLock()
+		timeReqReceived, foundClusterProcessing := requestTracker[clusterName]
+		requestTrackerLock.RUnlock()
+
+		if foundClusterProcessing {
 			klog.Warningf("Rejecting request from %s because there's a previous request processing. Duration: %s",
-				clusterName, time.Since(t))
+				clusterName, time.Since(timeReqReceived))
 			http.Error(w, "A previous request from this cluster is processing, retry later.", http.StatusTooManyRequests)
 			return
 		}
@@ -38,11 +42,11 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		requestTrackerLock.Lock()
+		requestTrackerLock.RLock()
 		requestTracker[clusterName] = time.Now()
-		requestTrackerLock.Unlock()
+		requestTrackerLock.RUnlock()
 
-		defer func() {
+		defer func() { // Using defer to guarantee this gets executed if there's an error processing the request.
 			requestTrackerLock.Lock()
 			delete(requestTracker, clusterName)
 			requestTrackerLock.Unlock()
