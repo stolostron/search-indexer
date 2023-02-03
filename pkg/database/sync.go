@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/stolostron/search-indexer/pkg/metrics"
 	"github.com/stolostron/search-indexer/pkg/model"
+	"k8s.io/klog/v2"
 )
 
 func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
-
+	defer metrics.SlowLog(fmt.Sprintf("Slow Sync from cluster %s.", clusterName), 0)()
 	batch := NewBatchWithRetry(dao, syncResponse)
 
 	// ADD RESOURCES
@@ -97,4 +99,6 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 	syncResponse.TotalDeleted = len(event.DeleteResources) - len(syncResponse.DeleteErrors)
 	syncResponse.TotalEdgesAdded = len(event.AddEdges) - len(syncResponse.AddEdgeErrors)
 	syncResponse.TotalEdgesDeleted = len(event.DeleteEdges) - len(syncResponse.DeleteEdgeErrors)
+
+	klog.V(1).Infof("Completed sync of cluster %s", clusterName)
 }

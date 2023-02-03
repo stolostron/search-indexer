@@ -67,5 +67,5 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 
 	// Record metrics.
 	OpsProcessed.WithLabelValues(clusterName, r.RequestURI).Inc()
-	HttpDuration.WithLabelValues(clusterName, r.RequestURI).Observe(float64(time.Since(start).Milliseconds()))
+	HttpDuration.WithLabelValues(clusterName, r.RequestURI).Observe(float64(time.Since(start).Seconds()))
 }

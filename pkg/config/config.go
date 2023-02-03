@@ -13,30 +13,32 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const COMPONENT_VERSION = "2.5.0"
+const COMPONENT_VERSION = "2.7.0"
 
 var DEVELOPMENT_MODE = false // Do not change this. See config_development.go to enable.
 var Cfg = new()
 
 // Struct to hold our configuratioin
 type Config struct {
+	DBBatchSize    int // Batch size used to write to DB.
 	DBHost         string
+	DBMaxConns     int // Max size of DB connection pool. Default: 30
 	DBPort         int
 	DBName         string
 	DBUser         string
 	DBPass         string
 	HTTPTimeout    int // timeout when the http server should drop connections
-	MaxConns       int
 	KubeConfigPath string
 	KubeClient     *kubernetes.Clientset
 	PodName        string
 	PodNamespace   string
 	ServerAddress  string // Web server address
+	SlowLog        int    // Log operations slower than the specified time in ms. Default 1000ms
 	Version        string
 	MaxBackoffMS   int // Maximum backoff in ms to wait after db connection error
 	// EdgeBuildRateMS       int    // rate at which intercluster edges should be build
 	RediscoverRateMS int // time in MS we should check on cluster resource type
-	// RequestLimit          int    // Max number of concurrent requests. Used to prevent from overloading the database
+	RequestLimit     int // Max number of concurrent requests. Used to prevent from overloading the database
 	// SkipClusterValidation string // Skips cluster validation. Intended only for performance tests.
 	DevelopmentMode bool
 }
@@ -45,23 +47,25 @@ type Config struct {
 func new() *Config {
 	conf := &Config{
 		DevelopmentMode: DEVELOPMENT_MODE, // Do not read this from ENV. See config_development.go to enable.
+		DBBatchSize:     getEnvAsInt("DB_BATCH_SIZE", 500),
 		DBHost:          getEnv("DB_HOST", "localhost"),
+		DBMaxConns:      getEnvAsInt("DB_MAX_CONNS", int(20)), // Postgres has 100 conns. This allows scaling the indexer.
 		DBPort:          getEnvAsInt("DB_PORT", 5432),
 		DBName:          getEnv("DB_NAME", ""),
 		DBUser:          getEnv("DB_USER", ""),
 		DBPass:          getEnv("DB_PASS", ""),
 		HTTPTimeout:     getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
-		MaxConns:        getEnvAsInt("MAX_CONNS", int(30)),
 		KubeConfigPath:  getKubeConfigPath(),
 		PodName:         getEnv("POD_NAME", "local-dev"),
 		PodNamespace:    getEnv("POD_NAMESPACE", "open-cluster-management"),
 		ServerAddress:   getEnv("AGGREGATOR_ADDRESS", ":3010"),
+		SlowLog:         getEnvAsInt("SLOW_LOG", int(1000)), // 1 second
 		Version:         COMPONENT_VERSION,
-		// Use 5min for delete cluster activities and 30 seconds for db reconnect retry
+		// Use 5 min for delete cluster activities and 30 seconds for db reconnect retry
 		MaxBackoffMS: getEnvAsInt("MAX_BACKOFF_MS", 300000), // 5 min
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
 		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 300000), // 5 min
-		// RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 10),
+		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 50), // Limit to 50 to keep memory below 1GB.
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
 	}
 
