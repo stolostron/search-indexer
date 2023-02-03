@@ -28,7 +28,7 @@ var poolSingleton pgxpoolmock.PgxPool
 func NewDAO(p pgxpoolmock.PgxPool) DAO {
 	// Crete DAO with default values.
 	dao := DAO{
-		batchSize: 500,
+		batchSize: config.Cfg.DBBatchSize,
 	}
 	if p != nil {
 		dao.pool = p
@@ -62,7 +62,7 @@ func initializePool() pgxpoolmock.PgxPool {
 	if configErr != nil {
 		klog.Fatal("Error parsing database connection configuration. ", configErr)
 	}
-	config.MaxConns = int32(cfg.MaxConns)
+	config.MaxConns = int32(cfg.DBMaxConns)
 
 	retry := 0
 	var conn *pgxpool.Pool
