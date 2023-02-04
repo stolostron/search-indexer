@@ -22,7 +22,7 @@ var Cfg = new()
 type Config struct {
 	DBBatchSize    int // Batch size used to write to DB.
 	DBHost         string
-	DBMaxConns     int // Max size of DB connection pool. Default: 30
+	DBMaxConns     int // Max size of DB connection pool. Default: 20
 	DBPort         int
 	DBName         string
 	DBUser         string
@@ -49,7 +49,7 @@ func new() *Config {
 		DevelopmentMode: DEVELOPMENT_MODE, // Do not read this from ENV. See config_development.go to enable.
 		DBBatchSize:     getEnvAsInt("DB_BATCH_SIZE", 500),
 		DBHost:          getEnv("DB_HOST", "localhost"),
-		DBMaxConns:      getEnvAsInt("DB_MAX_CONNS", int(20)), // Postgres has 100 conns. This allows scaling the indexer.
+		DBMaxConns:      getEnvAsInt("DB_MAX_CONNS", int(20)), // Postgres has 100 conns. 20 allows scaling indexer
 		DBPort:          getEnvAsInt("DB_PORT", 5432),
 		DBName:          getEnv("DB_NAME", ""),
 		DBUser:          getEnv("DB_USER", ""),
@@ -65,7 +65,7 @@ func new() *Config {
 		MaxBackoffMS: getEnvAsInt("MAX_BACKOFF_MS", 300000), // 5 min
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
 		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 300000), // 5 min
-		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 50), // Limit to 50 to keep memory below 1GB.
+		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 50),          // Limit to 50 to keep memory below 1GB.
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
 	}
 
