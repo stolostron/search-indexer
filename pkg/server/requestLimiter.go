@@ -23,9 +23,9 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 		params := mux.Vars(r)
 		clusterName := params["id"]
 
-		klog.V(6).Info("Checking if we can process incoming request. Current requests: ", len(requestTracker))
-
 		requestTrackerLock.RLock()
+		requestCount := len(requestTracker)
+		klog.V(6).Info("Checking if we can process incoming request. Current requests: ", requestCount)
 		timeReqReceived, foundClusterProcessing := requestTracker[clusterName]
 		requestTrackerLock.RUnlock()
 
@@ -36,15 +36,15 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if len(requestTracker) >= config.Cfg.RequestLimit && clusterName != "local-cluster" {
-			klog.Warningf("Too many pending requests (%d). Rejecting sync from %s", len(requestTracker), clusterName)
+		if requestCount >= config.Cfg.RequestLimit && clusterName != "local-cluster" {
+			klog.Warningf("Too many pending requests (%d). Rejecting sync from %s", requestCount, clusterName)
 			http.Error(w, "Indexer has too many pending requests, retry later.", http.StatusTooManyRequests)
 			return
 		}
 
-		requestTrackerLock.RLock()
+		requestTrackerLock.Lock()
 		requestTracker[clusterName] = time.Now()
-		requestTrackerLock.RUnlock()
+		requestTrackerLock.Unlock()
 
 		defer func() { // Using defer to guarantee this gets executed if there's an error processing the request.
 			requestTrackerLock.Lock()
