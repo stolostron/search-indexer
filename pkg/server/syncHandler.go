@@ -4,7 +4,9 @@ package server
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -27,6 +29,9 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	json_payload, _ := json.Marshal(syncEvent)
+	fileName := clusterName + "_" + time.Now().Format("20060102_150405") + ".json"
+	ioutil.WriteFile(fileName, json_payload, os.ModePerm)
 
 	// Initialize SyncResponse object.
 	syncResponse := &model.SyncResponse{
