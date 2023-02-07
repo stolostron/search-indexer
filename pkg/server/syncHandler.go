@@ -30,7 +30,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json_payload, _ := json.Marshal(syncEvent)
-	fileName := clusterName + "_" + time.Now().Format("20060102_150405") + ".json"
+	fileName := time.Now().Format("20060102_150405") + "_" + clusterName + ".json"
 	ioutil.WriteFile(fileName, json_payload, os.ModePerm)
 
 	// Initialize SyncResponse object.
