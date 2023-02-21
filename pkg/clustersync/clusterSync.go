@@ -256,8 +256,6 @@ func transformManagedClusterInfo(managedClusterInfo *clusterv1beta1.ManagedClust
 	props["nodes"] = int64(len(managedClusterInfo.Status.NodeList))
 	props["kind"] = "Cluster"
 	props["name"] = managedClusterInfo.GetName()
-	// Disabled till RBAC implementation
-	// props["_clusterNamespace"] = managedClusterInfo.GetNamespace() // Needed for rbac mapping.
 	props["apigroup"] = managedClusterInfoApiGrp // Maps rbac to ManagedClusterInfo
 	props = addAdditionalProperties(props)
 	// Create the resource
@@ -292,9 +290,7 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 	}
 
 	props["kind"] = "Cluster"
-	props["name"] = managedCluster.GetName() // must match ManagedClusterInfo
-	// Disabled till RBAC implementation
-	// props["_clusterNamespace"] = managedCluster.GetName()     // maps to the namespace of ManagedClusterInfo
+	props["name"] = managedCluster.GetName()     // must match ManagedClusterInfo
 	props["apigroup"] = managedClusterInfoApiGrp // maps rbac to ManagedClusterInfo
 	props["created"] = managedCluster.GetCreationTimestamp().UTC().Format(time.RFC3339)
 
