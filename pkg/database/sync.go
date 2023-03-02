@@ -21,7 +21,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 		data, _ := json.Marshal(resource.Properties)
 		batch.Queue(batchItem{
 			action: "addResource",
-			query:  "INSERT into search.resources values($1,$2,$3)",
+			query:  "INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO NOTHING",
 			uid:    resource.UID,
 			args:   []interface{}{resource.UID, clusterName, string(data)},
 		})
@@ -70,7 +70,7 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 	for _, edge := range event.AddEdges {
 		batch.Queue(batchItem{
 			action: "addEdge",
-			query:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6)",
+			query:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
 			uid:    edge.SourceUID,
 			args:   []interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName}})
 	}
