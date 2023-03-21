@@ -11,8 +11,9 @@ var (
 	PromRegistry = prometheus.NewRegistry()
 
 	SyncRequestDuration = promauto.With(PromRegistry).NewHistogramVec(prometheus.HistogramOpts{
-		Name: "search_indexer_request_duration",
-		Help: "Time (seconds) the search indexer takes to process a sync request from managed clusters.",
+		Name:    "search_indexer_request_duration",
+		Help:    "Time (seconds) the search indexer takes to process a sync request from managed clusters.",
+		Buckets: []float64{.25, .5, 1, 1.5, 2, 2.5, 5, 10},
 	}, []string{"code"})
 
 	SyncRequestSize = promauto.With(PromRegistry).NewHistogramVec(prometheus.HistogramOpts{
