@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	// "github.com/stolostron/search-indexer/pkg/metrics"
+	"github.com/stolostron/search-indexer/pkg/metrics"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
@@ -15,7 +15,7 @@ import (
 // NOTE: This logic is not optimized. We use the simplest approach because this is a failsafe to
 //       recover from rare sync problems. At the moment this is good enough without adding complexity.
 func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
-	// defer metrics.SlowLog(fmt.Sprintf("Slow Resync from cluster %s", clusterName), 0)()
+	defer metrics.SlowLog(fmt.Sprintf("Slow Resync from cluster %s", clusterName), 0)()
 	klog.Infof(
 		"Starting Resync of cluster %s. This is normal, but it could be a problem if it happens often.",
 		clusterName)
