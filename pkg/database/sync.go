@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/stolostron/search-indexer/pkg/metrics"
+	// "github.com/stolostron/search-indexer/pkg/metrics"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
 
 func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
-	defer metrics.SlowLog(fmt.Sprintf("Slow Sync from cluster %s.", clusterName), 0)()
+	// defer metrics.SlowLog(fmt.Sprintf("Slow Sync from cluster %s.", clusterName), 0)()
 	batch := NewBatchWithRetry(dao, syncResponse)
 
 	// ADD RESOURCES

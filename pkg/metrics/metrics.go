@@ -13,15 +13,16 @@ var (
 	SyncRequestDuration = promauto.With(PromRegistry).NewHistogramVec(prometheus.HistogramOpts{
 		Name: "search_indexer_request_duration",
 		Help: "Time (seconds) the search indexer takes to process a sync request from managed clusters.",
-	}, []string{"cluster", "code"})
+	}, []string{"code"})
 
 	SyncRequestSize = promauto.With(PromRegistry).NewHistogramVec(prometheus.HistogramOpts{
 		Name: "search_indexer_request_size",
 		Help: "Number of changes processed (add,update,delete) in a sync request from managed cluster.",
-	}, []string{"cluster", "code"})
+		// }, []string{"code", "managed_cluster_name"})
+	}, []string{"code"})
 
 	SyncRequestCount = promauto.With(PromRegistry).NewCounterVec(prometheus.CounterOpts{
 		Name: "search_indexer_request_count",
 		Help: "The total number of incoming sync requests to the search indexer from managed cluster.",
-	}, []string{"cluster"})
+	}, []string{"managed_cluster_name"})
 )
