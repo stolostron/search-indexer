@@ -29,8 +29,9 @@ var (
 	// Experimenting.
 
 	SyncRequestSize = promauto.With(PromRegistry).NewHistogram(prometheus.HistogramOpts{
-		Name: "search_indexer_request_size",
-		Help: "Number of changes processed (add, update, delete) in a sync request from managed cluster.",
+		Name:    "search_indexer_request_size",
+		Help:    "Number of changes processed (add, update, delete) in a sync request from managed cluster.",
+		Buckets: []float64{100, 200, 5000, 10000, 25000, 50000, 100000, 200000},
 	})
 
 	RequestSummary = promauto.With(PromRegistry).NewSummaryVec(prometheus.SummaryOpts{
