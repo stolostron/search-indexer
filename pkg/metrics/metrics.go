@@ -32,7 +32,7 @@ var (
 		Buckets: []float64{50, 100, 200, 500, 5000, 10000, 25000, 50000, 100000, 200000},
 	})
 
-	// FURUTE: The summary metric could combine RequestCount and RequestDuration into a single metric.
+	// FUTURE: The summary metric could combine RequestCount and RequestDuration into a single metric.
 	// RequestSummary = promauto.With(PromRegistry).NewSummaryVec(prometheus.SummaryOpts{
 	// 	Name: "search_indexer_requests_summary",
 	// 	Help: "Summarize (count and duration) of requests from managed clusters.",
