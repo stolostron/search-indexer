@@ -23,14 +23,6 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 		params := mux.Vars(r)
 		clusterName := params["id"]
 
-		// curried, _ := metrics.RequestsInFlightVec.CurryWith(prometheus.Labels{"managed_cluster_name": clusterName})
-		// curried.WithLabelValues(clusterName).Inc()
-		// defer curried.WithLabelValues(clusterName).Dec()
-
-		// curried, _ := metrics.RequestsInFlightVec.CurryWith(prometheus.Labels{"managed_cluster_name": clusterName})
-		// metrics.RequestsInFlightVec..Inc()
-		// defer metrics.RequestsInFlightVec.Dec()
-
 		requestTrackerLock.RLock()
 		requestCount := len(requestTracker)
 		klog.V(6).Info("Checking if we can process incoming request. Current requests: ", requestCount)
