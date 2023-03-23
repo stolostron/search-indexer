@@ -67,6 +67,6 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
 
-	metrics.RequestSize.WithLabelValues(clusterName).Set(float64(len(syncEvent.AddResources) + len(syncEvent.UpdateResources)))
-	metrics.RequestSummary.WithLabelValues(clusterName).Observe(float64(len(syncEvent.AddResources) + len(syncEvent.UpdateResources)))
+	metrics.SyncRequestSize.Observe(float64(len(syncEvent.AddResources) + len(syncEvent.UpdateResources)))
+	// metrics.RequestSummary.WithLabelValues(clusterName).Observe(float64(len(syncEvent.AddResources) + len(syncEvent.UpdateResources)))
 }

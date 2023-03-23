@@ -28,18 +28,13 @@ var (
 
 	// Experimenting.
 
-	SyncRequestSize = promauto.With(PromRegistry).NewHistogramVec(prometheus.HistogramOpts{
+	SyncRequestSize = promauto.With(PromRegistry).NewHistogram(prometheus.HistogramOpts{
 		Name: "search_indexer_request_size",
 		Help: "Number of changes processed (add, update, delete) in a sync request from managed cluster.",
-	}, []string{"code"})
-
-	RequestSize = promauto.With(PromRegistry).NewGaugeVec(prometheus.GaugeOpts{
-		Name: "search_indexer_size",
-		Help: "TODO...",
-	}, []string{"managed_cluster_name"})
+	})
 
 	RequestSummary = promauto.With(PromRegistry).NewSummaryVec(prometheus.SummaryOpts{
-		Name: "search_indexer_request_summary",
+		Name: "search_indexer_requests_summary",
 		Help: "TODO...",
-	}, []string{"managed_cluster_name"})
+	}, []string{"code", "managed_cluster_name"})
 )
