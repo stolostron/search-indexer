@@ -28,7 +28,7 @@ var (
 
 	RequestSize = promauto.With(PromRegistry).NewHistogram(prometheus.HistogramOpts{
 		Name:    "search_indexer_request_size",
-		Help:    "Total changes (add, update, delete) the search indexer needs to process for a request (from managed cluster).",
+		Help:    "Total changes (add, update, delete) in the search indexer request (from managed cluster).",
 		Buckets: []float64{50, 100, 200, 500, 5000, 10000, 25000, 50000, 100000, 200000},
 	})
 

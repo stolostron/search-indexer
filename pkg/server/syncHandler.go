@@ -29,7 +29,8 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	metrics.RequestSize.Observe(float64(len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)))
+	resourceTotal := len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)
+	metrics.RequestSize.Observe(float64(resourceTotal))
 
 	// Initialize SyncResponse object.
 	syncResponse := &model.SyncResponse{
