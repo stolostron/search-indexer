@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// Instrument with prom middleware to capture request metrics.
+// Instrument with prometheus middleware to capture request metrics.
 func PrometheusMiddleware(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -16,13 +16,13 @@ func PrometheusMiddleware(next http.Handler) http.Handler {
 		clusterName := params["id"]
 
 		// Add the managed_cluster_name label to metrics.
-		// FUTURE: use managed_cluster_id instead of name.
 		clusterNameLabel := prometheus.Labels{"managed_cluster_name": clusterName}
 		curriedSyncCount, _ := SyncRequestCount.CurryWith(clusterNameLabel)
 
 		// Instrument and serve.
-		promhttp.InstrumentHandlerDuration(SyncRequestDuration,
-			promhttp.InstrumentHandlerRequestSize(SyncRequestSize,
-				promhttp.InstrumentHandlerCounter(curriedSyncCount, next))).ServeHTTP(w, r)
+		promhttp.InstrumentHandlerInFlight(RequestsInFlight,
+			promhttp.InstrumentHandlerDuration(SyncRequestDuration,
+				promhttp.InstrumentHandlerRequestSize(SyncRequestSize,
+					promhttp.InstrumentHandlerCounter(curriedSyncCount, next)))).ServeHTTP(w, r)
 	})
 }

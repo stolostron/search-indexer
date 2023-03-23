@@ -56,7 +56,10 @@ ifeq ($(strip $(HOST)),)
 	HOST = localhost:3010
 endif
 
-test-scale: check-locust ## Simulate multiple clusters posting data to the indexer. Use N_Clusters to change the number of simulated clusters.
+show-metrics:
+	curl -k https://localhost:3010/metrics
+
+test-scale: check-locust ## Simulate multiple clusters posting data to the indexer. Use N_CLUSTERS to change the number of simulated clusters.
 	${CONFIGURATION_MSG}
 	cd test; locust --headless --users ${N_CLUSTERS} --spawn-rate ${N_CLUSTERS} -H https://${HOST} -f locust-clusters.py
 

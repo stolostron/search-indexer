@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/stolostron/search-indexer/pkg/metrics"
+
 	"github.com/gorilla/mux"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/model"
@@ -64,4 +66,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]",
 		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
+
+	metrics.RequestSize.WithLabelValues(clusterName).Set(float64(len(syncEvent.AddResources) + len(syncEvent.UpdateResources)))
+	metrics.RequestSummary.WithLabelValues(clusterName).Observe(float64(len(syncEvent.AddResources) + len(syncEvent.UpdateResources)))
 }

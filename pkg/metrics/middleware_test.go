@@ -21,7 +21,8 @@ func Test_PrometheusInstrumentation(t *testing.T) {
 	// Validate result.
 
 	collectedMetrics, _ := PromRegistry.Gather() // use the prometheus registry to confirm metrics have been scraped.
-	assert.Equal(t, 3, len(collectedMetrics))    // Validate 3 metrics are collected.
+	assert.Equal(t, 4, len(collectedMetrics))    // Validate 3 metrics are collected.
+	t.Logf("\n\n metrics: \n%+v", collectedMetrics)
 
 	// METRIC 1:  search_indexer_request_count
 	assert.Equal(t, "search_indexer_request_count", collectedMetrics[0].GetName())
@@ -47,5 +48,8 @@ func Test_PrometheusInstrumentation(t *testing.T) {
 	assert.Equal(t, 1, len(collectedMetrics[2].Metric[0].GetLabel()))
 	assert.Equal(t, "code", *collectedMetrics[2].Metric[0].GetLabel()[0].Name)
 	assert.Equal(t, "200", *collectedMetrics[2].Metric[0].GetLabel()[0].Value)
+
+	// METRIC 4: search_indexer_requests_in_flight
+	assert.Equal(t, "search_indexer_requests_in_flight", collectedMetrics[3].GetName())
 
 }

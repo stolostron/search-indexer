@@ -12,7 +12,7 @@ var (
 
 	SyncRequestCount = promauto.With(PromRegistry).NewCounterVec(prometheus.CounterOpts{
 		Name: "search_indexer_request_count",
-		Help: "The total number of incoming sync requests to the search indexer from managed cluster.",
+		Help: "Total incoming sync requests to the search indexer from managed clusters.",
 	}, []string{"managed_cluster_name"})
 
 	SyncRequestDuration = promauto.With(PromRegistry).NewHistogramVec(prometheus.HistogramOpts{
@@ -21,8 +21,25 @@ var (
 		Buckets: []float64{.25, .5, 1, 1.5, 2, 3, 5, 10},
 	}, []string{"code"})
 
+	RequestsInFlight = promauto.With(PromRegistry).NewGauge(prometheus.GaugeOpts{
+		Name: "search_indexer_requests_in_flight",
+		Help: "Total sync requests being processed.",
+	})
+
+	// Experimenting.
+
 	SyncRequestSize = promauto.With(PromRegistry).NewHistogramVec(prometheus.HistogramOpts{
 		Name: "search_indexer_request_size",
-		Help: "Number of changes processed (add,update,delete) in a sync request from managed cluster.",
+		Help: "Number of changes processed (add, update, delete) in a sync request from managed cluster.",
 	}, []string{"code"})
+
+	RequestSize = promauto.With(PromRegistry).NewGaugeVec(prometheus.GaugeOpts{
+		Name: "search_indexer_size",
+		Help: "TODO...",
+	}, []string{"managed_cluster_name"})
+
+	RequestSummary = promauto.With(PromRegistry).NewSummaryVec(prometheus.SummaryOpts{
+		Name: "search_indexer_request_summary",
+		Help: "TODO...",
+	}, []string{"managed_cluster_name"})
 )
