@@ -37,5 +37,5 @@ var (
 	RequestSummary = promauto.With(PromRegistry).NewSummaryVec(prometheus.SummaryOpts{
 		Name: "search_indexer_requests_summary",
 		Help: "TODO...",
-	}, []string{"code", "managed_cluster_name"})
+	}, []string{"managed_cluster_name"})
 )
