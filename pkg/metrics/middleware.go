@@ -17,13 +17,13 @@ func PrometheusMiddleware(next http.Handler) http.Handler {
 
 		// Add the managed_cluster_name label to metrics.
 		clusterNameLabel := prometheus.Labels{"managed_cluster_name": clusterName}
-		curriedSyncCount, _ := SyncRequestCount.CurryWith(clusterNameLabel)
-		curriedRequestSummary, _ := RequestSummary.CurryWith(clusterNameLabel)
+		curriedSyncCount, _ := RequestCount.CurryWith(clusterNameLabel)
+		// curriedRequestSummary, _ := RequestSummary.CurryWith(clusterNameLabel)
 
 		// Instrument and serve.
 		promhttp.InstrumentHandlerInFlight(RequestsInFlight,
-			promhttp.InstrumentHandlerDuration(SyncRequestDuration,
-				promhttp.InstrumentHandlerDuration(curriedRequestSummary, //RequestSummary,
-					promhttp.InstrumentHandlerCounter(curriedSyncCount, next)))).ServeHTTP(w, r)
+			promhttp.InstrumentHandlerDuration(RequestDuration,
+				// promhttp.InstrumentHandlerDuration(curriedRequestSummary,
+				promhttp.InstrumentHandlerCounter(curriedSyncCount, next))).ServeHTTP(w, r)
 	})
 }

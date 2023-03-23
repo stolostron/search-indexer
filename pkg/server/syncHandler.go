@@ -29,6 +29,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	metrics.RequestSize.Observe(float64(len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)))
 
 	// Initialize SyncResponse object.
 	syncResponse := &model.SyncResponse{
@@ -66,7 +67,4 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]",
 		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
-
-	metrics.SyncRequestSize.Observe(float64(len(syncEvent.AddResources) + len(syncEvent.UpdateResources)))
-	// metrics.RequestSummary.WithLabelValues(clusterName).Observe(float64(len(syncEvent.AddResources) + len(syncEvent.UpdateResources)))
 }
