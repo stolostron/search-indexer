@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/stolostron/search-indexer/pkg/metrics"
+
 	"github.com/gorilla/mux"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/model"
@@ -27,6 +29,8 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	resourceTotal := len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)
+	metrics.RequestSize.Observe(float64(resourceTotal))
 
 	// Initialize SyncResponse object.
 	syncResponse := &model.SyncResponse{
@@ -64,8 +68,4 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]",
 		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
-
-	// Record metrics.
-	OpsProcessed.WithLabelValues(clusterName, r.RequestURI).Inc()
-	HttpDuration.WithLabelValues(clusterName, r.RequestURI).Observe(float64(time.Since(start).Seconds()))
 }
