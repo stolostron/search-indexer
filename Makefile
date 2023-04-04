@@ -10,6 +10,16 @@ help:
 setup: ## Generate ssl certificate for development.
 	cd sslcert; openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -config req.conf -extensions 'v3_req'
 
+setup-dev: ## Configure local environment to use the postgres instance on the dev cluster.
+	@echo "Using current target cluster.\\n"
+	@echo "$(shell oc cluster-info)"
+	@echo "\\n1. [MANUAL STEP] Set these environment variables.\\n"
+	export DB_NAME=$(shell oc get secret search-postgres -n open-cluster-management -o jsonpath='{.data.database-name}'|base64 -D)
+	export DB_USER=$(shell oc get secret search-postgres -n open-cluster-management -o jsonpath='{.data.database-user}'|base64 -D)
+	export DB_PASS=$(shell oc get secret search-postgres -n open-cluster-management -o jsonpath='{.data.database-password}'|base64 -D)
+	@echo "\\n2. [MANUAL STEP] Start port forwarding.\\n"
+	@echo "oc port-forward service/search-postgres -n open-cluster-management 5432:5432 \\n"
+
 run: ## Run the service locally.
 	go run -tags development main.go -v=3
 
@@ -46,14 +56,17 @@ ifeq ($(strip $(HOST)),)
 	HOST = localhost:3010
 endif
 
-test-scale: check-locust ## Simulate multiple clusters posting data to the indexer. Use N_Clusters to change the number of simulated clusters.
+show-metrics:
+	curl -k https://localhost:3010/metrics
+
+test-scale: check-locust ## Simulate multiple clusters posting data to the indexer. Use N_CLUSTERS to change the number of simulated clusters.
 	${CONFIGURATION_MSG}
 	cd test; locust --headless --users ${N_CLUSTERS} --spawn-rate ${N_CLUSTERS} -H https://${HOST} -f locust-clusters.py
 
 test-scale-ui: check-locust ## Start Locust and open the web browser to drive scale tests.
 	${CONFIGURATION_MSG}
-	open http://0.0.0.0:8089/
-	cd test; locust --users ${N_CLUSTERS} --spawn-rate ${N_CLUSTERS} -H https://${HOST} -f locust-clusters.py
+	open http://0.0.0.0:8085/
+	cd test; locust --users ${N_CLUSTERS} --spawn-rate ${N_CLUSTERS} -H https://${HOST} -P 8085 -f locust-clusters.py
 
 test-scale-setup: ## Creates the search-indexer route in the current target cluster.
 	oc create route passthrough search-indexer --service=search-indexer -n open-cluster-management

@@ -137,7 +137,7 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 	).Return(nil, nil)
 
 	processClusterUpsert(context.TODO(), obj)
-	//Once processClusterUpsert is done, existingClustersCache should have an entry for cluster foo
+	// Once processClusterUpsert is done, existingClustersCache should have an entry for cluster foo
 	_, ok := database.ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
 
@@ -145,7 +145,7 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 
 func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 	initializeVars()
-	//Ensure there is an entry for cluster_foo in the cluster cache
+	// Ensure there is an entry for cluster_foo in the cluster cache
 	database.UpdateClustersCache("cluster__name-foo", existingCluster["Properties"])
 	obj := newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedClusterInfo", "name-foo", "name-foo", "test-mc-uid")
 
@@ -155,7 +155,7 @@ func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao = database.NewDAO(mockPool)
 	dynamicClient = fakeDynamicClient()
-	//Add props specific to ManagedClusterInfo
+	// Add props specific to ManagedClusterInfo
 	props := existingCluster["Properties"].(map[string]interface{})
 	props["consoleURL"] = ""
 	props["nodes"] = 0
@@ -169,7 +169,7 @@ func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 	).Return(nil, nil)
 
 	processClusterUpsert(context.TODO(), obj)
-	//Once processClusterUpsert is done, existingClustersCache should have an entry for cluster foo
+	// Once processClusterUpsert is done, existingClustersCache should have an entry for cluster foo
 	_, ok := database.ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
 

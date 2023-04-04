@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/database"
+	"github.com/stolostron/search-indexer/pkg/metrics"
 	"k8s.io/klog/v2"
 )
 
@@ -23,10 +24,11 @@ func (s *ServerConfig) StartAndListen(ctx context.Context) {
 	router := mux.NewRouter()
 	router.HandleFunc("/liveness", LivenessProbe).Methods("GET")
 	router.HandleFunc("/readiness", ReadinessProbe).Methods("GET")
-	router.Path("/metrics").Handler(promhttp.Handler())
+	router.Handle("/metrics", promhttp.HandlerFor(metrics.PromRegistry, promhttp.HandlerOpts{})).Methods("GET")
 
 	// Add middleware to the /aggregator subroute.
 	syncSubrouter := router.PathPrefix("/aggregator").Subrouter()
+	syncSubrouter.Use(metrics.PrometheusMiddleware)
 	syncSubrouter.Use(requestLimiterMiddleware)
 	syncSubrouter.HandleFunc("/clusters/{id}/sync", s.SyncResources).Methods("POST")
 
