@@ -4,6 +4,7 @@ package server
 
 import (
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -23,12 +24,18 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	clusterName := params["id"]
 
+	klog.Infof("Request object: %+v", r)
 	// Decode SyncEvent from request body.
 	var syncEvent model.SyncEvent
 	err := json.NewDecoder(r.Body).Decode(&syncEvent)
 	if err != nil {
 		klog.Errorf("Error decoding request body from cluster [%s]. Error: %+v\n", clusterName, err)
 		w.WriteHeader(http.StatusBadRequest)
+		payLoad, readErr := io.ReadAll(r.Body)
+		klog.Errorf("Error reading request body from cluster [%s]. Error: %+v\n", clusterName, readErr)
+		fileName := time.Now().Format("20060102_150405") + "_" + clusterName + "_error.json"
+		writeErr := ioutil.WriteFile(fileName, payLoad, os.ModePerm)
+		klog.Errorf("Error writing payload from cluster [%s]. Error: %+v\n", clusterName, writeErr)
 		return
 	}
 	json_payload, _ := json.Marshal(syncEvent)
