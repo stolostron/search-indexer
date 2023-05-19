@@ -99,7 +99,7 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 		return nil // We have processed the error, so don't return an error here to stop the recursion.
 
 	} else if execErr != nil {
-		// Error in sentdbatch, resend queries using smaller batches.
+		// Error in send batch, resend queries using smaller batches.
 		// Use a binary search recursively until we find the error.
 
 		b.wg.Add(2)

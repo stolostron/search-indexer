@@ -94,6 +94,9 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent, clusterName
 	// Flush remaining items in the batch.
 	batch.flush()
 
+	// Wait for all batches to complete.
+	batch.wg.Wait()
+
 	// The response fields below are redundant, these are more interesting for resync.
 	syncResponse.TotalAdded = len(event.AddResources) - len(syncResponse.AddErrors)
 	syncResponse.TotalUpdated = len(event.UpdateResources) - len(syncResponse.UpdateErrors)
