@@ -62,6 +62,24 @@ func initializePool() pgxpoolmock.PgxPool {
 	if configErr != nil {
 		klog.Fatal("Error parsing database connection configuration. ", configErr)
 	}
+	config.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
+		// Checks a new connection is healthy before using it.
+		pingErr := c.Ping(ctx)
+		if pingErr != nil {
+			klog.Info("New DB connection from pool was unhealthy. ", pingErr)
+			return pingErr
+		}
+		return nil
+	}
+	config.BeforeAcquire = func(ctx context.Context, c *pgx.Conn) bool {
+		// Checks idle connection is healthy before using it.
+		pingErr := c.Ping(ctx)
+		if pingErr != nil {
+			klog.Info("Idle DB connection from pool was unhealthy. Destroying and creating a new one. ", pingErr)
+			return false
+		}
+		return true
+	}
 	config.MaxConns = int32(cfg.DBMaxConns)
 
 	retry := 0
