@@ -2,6 +2,7 @@
 package database
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"testing"
@@ -26,7 +27,7 @@ func Test_SyncData(t *testing.T) {
 
 	// Execute test
 	response := &model.SyncResponse{}
-	dao.SyncData(syncEvent, "test-cluster", response)
+	dao.SyncData(context.Background(), syncEvent, "test-cluster", response)
 
 	// Assert
 	AssertEqual(t, response.TotalAdded, 2, "Incorrect number of resources added.")
@@ -59,7 +60,7 @@ func Test_Sync_With_Errors(t *testing.T) {
 
 	// Execute test
 	response := &model.SyncResponse{}
-	dao.SyncData(syncEvent, "test-cluster", response)
+	dao.SyncData(context.Background(), syncEvent, "test-cluster", response)
 
 	// Assert
 	AssertEqual(t, len(response.AddErrors), 2, "Incorrect number of AddErrors.")

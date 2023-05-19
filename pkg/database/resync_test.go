@@ -3,6 +3,7 @@
 package database
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -32,7 +33,7 @@ func Test_ResyncData(t *testing.T) {
 
 	// Execute function test.
 	response := &model.SyncResponse{}
-	dao.ResyncData(syncEvent, "test-cluster", response)
+	dao.ResyncData(context.Background(), syncEvent, "test-cluster", response)
 }
 
 func Test_ResyncData_errors(t *testing.T) {
@@ -54,5 +55,5 @@ func Test_ResyncData_errors(t *testing.T) {
 
 	// Execute function test.
 	response := &model.SyncResponse{}
-	dao.ResyncData(syncEvent, "test-cluster", response)
+	dao.ResyncData(context.Background(), syncEvent, "test-cluster", response)
 }
