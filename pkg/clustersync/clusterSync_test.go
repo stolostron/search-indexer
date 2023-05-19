@@ -55,7 +55,7 @@ func fakeDynamicClient() *fake.FakeDynamicClient {
 		newTestUnstructured(managedclusterinfogroupAPIVersion, "ManagedClusterInfo", "name-foo", "name-foo", ""),
 		newTestUnstructured(managedclustergroupAPIVersion, "ManagedCluster", "", "name-foo", ""),
 		newTestUnstructured(managedclustergroupAPIVersion, "ManagedCluster", "", "name-foo-error", ""))
-	_, err := dyn.Resource(*managedClusterGvr).Get(context.TODO(), "name-foo", v1.GetOptions{})
+	_, err := dyn.Resource(*managedClusterGvr).Get(context.Background(), "name-foo", v1.GetOptions{})
 	if err != nil {
 		klog.Warning("Error creating fake NewSimpleDynamicClient: ", err.Error())
 	}
@@ -136,7 +136,7 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 
-	processClusterUpsert(context.TODO(), obj)
+	processClusterUpsert(context.Background(), obj)
 	// Once processClusterUpsert is done, existingClustersCache should have an entry for cluster foo
 	_, ok := database.ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
@@ -168,7 +168,7 @@ func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 
-	processClusterUpsert(context.TODO(), obj)
+	processClusterUpsert(context.Background(), obj)
 	// Once processClusterUpsert is done, existingClustersCache should have an entry for cluster foo
 	_, ok := database.ReadClustersCache("cluster__name-foo")
 	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
@@ -205,7 +205,7 @@ func Test_ProcessClusterNoDeleteOnMCInfo(t *testing.T) {
 	database.UpdateClustersCache("cluster__name-foo", nil)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	processClusterDelete(context.TODO(), obj)
+	processClusterDelete(context.Background(), obj)
 
 	//Once processClusterDelete is done, existingClustersCache should still have an entry for cluster foo as resources
 	// are not deleted on deletion of ManadClusterInfo
@@ -230,7 +230,7 @@ func Test_ProcessClusterDeleteOnMC(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer mockConn.Close(context.Background())
-	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
+	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Return(mockConn, nil)
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE (("cluster" = 'name-foo') AND ("uid" != 'cluster__name-foo'))`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectCommit()
@@ -240,7 +240,7 @@ func Test_ProcessClusterDeleteOnMC(t *testing.T) {
 		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 
-	processClusterDelete(context.TODO(), obj)
+	processClusterDelete(context.Background(), obj)
 
 	//Once processClusterDelete is done, existingClustersCache should not have an entry for cluster foo
 	_, ok := database.ReadClustersCache("cluster__name-foo")
@@ -266,12 +266,12 @@ func Test_ProcessClusterDeleteOnMCASearch(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer mockConn.Close(context.Background())
-	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
+	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Return(mockConn, nil)
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE (("cluster" = 'name-foo') AND ("uid" != 'cluster__name-foo'))`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectCommit()
 
-	processClusterDelete(context.TODO(), obj)
+	processClusterDelete(context.Background(), obj)
 
 	// Once processClusterDelete is done, existingClustersCache should still have an entry for cluster foo
 	// as we are not deleting it until MC is deleted.
@@ -318,12 +318,12 @@ func Test_DeleteStaleClustersResources(t *testing.T) {
 	obj.SetLabels(label)
 	//create obj in with client:
 	dynamicClient := fakeDynamicClient()
-	_, clientErr := dynamicClient.Resource(*managedClusterGvr).Namespace("name-foo").Create(context.TODO(), obj, v1.CreateOptions{})
+	_, clientErr := dynamicClient.Resource(*managedClusterGvr).Namespace("name-foo").Create(context.Background(), obj, v1.CreateOptions{})
 	if clientErr != nil {
 		t.Errorf("an error '%s' has occured while trying to create resources", clientErr)
 	}
 	//create the addon in namespace name-foo:
-	_, clientErr = dynamicClient.Resource(*managedClusterAddonGvr).Namespace("name-foo").Create(context.TODO(), obj3, v1.CreateOptions{})
+	_, clientErr = dynamicClient.Resource(*managedClusterAddonGvr).Namespace("name-foo").Create(context.Background(), obj3, v1.CreateOptions{})
 
 	if clientErr != nil {
 		t.Errorf("an error '%s' has occured while trying to create resources", clientErr)
@@ -340,7 +340,7 @@ func Test_DeleteStaleClustersResources(t *testing.T) {
 	}
 
 	defer mockConn.Close(context.Background())
-	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
+	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Return(mockConn, nil)
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE (("cluster" = 'name-foo') AND ("uid" != 'cluster__name-foo'))`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectCommit()
@@ -361,9 +361,9 @@ func Test_DeleteStaleClustersResources(t *testing.T) {
 	).Return(pgxRows, nil).Times(2)
 
 	// Execute function test - the clusters in mc are to be deleted
-	mc, _ := findStaleClusterResources(context.TODO(), dynamicClient, *managedClusterGvr)
+	mc, _ := findStaleClusterResources(context.Background(), dynamicClient, *managedClusterGvr)
 
-	err = deleteStaleClusterResources(context.TODO(), dynamicClient, *managedClusterGvr)
+	err = deleteStaleClusterResources(context.Background(), dynamicClient, *managedClusterGvr)
 	if err != nil {
 		t.Errorf("Error processing delete for remaining cluster: %s", err)
 	}
@@ -400,7 +400,7 @@ func Test_DeleteStaleClustersResources_DB_Outage(t *testing.T) {
 
 	//create obj in with client:
 	dynamicClient := fakeDynamicClient()
-	_, clientErr := dynamicClient.Resource(*managedClusterGvr).Namespace("name-foo").Create(context.TODO(), obj, v1.CreateOptions{})
+	_, clientErr := dynamicClient.Resource(*managedClusterGvr).Namespace("name-foo").Create(context.Background(), obj, v1.CreateOptions{})
 	if clientErr != nil {
 		t.Errorf("an error '%s' has occured while trying to create resources", clientErr)
 	}
@@ -418,7 +418,7 @@ func Test_DeleteStaleClustersResources_DB_Outage(t *testing.T) {
 	}
 
 	defer mockConn.Close(context.Background())
-	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, fakeErr).Times(1).Return(mockConn, nil).Times(1) // return mock error
+	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Return(mockConn, fakeErr).Times(1).Return(mockConn, nil).Times(1) // return mock error
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE (("cluster" = 'name-foo') AND ("uid" != 'cluster__name-foo'))`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectCommit()
@@ -440,7 +440,7 @@ func Test_DeleteStaleClustersResources_DB_Outage(t *testing.T) {
 	).Return(pgxRows, nil)
 
 	// Execute function test
-	mc, _ := findStaleClusterResources(context.TODO(), dynamicClient, *managedClusterGvr)
+	mc, _ := findStaleClusterResources(context.Background(), dynamicClient, *managedClusterGvr)
 
 	//Once findStaleClusterResources is done, existingClustersCache should not have an entry for remaining-managed-foo
 	for _, c := range mc {

@@ -42,7 +42,7 @@ func Test_checkErrorAndRollback(t *testing.T) {
 	e := errors.New("table resources not found")
 	logMessage := "Error commiting delete cluster transaction for cluster: cluster_foo"
 	// Execute function test.
-	checkErrorAndRollback(e, logMessage, mockConn, context.TODO())
+	checkErrorAndRollback(e, logMessage, mockConn, context.Background())
 
 }
 func Test_checkErrorAndRollbackError(t *testing.T) {
@@ -56,6 +56,6 @@ func Test_checkErrorAndRollbackError(t *testing.T) {
 	mockConn.ExpectRollback().WillReturnError(e) // Rollback returns error
 	logMessage := "Error commiting delete cluster transaction for cluster: cluster_foo"
 	// Execute function test.
-	checkErrorAndRollback(e, logMessage, mockConn, context.TODO())
+	checkErrorAndRollback(e, logMessage, mockConn, context.Background())
 
 }
