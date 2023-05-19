@@ -94,15 +94,6 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent, clusterName
 	// Flush remaining items in the batch.
 	batch.flush()
 
-	select {
-	case <-batch.cancel:
-		klog.Error("Unrecoverable error processing batch.")
-		return
-	default: //TODO need to wait async.
-		// Wait for all batches to complete.
-		batch.wg.Wait()
-	}
-
 	// The response fields below are redundant, these are more interesting for resync.
 	syncResponse.TotalAdded = len(event.AddResources) - len(syncResponse.AddErrors)
 	syncResponse.TotalUpdated = len(event.UpdateResources) - len(syncResponse.UpdateErrors)

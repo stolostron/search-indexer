@@ -4,7 +4,6 @@ package database
 
 import (
 	"context"
-	"strings"
 	"sync"
 
 	pgx "github.com/jackc/pgx/v4"
@@ -26,8 +25,6 @@ type batchItem struct {
 
 type batchWithRetry struct {
 	ctx          context.Context
-	cancel       chan interface{}
-	cancelled    bool
 	items        []batchItem
 	dao          *DAO
 	wg           *sync.WaitGroup
@@ -37,8 +34,6 @@ type batchWithRetry struct {
 func NewBatchWithRetry(ctx context.Context, dao *DAO, syncResponse *model.SyncResponse) batchWithRetry {
 	batch := batchWithRetry{
 		ctx:          ctx,
-		cancel:       make(chan interface{}, 99), // FIXME 0
-		cancelled:    false,
 		items:        make([]batchItem, 0),
 		wg:           &sync.WaitGroup{},
 		dao:          dao,
@@ -49,10 +44,6 @@ func NewBatchWithRetry(ctx context.Context, dao *DAO, syncResponse *model.SyncRe
 
 // Adds a query to the queue and check if there's enough items to process the batch.
 func (b *batchWithRetry) Queue(item batchItem) {
-	if b.cancelled {
-		// klog.Info("Queue is invalid.")
-		return // TODO return error so we can stop queing items
-	}
 	b.items = append(b.items, item)
 
 	if len(b.items) >= b.dao.batchSize {
@@ -72,24 +63,11 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 	for _, item := range items {
 		batch.Queue(item.query, item.args...)
 	}
-	b.dao.pool.
 	br := b.dao.pool.SendBatch(b.ctx, batch)
 	_, execErr := br.Exec()
 
 	closeErr := br.Close()
 	if closeErr != nil {
-		if strings.Contains(closeErr.Error(), "unexpected EOF") {
-			klog.Error("Error with DB connection. Returning without retrying.")
-			b.cancelled = true
-			b.cancel <- true
-			return closeErr
-		}
-		if strings.Contains(closeErr.Error(), "failed to connect") {
-			klog.Error("Unable to reach database. Returning without retrying.")
-			b.cancelled = true
-			b.cancel <- true
-			return closeErr
-		}
 		klog.Error("Error closing batch result. ", closeErr)
 	}
 
@@ -98,7 +76,7 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 	if execErr != nil && len(items) == 1 {
 
 		errorItem := items[0]
-		klog.Errorf("ERROR processing batchItem.  %+v", errorItem)
+		klog.Errorf("ERROR processing batchItem. %+v", errorItem)
 
 		var errorArray *[]model.SyncError
 		switch errorItem.action {
@@ -124,9 +102,8 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 		// Error in sentdbatch, resend queries using smaller batches.
 		// Use a binary search recursively until we find the error.
 
-		b.wg.Add(1)
+		b.wg.Add(2)
 		err1 := b.sendBatch(items[:len(items)/2])
-		b.wg.Add(1)
 		err2 := b.sendBatch(items[len(items)/2:])
 
 		// Returns error only if we fail processing either retry.
@@ -139,7 +116,7 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 
 // Process all queued items.
 func (b *batchWithRetry) flush() {
-	if len(b.items) > 0 && !b.cancelled {
+	if len(b.items) > 0 {
 		items := b.items               // Create a snapshot of the items to process.
 		b.items = make([]batchItem, 0) // Reset the queue.
 		b.wg.Add(1)
