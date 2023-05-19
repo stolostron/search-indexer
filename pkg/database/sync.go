@@ -3,6 +3,7 @@
 package database
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -12,9 +13,9 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
+func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
 	defer metrics.SlowLog(fmt.Sprintf("Slow Sync from cluster %s.", clusterName), 0)()
-	batch := NewBatchWithRetry(dao, syncResponse)
+	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
 	// ADD RESOURCES
 	// In case of conflict update only if data has changed
@@ -93,8 +94,14 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 	// Flush remaining items in the batch.
 	batch.flush()
 
-	// Wait for all batches to complete.
-	batch.wg.Wait()
+	select {
+	case <-batch.cancel:
+		klog.Error("Unrecoverable error processing batch.")
+		return
+	default: //TODO need to wait async.
+		// Wait for all batches to complete.
+		batch.wg.Wait()
+	}
 
 	// The response fields below are redundant, these are more interesting for resync.
 	syncResponse.TotalAdded = len(event.AddResources) - len(syncResponse.AddErrors)
