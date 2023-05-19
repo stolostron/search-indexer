@@ -47,9 +47,9 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	// 1. ReSync [ClearAll=true]  - It has the complete current state. It must overwrite any previous state.
 	// 2. Sync   [ClearAll=false] - This is the delta changes from the previous state.
 	if syncEvent.ClearAll {
-		s.Dao.ResyncData(syncEvent, clusterName, syncResponse)
+		s.Dao.ResyncData(r.Context(), syncEvent, clusterName, syncResponse)
 	} else {
-		s.Dao.SyncData(syncEvent, clusterName, syncResponse)
+		s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
 	}
 
 	totalResources, totalEdges := s.Dao.ClusterTotals(clusterName)
