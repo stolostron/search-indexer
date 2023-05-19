@@ -14,7 +14,9 @@ import (
 // Overrides the existing state of a cluster with the new data.
 // NOTE: This logic is not optimized. We use the simplest approach because this is a failsafe to
 //       recover from rare sync problems. At the moment this is good enough without adding complexity.
-func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
+func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
+	clusterName string, syncResponse *model.SyncResponse) {
+
 	defer metrics.SlowLog(fmt.Sprintf("Slow Resync from cluster %s", clusterName), 0)()
 	klog.Infof(
 		"Starting Resync of cluster %s. This is normal, but it could be a problem if it happens often.",
@@ -25,7 +27,7 @@ func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncRespon
 	checkError(delResourcesSqlErr, fmt.Sprintf("Error creating query to delete cluster resources for %s.",
 		clusterName))
 
-	_, err := dao.pool.Exec(context.TODO(), delResourcesSql, args...)
+	_, err := dao.pool.Exec(ctx, delResourcesSql, args...)
 	if err != nil {
 		klog.Warningf("Error deleting resources during resync of cluster %s. Error: %+v", clusterName, err)
 	}
@@ -33,11 +35,11 @@ func (dao *DAO) ResyncData(event model.SyncEvent, clusterName string, syncRespon
 	delEdgesSql, args, delEdgesSqlErr := goquDelete("edges", "cluster", clusterName)
 	checkError(delEdgesSqlErr, fmt.Sprintf("Error creating query to delete edges for %s.", clusterName))
 
-	_, err = dao.pool.Exec(context.TODO(), delEdgesSql, args...)
+	_, err = dao.pool.Exec(ctx, delEdgesSql, args...)
 	if err != nil {
 		klog.Warningf("Error deleting edges during resync of cluster %s. Error: %+v", clusterName, err)
 	}
-	dao.SyncData(event, clusterName, syncResponse)
+	dao.SyncData(ctx, event, clusterName, syncResponse)
 
 	klog.V(1).Infof("Completed resync of cluster %s", clusterName)
 }

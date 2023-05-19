@@ -223,13 +223,13 @@ func Test_DelClusterResources(t *testing.T) {
 	}
 	defer mockConn.Close(context.Background())
 	dao, mockPool := buildMockDAO(t)
-	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
+	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Return(mockConn, nil)
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE (("cluster" = 'name-foo') AND ("uid" != 'cluster__name-foo'))`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
 	mockConn.ExpectCommit()
 	// Execute function test.
-	dao.DeleteClusterAndResources(context.TODO(), clusterName, false)
+	dao.DeleteClusterAndResources(context.Background(), clusterName, false)
 
 	// After delete cluster method runs, clusters cache should still have an entry for cluster_foo
 	// as cluster itself is not deleted
@@ -248,7 +248,7 @@ func Test_DelCluster(t *testing.T) {
 	}
 	defer mockConn.Close(context.Background())
 	dao, mockPool := buildMockDAO(t)
-	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(mockConn, nil)
+	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Return(mockConn, nil)
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE (("cluster" = 'name-foo') AND ("uid" != 'cluster__name-foo'))`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
@@ -260,7 +260,7 @@ func Test_DelCluster(t *testing.T) {
 	).Return(nil, nil)
 
 	// Execute function test.
-	dao.DeleteClusterAndResources(context.TODO(), clusterName, true)
+	dao.DeleteClusterAndResources(context.Background(), clusterName, true)
 
 	// After delete cluster method runs, clusters cache should not have an entry for cluster_foo
 	_, ok := ReadClustersCache("cluster__name-foo")
@@ -285,7 +285,7 @@ func Test_DelClusterResourcesError(t *testing.T) {
 	retryDel = 0 //count to keep track of failures/executions
 
 	// Expect BeginTx to be called twice. First time, return error. Second time, return success.
-	mockPool.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Times(2).
+	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Times(2).
 		DoAndReturn(func(con context.Context, txo pgx.TxOptions) (pgxmock.PgxConnIface, error) {
 
 			if retryDel == 0 { // First try to begin transaction
@@ -307,7 +307,7 @@ func Test_DelClusterResourcesError(t *testing.T) {
 	).Return(nil, nil)
 
 	// Expect deletecluster to be called twice. First time, return error. Second time, return success.
-	mockPool.EXPECT().Exec(context.TODO(),
+	mockPool.EXPECT().Exec(context.Background(),
 		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
 		gomock.Eq([]interface{}{})).
 		Times(2). //expect it to be called twice
@@ -322,7 +322,7 @@ func Test_DelClusterResourcesError(t *testing.T) {
 			}
 		})
 	// Execute function test.
-	dao.DeleteClusterAndResources(context.TODO(), clusterName, true)
+	dao.DeleteClusterAndResources(context.Background(), clusterName, true)
 
 	// After delete cluster method runs, clusters cache should not have an entry for cluster_foo
 	_, ok := ReadClustersCache("cluster__name-foo")

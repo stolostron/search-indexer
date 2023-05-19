@@ -3,6 +3,7 @@
 package database
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -12,9 +13,11 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
+func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
+	clusterName string, syncResponse *model.SyncResponse) {
+
 	defer metrics.SlowLog(fmt.Sprintf("Slow Sync from cluster %s.", clusterName), 0)()
-	batch := NewBatchWithRetry(dao, syncResponse)
+	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
 	// ADD RESOURCES
 	// In case of conflict update only if data has changed
