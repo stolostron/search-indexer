@@ -52,7 +52,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
 	}
 
-	totalResources, totalEdges := s.Dao.ClusterTotals(clusterName)
+	totalResources, totalEdges := s.Dao.ClusterTotals(r.Context(), clusterName)
 	syncResponse.TotalResources = totalResources
 	syncResponse.TotalEdges = totalEdges
 
