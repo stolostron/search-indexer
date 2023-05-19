@@ -14,7 +14,9 @@ import (
 // Overrides the existing state of a cluster with the new data.
 // NOTE: This logic is not optimized. We use the simplest approach because this is a failsafe to
 //       recover from rare sync problems. At the moment this is good enough without adding complexity.
-func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent, clusterName string, syncResponse *model.SyncResponse) {
+func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
+	clusterName string, syncResponse *model.SyncResponse) {
+
 	defer metrics.SlowLog(fmt.Sprintf("Slow Resync from cluster %s", clusterName), 0)()
 	klog.Infof(
 		"Starting Resync of cluster %s. This is normal, but it could be a problem if it happens often.",
