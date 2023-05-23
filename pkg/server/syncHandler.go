@@ -54,11 +54,16 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		klog.Warningf("Responding with error to request from [%s].  Error: %s", clusterName, err)
 		http.Error(w, "Server error while processing the request.", http.StatusInternalServerError)
-		// http.Error(w, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
 
-	totalResources, totalEdges, err := s.Dao.ClusterTotals(r.Context(), clusterName)
+	// Get the total cluster resources for validation by the collector.
+	totalResources, totalEdges, validateErr := s.Dao.ClusterTotals(r.Context(), clusterName)
+	if validateErr != nil {
+		klog.Warningf("Responding with error to request from [%s].  Error: %s", clusterName, err)
+		http.Error(w, "Server error while processing the request.", http.StatusInternalServerError)
+		return
+	}
 	syncResponse.TotalResources = totalResources
 	syncResponse.TotalEdges = totalEdges
 
