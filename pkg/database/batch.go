@@ -46,9 +46,9 @@ func NewBatchWithRetry(ctx context.Context, dao *DAO, syncResponse *model.SyncRe
 }
 
 // Adds a query to the queue and check if there's enough items to process the batch.
-func (b *batchWithRetry) Queue(item batchItem) {
+func (b *batchWithRetry) Queue(item batchItem) error {
 	if b.connError != nil { // Can't queue more items after DB connection error.
-		return // TODO: return the error.
+		return b.connError
 	}
 	b.items = append(b.items, item)
 
@@ -58,6 +58,7 @@ func (b *batchWithRetry) Queue(item batchItem) {
 		b.wg.Add(1)
 		go b.sendBatch(items) // nolint: errcheck
 	}
+	return nil
 }
 
 // Sends a batch to the database. If the batch results in an error, we divide
