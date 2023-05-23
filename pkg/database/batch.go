@@ -47,7 +47,7 @@ func NewBatchWithRetry(ctx context.Context, dao *DAO, syncResponse *model.SyncRe
 
 // Adds a query to the queue and check if there's enough items to process the batch.
 func (b *batchWithRetry) Queue(item batchItem) {
-	if b.connError == nil { // Can't queue more items after DB connection error.
+	if b.connError != nil { // Can't queue more items after DB connection error.
 		return // TODO: return the error.
 	}
 	b.items = append(b.items, item)
