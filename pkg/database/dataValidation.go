@@ -12,7 +12,7 @@ import (
 )
 
 // Query resource and edge count for a cluster. Used for data validation.
-func (dao *DAO) ClusterTotals(ctx context.Context, clusterName string) (resources int, edges int) {
+func (dao *DAO) ClusterTotals(ctx context.Context, clusterName string) (resources int, edges int, e error) {
 	batch := &pgx.Batch{}
 
 	// Sample query: SELECT count(*) FROM search.resources WHERE cluster=$1
@@ -47,12 +47,14 @@ func (dao *DAO) ClusterTotals(ctx context.Context, clusterName string) (resource
 	resourcesErr := resourcesRow.Scan(&resources)
 	if resourcesErr != nil {
 		klog.Error("Error reading total resources for cluster ", clusterName, " err: ", resourcesErr)
+		return resources, edges, resourcesErr
 	}
 	edgesRow := br.QueryRow()
 	edgesErr := edgesRow.Scan(&edges)
 	if edgesErr != nil {
 		klog.Error("Error reading total edges for cluster ", clusterName, " err: ", edgesErr)
+		return resources, edges, edgesErr
 	}
 
-	return resources, edges
+	return resources, edges, nil
 }

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	pgx "github.com/jackc/pgx/v4"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_ClusterTotals(t *testing.T) {
@@ -26,8 +27,9 @@ func Test_ClusterTotals(t *testing.T) {
 
 	mockPool.EXPECT().SendBatch(context.Background(), batch).Return(br)
 	// Execute function test.
-	resourceCount, edgeCount := dao.ClusterTotals(context.Background(), "cluster_foo")
+	resourceCount, edgeCount, err := dao.ClusterTotals(context.Background(), "cluster_foo")
 
 	AssertEqual(t, resourceCount, 10, "resource count should be 10")
 	AssertEqual(t, edgeCount, 10, "edge count should be 10")
+	assert.Nil(t, err)
 }

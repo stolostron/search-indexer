@@ -47,12 +47,18 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	// 1. ReSync [ClearAll=true]  - It has the complete current state. It must overwrite any previous state.
 	// 2. Sync   [ClearAll=false] - This is the delta changes from the previous state.
 	if syncEvent.ClearAll {
-		s.Dao.ResyncData(r.Context(), syncEvent, clusterName, syncResponse)
+		err = s.Dao.ResyncData(r.Context(), syncEvent, clusterName, syncResponse)
 	} else {
-		s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
+		err = s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
+	}
+	if err != nil {
+		klog.Warningf("Responding with error to request from [%s].  Error: %s", clusterName, err)
+		http.Error(w, "Server error while processing the request.", http.StatusInternalServerError)
+		// http.Error(w, "Database unavailable.", http.StatusServiceUnavailable)
+		return
 	}
 
-	totalResources, totalEdges := s.Dao.ClusterTotals(r.Context(), clusterName)
+	totalResources, totalEdges, err := s.Dao.ClusterTotals(r.Context(), clusterName)
 	syncResponse.TotalResources = totalResources
 	syncResponse.TotalEdges = totalEdges
 
@@ -64,7 +70,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	// Log request and metrics.
+	// Log request.
 	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]",
 		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)

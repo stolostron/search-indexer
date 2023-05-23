@@ -14,7 +14,7 @@ import (
 )
 
 func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
-	clusterName string, syncResponse *model.SyncResponse) {
+	clusterName string, syncResponse *model.SyncResponse) error {
 
 	defer metrics.SlowLog(fmt.Sprintf("Slow Sync from cluster %s.", clusterName), 0)()
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
@@ -107,4 +107,5 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	syncResponse.TotalEdgesDeleted = len(event.DeleteEdges) - len(syncResponse.DeleteEdgeErrors)
 
 	klog.V(1).Infof("Completed sync of cluster %s", clusterName)
+	return batch.connError
 }
