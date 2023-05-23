@@ -71,7 +71,7 @@ func new() *Config {
 		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 5*60*1000), // 5 min
 		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 50),             // Set to 50 to keep memory below 1GB.
 		ServerAddress:    getEnv("AGGREGATOR_ADDRESS", ":3010"),
-		SlowLog:          getEnvAsInt("SLOW_LOG", 100), // 1 second
+		SlowLog:          getEnvAsInt("SLOW_LOG", 1000), // 1 second
 		Version:          COMPONENT_VERSION,
 	}
 
