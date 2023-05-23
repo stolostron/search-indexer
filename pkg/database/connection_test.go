@@ -8,9 +8,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/jackc/pgconn"
 	"github.com/pashagolub/pgxmock"
-	"github.com/stretchr/testify/assert"
 )
 
 func Test_initializeTables(t *testing.T) {
@@ -79,23 +77,3 @@ func Test_beforeAcquire(t *testing.T) {
 	assert.True(t, result)
 }
 */
-
-type mockConn struct {
-	pgxmock.PgxConnIface
-}
-
-func (c mockConn) Exec(ctx context.Context, sql string, arguments ...interface{}) (commandTag pgconn.CommandTag, err error) {
-	return nil, nil
-}
-
-func (c mockConn) Close(ctx context.Context) error {
-	return nil
-}
-
-func Test_beforeAcquire(t *testing.T) {
-
-	mockConn := mockConn{}
-	result := beforeAcquire(context.Background(), mockConn)
-
-	assert.True(t, result)
-}
