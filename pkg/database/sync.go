@@ -58,7 +58,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 
 		// TODO: Need better safety for delete errors.
 		// The current retry logic won't work well if there's an error here.
-		queueErr = batch.Queue(batchItem{
+		err := batch.Queue(batchItem{
 			action: "deleteResource",
 			query:  fmt.Sprintf("DELETE from search.resources WHERE uid IN (%s)", paramStr),
 			uid:    fmt.Sprintf("%s", uids),
@@ -70,6 +70,9 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			uid:    fmt.Sprintf("%s", uids),
 			args:   uids,
 		})
+		if err != nil {
+			queueErr = err
+		}
 	}
 
 	// ADD EDGES
