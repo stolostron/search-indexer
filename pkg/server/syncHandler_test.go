@@ -63,21 +63,43 @@ func Test_syncRequest_withError(t *testing.T) {
 		t.Fatal(readErr)
 	}
 	responseRecorder := httptest.NewRecorder()
-
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
 	router := mux.NewRouter()
 
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
-
-	br := &batchResults{rows: []int{5, 3}, mockErrorOnClose: true}
+	br := &batchResults{rows: []int{5, 3}, mockErrorOnClose: errors.New("unexpected EOF")}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)
 
+	// Validate
 	assert.Equal(t, http.StatusInternalServerError, responseRecorder.Code)
+	bodyString, _ := responseRecorder.Body.ReadString(byte(0))
+	assert.Equal(t, "Server error while processing the request.\n", bodyString)
+}
 
+func Test_syncRequest_withErrorQueryingTotalResources(t *testing.T) {
+	// Read mock request body.
+	body, readErr := os.Open("./mocks/simple.json")
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	responseRecorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
+	router := mux.NewRouter()
+
+	// Create server with mock database.
+	server, mockPool := buildMockServer(t)
+	br := &batchResults{rows: []int{10, 4}, mockErrorOnQuery: errors.New("unexpected EOF")}
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
+
+	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
+	router.ServeHTTP(responseRecorder, request)
+
+	// Validate
+	assert.Equal(t, http.StatusInternalServerError, responseRecorder.Code)
 	bodyString, _ := responseRecorder.Body.ReadString(byte(0))
 	assert.Equal(t, "Server error while processing the request.\n", bodyString)
 }
@@ -120,7 +142,7 @@ func Test_resyncRequest(t *testing.T) {
 	}
 }
 
-func Test_resyncRequest_withErrorDeletinResources(t *testing.T) {
+func Test_resyncRequest_withErrorDeletingResources(t *testing.T) {
 	// Read mock request body.
 	body, readErr := os.Open("./mocks/clearAll.json")
 	if readErr != nil {
@@ -144,7 +166,7 @@ func Test_resyncRequest_withErrorDeletinResources(t *testing.T) {
 	assert.Equal(t, "Server error while processing the request.\n", bodyString)
 }
 
-func Test_resyncRequest_withErrorDeletinEdges(t *testing.T) {
+func Test_resyncRequest_withErrorDeletingEdges(t *testing.T) {
 	// Read mock request body.
 	body, readErr := os.Open("./mocks/clearAll.json")
 	if readErr != nil {
