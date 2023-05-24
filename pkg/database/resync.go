@@ -15,7 +15,7 @@ import (
 // NOTE: This logic is not optimized. We use the simplest approach because this is a failsafe to
 //       recover from rare sync problems. At the moment this is good enough without adding complexity.
 func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
-	clusterName string, syncResponse *model.SyncResponse) {
+	clusterName string, syncResponse *model.SyncResponse) error {
 
 	defer metrics.SlowLog(fmt.Sprintf("Slow Resync from cluster %s", clusterName), 0)()
 	klog.Infof(
@@ -30,6 +30,7 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	_, err := dao.pool.Exec(ctx, delResourcesSql, args...)
 	if err != nil {
 		klog.Warningf("Error deleting resources during resync of cluster %s. Error: %+v", clusterName, err)
+		return err
 	}
 	// DELETE from search.edges WHERE cluster=$1
 	delEdgesSql, args, delEdgesSqlErr := goquDelete("edges", "cluster", clusterName)
@@ -38,8 +39,10 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	_, err = dao.pool.Exec(ctx, delEdgesSql, args...)
 	if err != nil {
 		klog.Warningf("Error deleting edges during resync of cluster %s. Error: %+v", clusterName, err)
+		return err
 	}
-	dao.SyncData(ctx, event, clusterName, syncResponse)
+	err = dao.SyncData(ctx, event, clusterName, syncResponse)
 
 	klog.V(1).Infof("Completed resync of cluster %s", clusterName)
+	return err
 }

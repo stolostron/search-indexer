@@ -4,6 +4,8 @@ package database
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"sync"
 
 	pgx "github.com/jackc/pgx/v4"
@@ -24,6 +26,7 @@ type batchItem struct {
 }
 
 type batchWithRetry struct {
+	connError    error
 	ctx          context.Context
 	items        []batchItem
 	dao          *DAO
@@ -43,7 +46,10 @@ func NewBatchWithRetry(ctx context.Context, dao *DAO, syncResponse *model.SyncRe
 }
 
 // Adds a query to the queue and check if there's enough items to process the batch.
-func (b *batchWithRetry) Queue(item batchItem) {
+func (b *batchWithRetry) Queue(item batchItem) error {
+	if b.connError != nil { // Can't queue more items after DB connection error.
+		return b.connError
+	}
 	b.items = append(b.items, item)
 
 	if len(b.items) >= b.dao.batchSize {
@@ -52,6 +58,7 @@ func (b *batchWithRetry) Queue(item batchItem) {
 		b.wg.Add(1)
 		go b.sendBatch(items) // nolint: errcheck
 	}
+	return nil
 }
 
 // Sends a batch to the database. If the batch results in an error, we divide
@@ -68,7 +75,13 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 
 	closeErr := br.Close()
 	if closeErr != nil {
+		if strings.Contains(closeErr.Error(), "unexpected EOF") || strings.Contains(closeErr.Error(), "failed to connect") {
+			b.connError = closeErr
+			klog.Error("Send batch failed because database is unavailable. Won't retry.")
+			return errors.New("Failed to connect to database.")
+		}
 		klog.Error("Error closing batch result. ", closeErr)
+		return closeErr
 	}
 
 	// Process errors.
