@@ -20,48 +20,58 @@ var Cfg = new()
 
 // Struct to hold our configuratioin
 type Config struct {
-	DBBatchSize      int // Batch size used to write to DB.
-	DBHost           string
-	DBMaxConns       int // Max size of DB connection pool. Default: 20
-	DBName           string
-	DBPass           string
-	DBPort           int
-	DBUser           string
-	DevelopmentMode  bool
-	HTTPTimeout      int // timeout when the http server should drop connections
-	KubeClient       *kubernetes.Clientset
-	KubeConfigPath   string
-	MaxBackoffMS     int // Maximum backoff in ms to wait after db connection error
-	PodName          string
-	PodNamespace     string
-	RediscoverRateMS int    // time in MS we should check on cluster resource type
-	RequestLimit     int    // Max number of concurrent requests. Used to prevent from overloading the database
-	ServerAddress    string // Web server address
-	SlowLog          int    // Log operations slower than the specified time in ms. Default 1000ms
-	Version          string
+	DBBatchSize         int // Batch size used to write to DB. Default: 500
+	DBHealthCkeckPeriod int // Overrides pgxpool.Config{ HealthCheckPeriod } Default: 1 min
+	DBHost              string
+	DBMinConns          int // Overrides pgxpool.Config{ MinConns } Default: 0
+	DBMaxConns          int // Overrides pgxpool.Config{ MaxConns } Default: 20
+	DBMaxConnIdleTime   int // Overrides pgxpool.Config{ MaxConnIdleTime } Default: 30 min
+	DBMaxConnLifeTime   int // Overrides pgxpool.Config{ MaxConnLifetime } Default: 60 min
+	DBMaxConnLifeJitter int // Overrides pgxpool.Config{ MaxConnLifetimeJitter } Default: 2 min
+	DBName              string
+	DBPass              string
+	DBPort              int
+	DBUser              string
+	DevelopmentMode     bool
+	HTTPTimeout         int // Timeout for http server connections. Default: 5 min
+	KubeClient          *kubernetes.Clientset
+	KubeConfigPath      string
+	MaxBackoffMS        int // Maximum backoff in ms to wait after db connection error
+	PodName             string
+	PodNamespace        string
+	RediscoverRateMS    int    // time in MS we should check on cluster resource type
+	RequestLimit        int    // Max number of concurrent requests. Used to prevent from overloading the database
+	ServerAddress       string // Web server address
+	SlowLog             int    // Log operations slower than the specified time in ms. Default: 1 sec
+	Version             string
 }
 
 // Reads config from environment.
 func new() *Config {
 	conf := &Config{
-		DBBatchSize:     getEnvAsInt("DB_BATCH_SIZE", 500),
-		DBHost:          getEnv("DB_HOST", "localhost"),
-		DBMaxConns:      getEnvAsInt("DB_MAX_CONNS", int(20)), // Postgres has 100 conns. 20 allows scaling indexer
-		DBName:          getEnv("DB_NAME", ""),
-		DBPass:          getEnv("DB_PASS", ""),
-		DBPort:          getEnvAsInt("DB_PORT", 5432),
-		DBUser:          getEnv("DB_USER", ""),
-		DevelopmentMode: DEVELOPMENT_MODE,                    // Don't read ENV. See config_development.go to enable.
-		HTTPTimeout:     getEnvAsInt("HTTP_TIMEOUT", 300000), // 5 min
-		KubeConfigPath:  getKubeConfigPath(),
+		DBBatchSize: getEnvAsInt("DB_BATCH_SIZE", 500),
+		DBHost:      getEnv("DB_HOST", "localhost"),
+		// Postgres has 100 conns by default. Using 20 allows scaling indexer and api.
+		DBMaxConns:          getEnvAsInt("DB_MAX_CONNS", 20),                   // 20 - Overrides pgxpool default
+		DBMaxConnLifeJitter: getEnvAsInt("DB_MAX_CONN_LIFE_JITTER", 2*60*1000), // 2 min - Overrides pgxpool default
+		DBMaxConnIdleTime:   getEnvAsInt("DB_MAX_CONN_IDLE_TIME", 30*60*1000),  // 30 min - Default for pgxpool.Config
+		DBMaxConnLifeTime:   getEnvAsInt("DB_MAX_CONN_LIFE_TIME", 60*60*1000),  // 60 min - Default for pgxpool.Config
+		DBMinConns:          getEnvAsInt("DB_MIN_CONNS", 0),                    // Default for pgxpool.Config
+		DBName:              getEnv("DB_NAME", ""),
+		DBPass:              getEnv("DB_PASS", ""),
+		DBPort:              getEnvAsInt("DB_PORT", 5432),
+		DBUser:              getEnv("DB_USER", ""),
+		DevelopmentMode:     DEVELOPMENT_MODE,                       // Don't read ENV. See config_development.go to enable.
+		HTTPTimeout:         getEnvAsInt("HTTP_TIMEOUT", 5*60*1000), // 5 min
+		KubeConfigPath:      getKubeConfigPath(),
 		// Use 5 min for delete cluster activities and 30 seconds for db reconnect retry
-		MaxBackoffMS:     getEnvAsInt("MAX_BACKOFF_MS", 300000), // 5 min
+		MaxBackoffMS:     getEnvAsInt("MAX_BACKOFF_MS", 5*60*1000), // 5 min
 		PodName:          getEnv("POD_NAME", "local-dev"),
 		PodNamespace:     getEnv("POD_NAMESPACE", "open-cluster-management"),
-		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 300000), // 5 min
-		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 50),          // Set to 50 to keep memory below 1GB.
+		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 5*60*1000), // 5 min
+		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 50),             // Set to 50 to keep memory below 1GB.
 		ServerAddress:    getEnv("AGGREGATOR_ADDRESS", ":3010"),
-		SlowLog:          getEnvAsInt("SLOW_LOG", int(1000)), // 1 second
+		SlowLog:          getEnvAsInt("SLOW_LOG", 1000), // 1 second
 		Version:          COMPONENT_VERSION,
 	}
 
