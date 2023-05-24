@@ -120,7 +120,7 @@ func Test_resyncRequest(t *testing.T) {
 	}
 }
 
-func Test_resyncRequest_withError(t *testing.T) {
+func Test_resyncRequest_withErrorDeletinResources(t *testing.T) {
 	// Read mock request body.
 	body, readErr := os.Open("./mocks/clearAll.json")
 	if readErr != nil {
@@ -133,6 +133,31 @@ func Test_resyncRequest_withError(t *testing.T) {
 
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
+
+	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
+	router.ServeHTTP(responseRecorder, request)
+
+	// Validate
+	assert.Equal(t, http.StatusInternalServerError, responseRecorder.Code)
+	bodyString, _ := responseRecorder.Body.ReadString(byte(0))
+	assert.Equal(t, "Server error while processing the request.\n", bodyString)
+}
+
+func Test_resyncRequest_withErrorDeletinEdges(t *testing.T) {
+	// Read mock request body.
+	body, readErr := os.Open("./mocks/clearAll.json")
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	responseRecorder := httptest.NewRecorder()
+
+	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
+	router := mux.NewRouter()
+
+	// Create server with mock database.
+	server, mockPool := buildMockServer(t)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any())
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
