@@ -98,5 +98,5 @@ func Test_Sync_With_OnClose_Errors(t *testing.T) {
 	err := dao.SyncData(context.Background(), syncEvent, "test-cluster", response)
 
 	// Assert
-	assert.Nil(t, err) // FIXME, should be NotNil
+	assert.NotNil(t, err)
 }

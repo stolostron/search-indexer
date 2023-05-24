@@ -69,7 +69,7 @@ func (s BatchResults) QueryFunc(scans []interface{}, f func(pgx.QueryFuncRow) er
 }
 func (s BatchResults) Close() error {
 	if s.mockErrorOnClose {
-		return fmt.Errorf("MockError")
+		return fmt.Errorf("unexpected EOF")
 	}
 	return nil
 }
