@@ -2,6 +2,7 @@
 package server
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/driftprogramming/pgxpoolmock"
@@ -29,14 +30,23 @@ func (r *Row) Scan(dest ...interface{}) error {
 // https://github.com/jackc/pgx/blob/master/batch.go#L34
 // ===========================================================
 type batchResults struct {
-	rows  []int
-	index int
+	rows             []int
+	index            int
+	mockErrorOnClose bool // Return an error on Close()
+	mockErrorOnExec  bool // Return an error on Exec()
+	mockErrorOnQuery bool // Return an error on Query()
 }
 
 func (br *batchResults) Exec() (pgconn.CommandTag, error) {
+	if br.mockErrorOnExec {
+		return nil, errors.New("unexpected EOF")
+	}
 	return nil, nil
 }
 func (br *batchResults) Query() (pgx.Rows, error) {
+	if br.mockErrorOnQuery {
+		return nil, errors.New("unexpected EOF")
+	}
 	return nil, nil
 }
 func (br *batchResults) QueryRow() pgx.Row {
@@ -48,6 +58,9 @@ func (br *batchResults) QueryFunc(scans []interface{}, f func(pgx.QueryFuncRow) 
 	return nil, nil
 }
 func (br *batchResults) Close() error {
+	if br.mockErrorOnClose {
+		return errors.New("unexpected EOF")
+	}
 	return nil
 }
 

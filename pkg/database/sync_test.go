@@ -47,8 +47,7 @@ func Test_Sync_With_Exec_Errors(t *testing.T) {
 
 	// Mock PosgreSQL calls
 	br := BatchResults{
-		mockErrorOnClose: false,
-		mockErrorOnExec:  true,
+		mockErrorOnExec: true,
 	}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(7)
 
@@ -66,11 +65,11 @@ func Test_Sync_With_Exec_Errors(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, err)
-	// AssertEqual(t, len(response.AddErrors), 2, "Incorrect number of AddErrors.")
-	// AssertEqual(t, len(response.UpdateErrors), 1, "Incorrect number of UpdateErrors.")
-	// AssertEqual(t, len(response.DeleteErrors), 2, "Incorrect number of DeleteErrors.")
-	// AssertEqual(t, len(response.AddEdgeErrors), 1, "Incorrect number of AddEdgeErrors.")
-	// AssertEqual(t, len(response.DeleteEdgeErrors), 1, "Incorrect number of DeleteEdgeErrors.")
+	AssertEqual(t, len(response.AddErrors), 2, "Incorrect number of AddErrors.")
+	AssertEqual(t, len(response.UpdateErrors), 1, "Incorrect number of UpdateErrors.")
+	AssertEqual(t, len(response.DeleteErrors), 2, "Incorrect number of DeleteErrors.")
+	AssertEqual(t, len(response.AddEdgeErrors), 1, "Incorrect number of AddEdgeErrors.")
+	AssertEqual(t, len(response.DeleteEdgeErrors), 1, "Incorrect number of DeleteEdgeErrors.")
 }
 
 func Test_Sync_With_OnClose_Errors(t *testing.T) {
@@ -81,7 +80,6 @@ func Test_Sync_With_OnClose_Errors(t *testing.T) {
 	// Mock PosgreSQL calls
 	br := BatchResults{
 		mockErrorOnClose: true,
-		mockErrorOnExec:  false,
 	}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(7)
 
