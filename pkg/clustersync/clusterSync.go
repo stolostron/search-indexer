@@ -106,9 +106,12 @@ func syncClusters(ctx context.Context) {
 	}
 
 	// Add Handlers to both Informers
-	managedClusterInformer.AddEventHandler(handlers)
-	managedClusterInfoInformer.AddEventHandler(handlers)
-	managedClusterAddonInformer.AddEventHandler(handlers)
+	_, managedClusterErr := managedClusterInformer.AddEventHandler(handlers)
+	checkError(managedClusterErr, "Error adding eventHandler for managedCluster")
+	_, managedClusterInfoErr := managedClusterInfoInformer.AddEventHandler(handlers)
+	checkError(managedClusterInfoErr, "Error adding eventHandler for managedClusterInfo")
+	_, managedClusterAddonErr := managedClusterAddonInformer.AddEventHandler(handlers)
+	checkError(managedClusterAddonErr, "Error adding eventHandler for managedClusterAddon")
 
 	// Periodically check if the ManagedCluster/ManagedClusterInfo resource exists
 	go stopAndStartInformer(ctx, "cluster.open-cluster-management.io/v1", managedClusterInformer)
@@ -403,4 +406,10 @@ func getEnabledAddons(labelMap map[string]interface{}) map[string]interface{} {
 		}
 	}
 	return enabledAddons
+}
+
+func checkError(err error, logMessage string) {
+	if err != nil {
+		klog.Error(logMessage, " ", err)
+	}
 }
