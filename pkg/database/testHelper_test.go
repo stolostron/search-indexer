@@ -69,7 +69,7 @@ func (s BatchResults) QueryFunc(scans []interface{}, f func(pgx.QueryFuncRow) er
 }
 func (s BatchResults) Close() error {
 	if s.mockErrorOnClose {
-		return fmt.Errorf("MockError")
+		return fmt.Errorf("unexpected EOF")
 	}
 	return nil
 }
@@ -85,9 +85,10 @@ func buildMockDAO(t *testing.T) (DAO, *pgxpoolmock.MockPgxPool) {
 }
 
 type MockRows struct {
-	mockData      []map[string]interface{}
-	index         int
-	columnHeaders []string
+	mockData        []map[string]interface{}
+	index           int
+	columnHeaders   []string
+	mockErrorOnScan error
 }
 
 func (r *MockRows) Close() {}
@@ -104,7 +105,9 @@ func (r *MockRows) Next() bool {
 }
 
 func (r *MockRows) Scan(dest ...interface{}) error {
-	// For Test_UpsertCluster_Update1 test
+	if r.mockErrorOnScan != nil {
+		return r.mockErrorOnScan
+	}
 
 	if len(dest) == 2 { // uid and data
 		*dest[0].(*string) = r.mockData[r.index-1]["uid"].(string)

@@ -42,6 +42,24 @@ func NewDAO(p pgxpoolmock.PgxPool) DAO {
 	return dao
 }
 
+// Checks new connection is healthy before using it.
+func afterConnect(ctx context.Context, c *pgx.Conn) error {
+	if err := c.Ping(ctx); err != nil {
+		klog.V(7).Info("New DB connection from pool was unhealthy. ", err)
+		return err
+	}
+	return nil
+}
+
+// Checks idle connection is healthy before using it.
+func beforeAcquire(ctx context.Context, c *pgx.Conn) bool {
+	if err := c.Ping(ctx); err != nil {
+		klog.V(7).Info("Idle DB connection from pool is unhealthy, destroying it. ", err)
+		return false
+	}
+	return true
+}
+
 func initializePool() pgxpoolmock.PgxPool {
 	cfg := config.Cfg
 
@@ -62,7 +80,16 @@ func initializePool() pgxpoolmock.PgxPool {
 	if configErr != nil {
 		klog.Fatal("Error parsing database connection configuration. ", configErr)
 	}
+	config.AfterConnect = afterConnect   // Checks new connection health before using it.
+	config.BeforeAcquire = beforeAcquire // Checks idle connection health before using it.
+	// Add jitter to prevent all connections from being closed at same time.
+	config.MaxConnLifetimeJitter = time.Duration(cfg.DBMaxConnLifeJitter) * time.Millisecond
 	config.MaxConns = int32(cfg.DBMaxConns)
+	config.MaxConnIdleTime = time.Duration(cfg.DBMaxConnIdleTime) * time.Millisecond
+	config.MaxConnLifetime = time.Duration(cfg.DBMaxConnLifeTime) * time.Millisecond
+	config.MinConns = int32(cfg.DBMinConns)
+
+	klog.Infof("Using pgxpool.Config %+v", config)
 
 	retry := 0
 	var conn *pgxpool.Pool

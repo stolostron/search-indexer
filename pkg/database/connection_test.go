@@ -59,3 +59,21 @@ func Test_checkErrorAndRollbackError(t *testing.T) {
 	checkErrorAndRollback(e, logMessage, mockConn, context.Background())
 
 }
+
+/* TODO: These tests are disabled because I can't find the correct way to mock the Ping
+		function in the pgx.Conn{} object.
+
+func Test_afterConnect(t *testing.T) {
+	mockConn := &pgx.Conn{}
+	result := afterConnect(context.Background(), mockConn)
+
+	assert.Nil(t, result)
+}
+
+func Test_beforeAcquire(t *testing.T) {
+	mockConn := &pgx.Conn{}
+	result := beforeAcquire(context.Background(), mockConn)
+
+	assert.True(t, result)
+}
+*/

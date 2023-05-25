@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stolostron/search-indexer/pkg/model"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_ResyncData(t *testing.T) {
@@ -33,7 +34,9 @@ func Test_ResyncData(t *testing.T) {
 
 	// Execute function test.
 	response := &model.SyncResponse{}
-	dao.ResyncData(context.Background(), syncEvent, "test-cluster", response)
+	err := dao.ResyncData(context.Background(), syncEvent, "test-cluster", response)
+
+	assert.Nil(t, err)
 }
 
 func Test_ResyncData_errors(t *testing.T) {
@@ -55,5 +58,7 @@ func Test_ResyncData_errors(t *testing.T) {
 
 	// Execute function test.
 	response := &model.SyncResponse{}
-	dao.ResyncData(context.Background(), syncEvent, "test-cluster", response)
+	err := dao.ResyncData(context.Background(), syncEvent, "test-cluster", response)
+
+	assert.NotNil(t, err)
 }
