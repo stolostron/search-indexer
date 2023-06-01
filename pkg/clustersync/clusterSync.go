@@ -372,7 +372,7 @@ func findStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interf
 			managedClustersFromClient[item.GetName()] = struct{}{}
 		}
 	}
-	klog.V(3).Infof("Managed Clusters reported from kube client: ", managedClustersFromClient)
+	klog.V(3).Infof("Managed Clusters reported from kube client: %+v", managedClustersFromClient)
 
 	// get all managed clusters from db:
 	managedClustersFromDB, err := dao.GetManagedClusters(ctx)
@@ -380,7 +380,7 @@ func findStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interf
 		klog.Errorf("Error getting managed clusters names from database. %s", err)
 		return nil, err
 	}
-	klog.V(3).Infof("Managed Clusters reported from database: ", managedClustersFromDB)
+	klog.V(3).Infof("Managed Clusters reported from database: %+v", managedClustersFromDB)
 
 	for _, dmCluster := range managedClustersFromDB {
 		if _, exist := managedClustersFromClient[dmCluster]; !exist {

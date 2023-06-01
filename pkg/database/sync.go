@@ -17,13 +17,15 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 	batch := NewBatchWithRetry(dao, syncResponse)
 
 	// ADD RESOURCES
+	// In case of conflict update only if data has changed
 	for _, resource := range event.AddResources {
 		data, _ := json.Marshal(resource.Properties)
 		batch.Queue(batchItem{
 			action: "addResource",
-			query:  "INSERT into search.resources values($1,$2,$3)",
-			uid:    resource.UID,
-			args:   []interface{}{resource.UID, clusterName, string(data)},
+			query: `INSERT into search.resources as r values($1,$2,$3) ON CONFLICT (uid) 
+			DO UPDATE SET data=$3 WHERE r.uid=$1 and r.data IS DISTINCT FROM $3`,
+			uid:  resource.UID,
+			args: []interface{}{resource.UID, clusterName, string(data)},
 		})
 	}
 
@@ -67,10 +69,11 @@ func (dao *DAO) SyncData(event model.SyncEvent, clusterName string, syncResponse
 	}
 
 	// ADD EDGES
+	// Nothing to update in case of conflict as resource kind cannot change
 	for _, edge := range event.AddEdges {
 		batch.Queue(batchItem{
 			action: "addEdge",
-			query:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6)",
+			query:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
 			uid:    edge.SourceUID,
 			args:   []interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName}})
 	}
