@@ -65,13 +65,12 @@ func (b *batchWithRetry) Queue(item batchItem) error {
 			values := make([]string, 0)
 
 			for _, item := range b.bulkResources {
-				values = append(values, fmt.Sprintf("(%s,%s,%s)", item.data...))
+				values = append(values, fmt.Sprintf("('%s', '%s', '%s')", item.data...))
 			}
 
 			// Add the bulk INSERT to the batch.
 			b.items = append(b.items, batchItem{
-				// query:  "INSERT INTO resources (uid, cluster, data) VALUES " + strings.Join(values, ","),
-				query:  fmt.Sprintf("INSERT INTO resources VALUES %s;", strings.Join(values, ",")),
+				query:  fmt.Sprintf("INSERT INTO search.resources VALUES %s;", strings.Join(values, ", ")),
 				args:   make([]interface{}, 0),
 				action: "bulkResources",
 				uid:    "",
@@ -86,12 +85,12 @@ func (b *batchWithRetry) Queue(item batchItem) error {
 			values := make([]string, 0)
 
 			for _, item := range b.bulkEdges {
-				values = append(values, fmt.Sprintf("(%s,%s,%s,%s,%s,%s)", item.data...))
+				values = append(values, fmt.Sprintf("('%s', '%s', '%s', '%s', '%s', '%s')", item.data...))
 			}
 
 			// Add the bulk INSERT to the batch.
 			b.items = append(b.items, batchItem{
-				query:  fmt.Sprintf("INSERT INTO edges VALUES %s;", strings.Join(values, ",")),
+				query:  fmt.Sprintf("INSERT INTO search.edges VALUES %s;", strings.Join(values, ",")),
 				args:   make([]interface{}, 0),
 				action: "bulkInsertEdges",
 				uid:    "",
@@ -181,6 +180,44 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 
 // Process all queued items.
 func (b *batchWithRetry) flush() {
+	if len(b.bulkResources) > 0 {
+		values := make([]string, 0)
+
+		for _, item := range b.bulkResources {
+			values = append(values, fmt.Sprintf("('%s', '%s', '%s')", item.data...))
+		}
+
+		// Add the bulk INSERT to the batch.
+		b.items = append(b.items, batchItem{
+			query:  fmt.Sprintf("INSERT INTO search.resources VALUES %s;", strings.Join(values, ", ")),
+			args:   make([]interface{}, 0),
+			action: "bulkResources",
+			uid:    "",
+		})
+
+		// Reset the bulk INSERT queue.
+		b.bulkResources = make([]insertRow, 0)
+	}
+
+	if len(b.bulkEdges) > 0 {
+		values := make([]string, 0)
+
+		for _, item := range b.bulkEdges {
+			values = append(values, fmt.Sprintf("('%s', '%s', '%s', '%s', '%s', '%s')", item.data...))
+		}
+
+		// Add the bulk INSERT to the batch.
+		b.items = append(b.items, batchItem{
+			query:  fmt.Sprintf("INSERT INTO search.edges VALUES %s;", strings.Join(values, ",")),
+			args:   make([]interface{}, 0),
+			action: "bulkInsertEdges",
+			uid:    "",
+		})
+
+		// Reset the bulk INSERT queue.
+		b.bulkEdges = make([]insertRow, 0)
+	}
+
 	if len(b.items) > 0 {
 		items := b.items               // Create a snapshot of the items to process.
 		b.items = make([]batchItem, 0) // Reset the queue.
