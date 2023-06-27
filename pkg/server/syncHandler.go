@@ -75,8 +75,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	// Log request.
-	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]",
-		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
-	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
+	// Log response.
+	klog.V(2).Infof("Sync from [%s] completed in %v. clearAll [%t] response %+v",
+		clusterName, time.Since(start), syncEvent.ClearAll, syncResponse)
 }

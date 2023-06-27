@@ -5,6 +5,7 @@ package database
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -13,10 +14,16 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const INSERT_SIZE = 100
+
 // This is a wrapper for pgx.Batch. It add the following.
 //  - The Queue() function checks the size of the queued items and automatically triggers the batch processing.
 //  - Retry after a batch operation fails. It sends smaller batches to isolate the query producing the error.
 //  - Report queries that resulted in errors.
+
+type insertRow struct {
+	data []interface{}
+}
 
 type batchItem struct {
 	query  string
@@ -29,6 +36,7 @@ type batchWithRetry struct {
 	connError    error
 	ctx          context.Context
 	items        []batchItem
+	bulkInsert   []insertRow
 	dao          *DAO
 	wg           *sync.WaitGroup
 	syncResponse *model.SyncResponse
@@ -38,6 +46,7 @@ func NewBatchWithRetry(ctx context.Context, dao *DAO, syncResponse *model.SyncRe
 	batch := batchWithRetry{
 		ctx:          ctx,
 		items:        make([]batchItem, 0),
+		bulkInsert:   make([]insertRow, 0),
 		wg:           &sync.WaitGroup{},
 		dao:          dao,
 		syncResponse: syncResponse,
@@ -50,7 +59,29 @@ func (b *batchWithRetry) Queue(item batchItem) error {
 	if b.connError != nil { // Can't queue more items after DB connection error.
 		return b.connError
 	}
-	b.items = append(b.items, item)
+	if item.action == "addResource" {
+		b.bulkInsert = append(b.bulkInsert, insertRow{data: item.args})
+		if len(b.bulkInsert) >= INSERT_SIZE {
+			values := make([]string, 0)
+
+			for _, item := range b.bulkInsert {
+				values = append(values, fmt.Sprintf("(%s,%s,%s)", item.data...))
+			}
+
+			// Add the bulk INSERT to the batch.
+			b.items = append(b.items, batchItem{
+				query:  "INSERT INTO resources (uid, cluster, data) VALUES " + strings.Join(values, ","),
+				args:   make([]interface{}, 0),
+				action: "bulkInsert",
+				uid:    "",
+			})
+
+			// Reset the bulk INSERT queue.
+			b.bulkInsert = make([]insertRow, 0)
+		}
+	} else {
+		b.items = append(b.items, item)
+	}
 
 	if len(b.items) >= b.dao.batchSize {
 		items := b.items               // Create a snapshot of the items to process.
