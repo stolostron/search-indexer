@@ -70,7 +70,8 @@ func (b *batchWithRetry) Queue(item batchItem) error {
 
 			// Add the bulk INSERT to the batch.
 			b.items = append(b.items, batchItem{
-				query:  "INSERT INTO resources (uid, cluster, data) VALUES " + strings.Join(values, ","),
+				// query:  "INSERT INTO resources (uid, cluster, data) VALUES " + strings.Join(values, ","),
+				query:  fmt.Sprintf("INSERT INTO resources VALUES %s;", strings.Join(values, ",")),
 				args:   make([]interface{}, 0),
 				action: "bulkResources",
 				uid:    "",
@@ -90,7 +91,7 @@ func (b *batchWithRetry) Queue(item batchItem) error {
 
 			// Add the bulk INSERT to the batch.
 			b.items = append(b.items, batchItem{
-				query:  "INSERT INTO edges VALUES " + strings.Join(values, ","),
+				query:  fmt.Sprintf("INSERT INTO edges VALUES %s;", strings.Join(values, ",")),
 				args:   make([]interface{}, 0),
 				action: "bulkInsertEdges",
 				uid:    "",
