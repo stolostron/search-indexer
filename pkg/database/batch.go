@@ -85,7 +85,7 @@ func (b *batchWithRetry) Queue(item batchItem) error {
 			values := make([]string, 0)
 
 			for _, item := range b.bulkEdges {
-				values = append(values, fmt.Sprintf("(%s,%s,%s)", item.data...))
+				values = append(values, fmt.Sprintf("(%s,%s,%s,%s,%s,%s)", item.data...))
 			}
 
 			// Add the bulk INSERT to the batch.
