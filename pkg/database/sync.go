@@ -114,6 +114,6 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	syncResponse.TotalEdgesAdded = len(event.AddEdges) - len(syncResponse.AddEdgeErrors)
 	syncResponse.TotalEdgesDeleted = len(event.DeleteEdges) - len(syncResponse.DeleteEdgeErrors)
 
-	klog.V(1).Infof("Completed sync of cluster %s", clusterName)
+	klog.V(2).Infof("Completed sync of cluster %s", clusterName)
 	return batch.connError
 }
