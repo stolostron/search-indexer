@@ -20,10 +20,6 @@ import (
 //  - Retry after a batch operation fails. It sends smaller batches to isolate the query producing the error.
 //  - Report queries that resulted in errors.
 
-type insertRow struct {
-	data []interface{}
-}
-
 type batchItem struct {
 	query  string
 	args   []interface{}
@@ -32,25 +28,25 @@ type batchItem struct {
 }
 
 type batchWithRetry struct {
-	connError     error
-	ctx           context.Context
-	items         []batchItem
-	bulkResources []insertRow
-	bulkEdges     []insertRow
-	dao           *DAO
-	wg            *sync.WaitGroup
-	syncResponse  *model.SyncResponse
+	connError       error
+	ctx             context.Context
+	dao             *DAO
+	edgeInsertQ     [][]interface{} // Used to group edge INSERTs into a single query.
+	items           []batchItem
+	resourceInsertQ [][]interface{} // Used to group resource INSERTs into a single query.
+	syncResponse    *model.SyncResponse
+	wg              *sync.WaitGroup
 }
 
 func NewBatchWithRetry(ctx context.Context, dao *DAO, syncResponse *model.SyncResponse) batchWithRetry {
 	batch := batchWithRetry{
-		ctx:           ctx,
-		items:         make([]batchItem, 0),
-		bulkResources: make([]insertRow, 0),
-		bulkEdges:     make([]insertRow, 0),
-		wg:            &sync.WaitGroup{},
-		dao:           dao,
-		syncResponse:  syncResponse,
+		ctx:             ctx,
+		dao:             dao,
+		edgeInsertQ:     make([][]interface{}, 0),
+		items:           make([]batchItem, 0),
+		resourceInsertQ: make([][]interface{}, 0),
+		syncResponse:    syncResponse,
+		wg:              &sync.WaitGroup{},
 	}
 	return batch
 }
@@ -61,12 +57,12 @@ func (b *batchWithRetry) Queue(item batchItem) error {
 		return b.connError
 	}
 	if item.action == "addResource" {
-		b.bulkResources = append(b.bulkResources, insertRow{data: item.args})
-		if len(b.bulkResources) >= b.dao.batchSize {
+		b.resourceInsertQ = append(b.resourceInsertQ, item.args)
+		if len(b.resourceInsertQ) >= b.dao.batchSize {
 			values := make([]string, 0)
 
-			for _, item := range b.bulkResources {
-				values = append(values, fmt.Sprintf("('%s','%s','%s')", item.data...))
+			for _, item := range b.resourceInsertQ {
+				values = append(values, fmt.Sprintf("('%s','%s','%s')", item...))
 			}
 
 			// Add the bulk INSERT to the batch.
@@ -78,15 +74,15 @@ func (b *batchWithRetry) Queue(item batchItem) error {
 			})
 
 			// Reset the bulk INSERT queue.
-			b.bulkResources = make([]insertRow, 0)
+			b.resourceInsertQ = make([][]interface{}, 0)
 		}
 	} else if item.action == "addEdge" {
-		b.bulkEdges = append(b.bulkEdges, insertRow{data: item.args})
-		if len(b.bulkEdges) >= b.dao.batchSize {
+		b.edgeInsertQ = append(b.edgeInsertQ, item.args)
+		if len(b.edgeInsertQ) >= b.dao.batchSize {
 			values := make([]string, 0)
 
-			for _, item := range b.bulkEdges {
-				values = append(values, fmt.Sprintf("('%s','%s','%s','%s','%s','%s')", item.data...))
+			for _, item := range b.edgeInsertQ {
+				values = append(values, fmt.Sprintf("('%s','%s','%s','%s','%s','%s')", item...))
 			}
 
 			// Add the bulk INSERT to the batch.
@@ -98,7 +94,7 @@ func (b *batchWithRetry) Queue(item batchItem) error {
 			})
 
 			// Reset the bulk INSERT queue.
-			b.bulkEdges = make([]insertRow, 0)
+			b.edgeInsertQ = make([][]interface{}, 0)
 		}
 	} else {
 		b.items = append(b.items, item)
@@ -185,14 +181,14 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 
 // Process all queued items.
 func (b *batchWithRetry) flush() {
-	if len(b.bulkResources) > 0 {
+	if len(b.resourceInsertQ) > 0 {
 		values := make([]string, 0)
 
-		for _, item := range b.bulkResources {
-			values = append(values, fmt.Sprintf("('%s', '%s', '%s')", item.data...))
+		for _, item := range b.resourceInsertQ {
+			values = append(values, fmt.Sprintf("('%s', '%s', '%s')", item...))
 		}
 
-		// Add the bulk INSERT to the batch.
+		// Add the resources INSERT to the batch.
 		b.items = append(b.items, batchItem{
 			query:  fmt.Sprintf("INSERT INTO search.resources VALUES %s;", strings.Join(values, ", ")),
 			args:   make([]interface{}, 0),
@@ -200,18 +196,18 @@ func (b *batchWithRetry) flush() {
 			uid:    "",
 		})
 
-		// Reset the bulk INSERT queue.
-		b.bulkResources = make([]insertRow, 0)
+		// Reset the resources INSERT queue.
+		b.resourceInsertQ = make([][]interface{}, 0)
 	}
 
-	if len(b.bulkEdges) > 0 {
+	if len(b.edgeInsertQ) > 0 {
 		values := make([]string, 0)
 
-		for _, item := range b.bulkEdges {
-			values = append(values, fmt.Sprintf("('%s', '%s', '%s', '%s', '%s', '%s')", item.data...))
+		for _, item := range b.edgeInsertQ {
+			values = append(values, fmt.Sprintf("('%s', '%s', '%s', '%s', '%s', '%s')", item...))
 		}
 
-		// Add the bulk INSERT to the batch.
+		// Add the edges INSERT to the batch.
 		b.items = append(b.items, batchItem{
 			query:  fmt.Sprintf("INSERT INTO search.edges VALUES %s;", strings.Join(values, ",")),
 			args:   make([]interface{}, 0),
@@ -219,8 +215,8 @@ func (b *batchWithRetry) flush() {
 			uid:    "",
 		})
 
-		// Reset the bulk INSERT queue.
-		b.bulkEdges = make([]insertRow, 0)
+		// Reset the edges INSERT queue.
+		b.edgeInsertQ = make([][]interface{}, 0)
 	}
 
 	if len(b.items) > 0 {
