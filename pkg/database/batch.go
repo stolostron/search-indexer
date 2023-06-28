@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	pgx "github.com/jackc/pgx/v4"
 	"github.com/stolostron/search-indexer/pkg/model"
@@ -65,7 +66,7 @@ func (b *batchWithRetry) Queue(item batchItem) error {
 			values := make([]string, 0)
 
 			for _, item := range b.bulkResources {
-				values = append(values, fmt.Sprintf("('%s', '%s', '%s')", item.data...))
+				values = append(values, fmt.Sprintf("('%s','%s','%s')", item.data...))
 			}
 
 			// Add the bulk INSERT to the batch.
@@ -85,7 +86,7 @@ func (b *batchWithRetry) Queue(item batchItem) error {
 			values := make([]string, 0)
 
 			for _, item := range b.bulkEdges {
-				values = append(values, fmt.Sprintf("('%s', '%s', '%s', '%s', '%s', '%s')", item.data...))
+				values = append(values, fmt.Sprintf("('%s','%s','%s','%s','%s','%s')", item.data...))
 			}
 
 			// Add the bulk INSERT to the batch.
@@ -116,6 +117,10 @@ func (b *batchWithRetry) Queue(item batchItem) error {
 // the batch into smaller batches and retry until we isolate the erroring query.
 func (b *batchWithRetry) sendBatch(items []batchItem) error {
 	defer b.wg.Done()
+	start := time.Now()
+	defer func() {
+		klog.V(3).Infof("Batch with %d items processed in %+v", len(items), time.Since(start))
+	}()
 
 	batch := &pgx.Batch{}
 	for _, item := range items {
