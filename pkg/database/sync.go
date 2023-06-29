@@ -103,7 +103,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	// Wait for all batches to complete.
 	batch.wg.Wait()
 	if queueErr != nil {
-		klog.V(1).Infof("Completed sync of cluster [%s] with errors.", clusterName)
+		klog.V(1).Infof("SyncData() completed with errors for [%s].", clusterName)
 		return queueErr
 	}
 
@@ -114,6 +114,5 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	syncResponse.TotalEdgesAdded = len(event.AddEdges) - len(syncResponse.AddEdgeErrors)
 	syncResponse.TotalEdgesDeleted = len(event.DeleteEdges) - len(syncResponse.DeleteEdgeErrors)
 
-	klog.V(2).Infof("Completed sync of cluster %s", clusterName)
 	return batch.connError
 }

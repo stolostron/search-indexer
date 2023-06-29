@@ -43,6 +43,6 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	}
 	err = dao.SyncData(ctx, event, clusterName, syncResponse)
 
-	klog.V(2).Infof("Completed resync of cluster %s", clusterName)
+	klog.V(2).Infof("ResyncData() completed for [%s].", clusterName)
 	return err
 }

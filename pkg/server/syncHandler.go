@@ -76,6 +76,6 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log response
-	klog.V(1).Infof("Sync from [%s] completed in %v. clearAll [%t] response:\n %+v",
+	klog.V(1).Infof("Completed sync from [%s] in %v. clearAll [%t] response:\n %+v",
 		clusterName, time.Since(start), syncEvent.ClearAll, syncResponse)
 }
