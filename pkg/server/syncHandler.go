@@ -76,7 +76,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log response
-	klog.V(1).Infof("Completed sync from [%s] in %v.", clusterName, time.Since(start))
+	klog.V(1).Infof("Completed sync from [%s] in %v", clusterName, time.Since(start).Round(time.Millisecond))
 	klog.V(2).Infof("%s {resync:%t resources:{added: %d updated: %d deleted: %d} edges:{added: %d deleted: %d}",
 		clusterName, syncEvent.ClearAll,
 		syncResponse.TotalAdded, syncResponse.TotalUpdated, syncResponse.TotalDeleted,

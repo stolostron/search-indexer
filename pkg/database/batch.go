@@ -115,7 +115,7 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 	defer b.wg.Done()
 	start := time.Now()
 	defer func() {
-		klog.V(3).Infof("Procesed batch with %d statements in %+v", len(items), time.Since(start))
+		klog.V(3).Infof("Processed batch with %d statements in %+v", len(items), time.Since(start))
 	}()
 
 	batch := &pgx.Batch{}
