@@ -17,7 +17,7 @@ run: ## Run the service locally.
 lint: ## Run lint and gosec tool.
 	GOPATH=$(go env GOPATH)
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "${GOPATH}/bin" v1.52.2
-	CGO_ENABLED=0 GOGC=25 golangci-lint run --timeout=3m
+	CGO_ENABLED=1 GOGC=25 golangci-lint run --timeout=3m
 	go mod tidy
 	gosec ./...
 
