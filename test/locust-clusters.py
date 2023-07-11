@@ -14,7 +14,7 @@ class ClusterBehavior(TaskSet):
 #  2. Update state.
 
     def send_full_state_payload(self):
-        with open("sno-template.json", "r") as template_file:
+        with open("cluster-templates/sno-100k.json", "r") as template_file:
             template_string = template_file.read().replace("<<CLUSTER_NAME>>", self.user.name)
         f = io.StringIO(template_string)
         j = json.load(f)        
@@ -33,24 +33,36 @@ class ClusterBehavior(TaskSet):
         print("%s - sent update" % self.user.name)
 
     def do_post(self):
-        self.client.post("/aggregator/clusters/{}/sync".format(self.user.name), json=self.client.payload, verify=False)
+        resp = self.client.post("/aggregator/clusters/{}/sync".format(self.user.name), json=self.client.payload, verify=False)
+        print("[%s] response code: %s" % (self.user.name, resp.status_code))
+        if resp.status_code != 200: # 429
+            self.user.retries = self.user.retries + 1
+            print("[%s] Indexer was busy. Waiting %d seconds and retrying." % (self.user.name, self.user.retries * 2))
+            time.sleep(self.user.retries * 2)
+            self.do_post()
+        else:
+            print("[%s] Completed do_post() with %s retries." % (self.user.name, self.user.retries))
+            self.user.retries = 0
+
 
     def on_start(self):
         self.send_full_state_payload()
-        time.sleep(120)
+        time.sleep(60)
 
     @task
     def send_update(self):
-        self.send_update_payload()
+        # self.send_update_payload()
+        self.send_full_state_payload()
        
 # A Cluster is equivalent to a User.
 class Cluster(HttpUser):
     name = ""
     tasks = [ClusterBehavior]
-    wait_time = between(30, 300)
+    wait_time = between(30, 60)
+    retries = 0
 
     def on_start(self):
         global clusterCount
-        self.name = "cluster{}".format(clusterCount)
+        self.name = "locust-{}".format(clusterCount)
         clusterCount = clusterCount + 1
         print("Starting cluster [%s]" % self.name)
