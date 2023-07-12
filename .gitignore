@@ -3,5 +3,5 @@ cover.out
 sslcert/tls.crt
 sslcert/tls.key
 cover.html
-test/__pycache__/
+test/__pycache__/*
 .DS_Store

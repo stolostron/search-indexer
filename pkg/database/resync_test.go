@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stolostron/search-indexer/pkg/model"
+	"github.com/stolostron/search-indexer/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,11 +19,10 @@ func Test_ResyncData(t *testing.T) {
 	// Prepare a mock DAO instance.
 	dao, mockPool := buildMockDAO(t)
 
-	// Mock PosgreSQL apis
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq(`DELETE FROM "search"."resources" WHERE (("cluster" = 'test-cluster') AND ("uid" != 'cluster__test-cluster'))`), gomock.Eq([]interface{}{})).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq(`DELETE FROM "search"."edges" WHERE ("cluster" = 'test-cluster')`), gomock.Eq([]interface{}{})).Return(nil, nil)
-	br := BatchResults{}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br)
+	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
+
+	br := &testutils.MockBatchResults{}
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	// Prepare Request data.
 	data, _ := os.Open("./mocks/simple.json")
@@ -30,7 +30,7 @@ func Test_ResyncData(t *testing.T) {
 	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
 
 	// Supress console output to prevent log messages from polluting test output.
-	defer SupressConsoleOutput()()
+	defer testutils.SupressConsoleOutput()()
 
 	// Execute function test.
 	response := &model.SyncResponse{}
@@ -42,11 +42,12 @@ func Test_ResyncData(t *testing.T) {
 func Test_ResyncData_errors(t *testing.T) {
 	// Prepare a mock DAO instance.
 	dao, mockPool := buildMockDAO(t)
+	// Mock Postgres state and SELECT queries.
+	testutils.MockDatabaseState(mockPool)
 
-	// Mock PosgreSQL apis
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Eq([]interface{}{})).Return(nil, errors.New("Delete error")).Times(2)
-	br := BatchResults{}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br)
+	// Mock error on INSERT.
+	br := &testutils.MockBatchResults{MockErrorOnClose: errors.New("unexpected EOF")}
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	// Prepare Request data.
 	data, _ := os.Open("./mocks/simple.json")
@@ -54,7 +55,7 @@ func Test_ResyncData_errors(t *testing.T) {
 	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
 
 	// Supress console output to prevent log messages from polluting test output.
-	defer SupressConsoleOutput()()
+	defer testutils.SupressConsoleOutput()()
 
 	// Execute function test.
 	response := &model.SyncResponse{}

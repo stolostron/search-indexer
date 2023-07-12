@@ -18,9 +18,13 @@ func SlowLog(msg string, logAfter time.Duration) func() {
 	// This function should be invoked with defer to execute at the end of the caller function.
 	return func() {
 		if (logAfter > 0 && time.Since(start) > logAfter) || (time.Since(start) > DEFAULT_SLOW_LOG) {
-			klog.Warningf("%s - %s", time.Since(start), msg)
+			klog.Warningf("%s - %s", time.Since(start).Round(time.Millisecond), msg)
 		}
-
-		// We could emit metric here, but it could emit too much data.
 	}
+}
+
+// Logs the duration of a step in a process and reset the timer.
+func LogStepDuration(timer *time.Time, cluster, message string) {
+	klog.V(5).Infof("\t> %6s\t [%12s] %s", time.Since(*timer).Round(time.Millisecond), cluster, message)
+	*timer = time.Now()
 }
