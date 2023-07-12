@@ -63,7 +63,7 @@ class Cluster(HttpUser):
     tasks = [ClusterBehavior]
     wait_time = between(5, 300)
     retries = 0
-    template = "sno-5k.json" # sno-100k.json, sno-150k.json
+    template = "sno-100k.json" # sno-100k.json, sno-150k.json
 
     def on_start(self):
         global clusterCount
