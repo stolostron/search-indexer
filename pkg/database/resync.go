@@ -14,9 +14,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// Overrides the existing state of a cluster with the new data.
-// NOTE: This logic is not optimized. We use the simplest approach because this is a failsafe to
-//       recover from rare sync problems. At the moment this is good enough without adding complexity.
+// Sets cluster data to incoming state.
 func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	clusterName string, syncResponse *model.SyncResponse) error {
 	start := time.Now()
@@ -31,7 +29,7 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	newUIDs := make([]string, len(event.AddResources))
 
 	// Get existing resources for the cluster.
-	existingResourcesMap := make(map[string]bool)
+	existingResourcesMap := make(map[string]struct{})
 	existingRows, err := dao.pool.Query(ctx, "SELECT uid FROM search.resources WHERE cluster=$1", clusterName)
 	if err != nil {
 		klog.Warningf("Error getting existing resources uids of cluster %s. Error: %+v", clusterName, err)
@@ -44,17 +42,17 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 			klog.Warningf("Error scanning existing resource row. Error: %+v", err)
 			continue
 		}
-		existingResourcesMap[id] = true
+		existingResourcesMap[id] = struct{}{}
 	}
-	klog.Infof("\t> %s - [%s] QUERY existing resources", time.Since(start).Round(time.Millisecond), clusterName)
+	klog.Infof("\t> %6s - [%10s] QUERY existing resources", time.Since(start).Round(time.Millisecond), clusterName)
 	start = time.Now()
 
-	// ADD RESOURCES
+	// INSERT RESOURCES
 	// In case of conflict update only if data has changed.
 	for i, resource := range event.AddResources {
 		delete(existingResourcesMap, resource.UID)
 		data, _ := json.Marshal(resource.Properties)
-		newUIDs[i] = "'" + resource.UID + "'" // TODO: alternative to quotes.
+		newUIDs[i] = "'" + resource.UID + "'" // TODO: Is there a better alternative to quotes?
 		queueErr = batch.Queue(batchItem{
 			action: "addResource",
 			query: `INSERT into search.resources as r values($1,$2,$3) ON CONFLICT (uid) 
@@ -69,7 +67,7 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	}
 	batch.flush()
 	batch.wg.Wait()
-	klog.Infof("\t> %s - [%s] Resync INSERT resources", time.Since(start).Round(time.Millisecond), clusterName)
+	klog.Infof("\t> %6s - [%10s] Resync INSERT resources", time.Since(start).Round(time.Millisecond), clusterName)
 	start = time.Now()
 
 	// DELETE any previous resources for the cluster that isn't included in the incoming resync event.
@@ -79,39 +77,29 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 		resourcesToDelete = append(resourcesToDelete, "'"+resourceUID+"'") // TODO: alternative to quotes.
 	}
 
-	deletedUIDs := make([]string, 0)
 	if len(resourcesToDelete) > 0 {
-		queryStr := fmt.Sprintf("DELETE from search.resources WHERE uid IN (%s) RETURNING uid", strings.Join(resourcesToDelete, ","))
+		queryStr := fmt.Sprintf("DELETE from search.resources WHERE uid IN (%s)", strings.Join(resourcesToDelete, ","))
 
 		deletedRows, err := dao.pool.Query(ctx, queryStr)
 		if err != nil {
 			klog.Warningf("Error deleting resources during resync of cluster %s. Error: %+v", clusterName, err)
 		}
 		defer deletedRows.Close()
-		for deletedRows.Next() {
-			id := ""
-			err := deletedRows.Scan(&id)
-			if err == nil {
-				deletedUIDs = append(deletedUIDs, "'"+id+"'") // TODO: alternative to quotes.
-			}
-		}
 	}
-
-	klog.Infof("\t> %s - [%s] Resync DELETE resources", time.Since(start).Round(time.Millisecond), clusterName)
+	klog.Infof("\t> %6s - [%10s] Resync DELETE resources", time.Since(start).Round(time.Millisecond), clusterName)
 	start = time.Now()
-	klog.Infof("\t@ Resync deleted %d resources: %+v", len(deletedUIDs), deletedUIDs)
 
 	// Delete edges pointing to deleted resources.
-	if len(deletedUIDs) > 0 {
-		deletedUIDsStr := strings.Join(deletedUIDs, ",")
+	if len(resourcesToDelete) > 0 {
+		deletedUIDsStr := strings.Join(resourcesToDelete, ",")
 		queueErr = batch.Queue(batchItem{
 			action: "deleteResourceEdges",
-			query:  fmt.Sprintf("DELETE from search.edges WHERE sourceId IN (%s) OR destId IN (%s)", deletedUIDsStr, deletedUIDsStr),
+			query:  fmt.Sprintf("DELETE FROM search.edges WHERE sourceId IN (%s) OR destId IN (%s)", deletedUIDsStr, deletedUIDsStr),
 			uid:    deletedUIDsStr,
 			// args:   deletedUIDs,
 		})
 	}
-	klog.Infof("\t> %s - [%s] Resync DELETE edges-from-resource", time.Since(start).Round(time.Millisecond), clusterName)
+	klog.Infof("\t> %6s - [%10s] Resync DELETE edges-from-resource", time.Since(start).Round(time.Millisecond), clusterName)
 	start = time.Now()
 
 	// UPDATE Edges
@@ -134,7 +122,7 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 		}
 		existingEdgesMap[edge.SourceUID+edge.EdgeType+edge.DestUID] = edge
 	}
-	klog.Infof("\t> %s - [%s] Resync QUERY existing edges", time.Since(start).Round(time.Millisecond), clusterName)
+	klog.Infof("\t> %6s - [%10s] Resync QUERY existing edges", time.Since(start).Round(time.Millisecond), clusterName)
 
 	// Now compare existing edges with the new edges.
 	for _, edge := range event.AddEdges {
@@ -164,7 +152,7 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 
 	batch.flush()
 	batch.wg.Wait()
-	klog.Infof("\t> %s - [%s] Resync INSERT/DELETE edges", time.Since(start).Round(time.Millisecond), clusterName)
+	klog.Infof("\t> %6s - [%10s] Resync INSERT/DELETE edges", time.Since(start).Round(time.Millisecond), clusterName)
 
 	klog.V(1).Infof("Completed resync of cluster %s", clusterName)
 	return queueErr
