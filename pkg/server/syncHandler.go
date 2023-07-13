@@ -60,7 +60,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	// Get the total cluster resources for validation by the collector.
 	totalResources, totalEdges, validateErr := s.Dao.ClusterTotals(r.Context(), clusterName)
 	if validateErr != nil {
-		klog.Warningf("Responding with error to request from [%s].  Error: %s", clusterName, err)
+		klog.Warningf("Responding with error to request from [%s].  Error: %s", clusterName, validateErr)
 		http.Error(w, "Server error while processing the request.", http.StatusInternalServerError)
 		return
 	}
