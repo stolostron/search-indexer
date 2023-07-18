@@ -20,13 +20,19 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 	var queueErr error
 
+	tableName := strings.ReplaceAll(clusterName, "-", "_")
+	createSql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS search.resources_%s PARTITION OF search.resources FOR VALUES IN ('%s')", tableName, clusterName)
+	_, createerr := dao.pool.Exec(ctx, createSql)
+	checkError(createerr, fmt.Sprintf("Error creating partition table tableName %s.", tableName))
+
 	// ADD RESOURCES
 	// In case of conflict update only if data has changed
 	for _, resource := range event.AddResources {
 		data, _ := json.Marshal(resource.Properties)
 		queueErr = batch.Queue(batchItem{
 			action: "addResource",
-			query: `INSERT into search.resources as r values($1,$2,$3) ON CONFLICT (uid) 
+			query: `INSERT into search.resources as r values($1,$2,$3)
+			ON CONFLICT (uid,cluster)
 			DO UPDATE SET data=$3 WHERE r.uid=$1 and r.data IS DISTINCT FROM $3`,
 			uid:  resource.UID,
 			args: []interface{}{resource.UID, clusterName, string(data)},

@@ -122,8 +122,13 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 	_, err := dao.pool.Exec(ctx, "CREATE SCHEMA IF NOT EXISTS search")
 	checkError(err, "Error creating schema.")
 	_, err = dao.pool.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
+		"CREATE TABLE IF NOT EXISTS search.resources (uid TEXT, cluster TEXT, data JSONB, PRIMARY KEY(uid, cluster)) PARTITION BY LIST (cluster)")
 	checkError(err, "Error creating table search.resources.")
+
+	_, err = dao.pool.Exec(ctx,
+		"CREATE TABLE IF NOT EXISTS search.resources_local_cluster PARTITION OF search.resources FOR VALUES IN ('local-cluster')")
+	checkError(err, "Error creating partition table search.resources_local_cluster.")
+
 	_, err = dao.pool.Exec(ctx,
 		"CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")
 	checkError(err, "Error creating table search.edges.")

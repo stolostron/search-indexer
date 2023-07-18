@@ -258,15 +258,20 @@ func goquDelete(tableName, columnName, arg string) (string, []interface{}, error
 // query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2)
 // ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1"
 func goquInsertUpdate(tableName string, args []interface{}) (string, []interface{}, error) {
-	sql, args, err := goqu.From(
-		goqu.S("search").Table(tableName).As("r")).
-		Insert().
-		Rows(goqu.Record{"uid": args[0], "cluster": args[1], "data": args[2]}).
-		OnConflict(goqu.DoUpdate("uid",
-			goqu.C("data").Set(args[2])).
-			Where(goqu.L(`"r".uid`).Eq(args[0]))).ToSQL()
+	// sql := fmt.Sprintf(`INSERT into search.resources as r values('%1s','%2s','%3s')`, args[0], args[1], args[2])
+	// klog.Info("sql: ", sql)
+	// sql := `INSERT into search.resources as r values($1,$2,$3) ON CONFLICT DO NOTHING`
+	// args = []interface{}{args[0],args[1],args[2]},
 
-	return sql, args, err
+	// sql, args, err := goqu.From(
+	// 	goqu.S("search").Table(tableName).As("r")).
+	// 	Insert().
+	// 	Rows(goqu.Record{"uid": args[0], "cluster": args[1], "data": args[2]}).OnConflict().ToSQL()
+	// 	// OnConflict(goqu.DoUpdate("uid",
+	// 	// 	goqu.C("data").Set(args[2])).
+	// 	// 	Where(goqu.L(`"r".uid`).Eq(args[0]))).ToSQL()
+
+	return "", []interface{}{}, nil
 }
 
 // Query database for managed clusters:

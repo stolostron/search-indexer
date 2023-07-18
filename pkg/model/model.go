@@ -10,6 +10,12 @@ type Resource struct {
 	Properties     map[string]interface{}
 }
 
+type FileResource struct {
+	Uid     string                 `json:"uid,omitempty"`
+	Cluster string                 `json:"cluster,omitempty"`
+	Data    map[string]interface{} `json:"data,omitempty"`
+}
+
 // Describes a relationship between resources
 type Edge struct {
 	SourceUID, DestUID   string
