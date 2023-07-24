@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
@@ -152,6 +153,8 @@ func (dao *DAO) UpsertCluster(ctx context.Context, resource model.Resource) {
 	sql, args, err := goquInsertUpdate("resources", []interface{}{resource.UID, clusterName, string(data)})
 	checkError(err, fmt.Sprintf("Error creating insert/update cluster query for %s", clusterName))
 	if err != nil {
+		klog.Info("Error creating on conflict sql for cluster  %s - check if table exists", clusterName)
+
 		//TO DO: store the pending cluster resource in cache and retry in case of error
 		return
 	}
@@ -160,7 +163,29 @@ func (dao *DAO) UpsertCluster(ctx context.Context, resource model.Resource) {
 	if !dao.clusterInDB(ctx, resource.UID) || !dao.clusterPropsUpToDate(resource.UID, resource) {
 		_, err := dao.pool.Exec(ctx, sql, args...)
 		if err != nil {
-			klog.Warningf("Error inserting/updating cluster with query %s, %s: %s ", sql, clusterName, err.Error())
+			tableName := "search.resources_" + strings.ReplaceAll(clusterName, "-", "_")
+			errMsg := fmt.Sprintf(`relation "%s" does not exist`, tableName)
+			if err != nil && strings.Contains(err.Error(), errMsg) {
+				klog.Infof("table %s doesn't exist", tableName)
+				createSql := fmt.Sprintf("DROP TABLE IF EXISTS %s; CREATE TABLE IF NOT EXISTS %s PARTITION OF search.resources FOR VALUES IN ('%s')", tableName, tableName, clusterName)
+				_, err = dao.pool.Exec(ctx, createSql)
+				checkError(err, fmt.Sprintf("Error creating partition table tableName %s. Query: %s", tableName, createSql))
+				if err == nil {
+					sql, args, err = goquInsertUpdate("resources", []interface{}{resource.UID, clusterName, string(data)})
+					_, err = dao.pool.Exec(ctx, sql, args...)
+					checkError(err, fmt.Sprintf("Error inserting/updating cluster %s with Query: %s", clusterName, createSql))
+
+				} else {
+					klog.Warningf("Error inserting/updating cluster with query %s, %s: %s ", sql, clusterName, err.Error())
+					return
+				}
+			}
+			if err != nil {
+
+				klog.Warningf("Error inserting/updating cluster with query %s, %s: %s ", sql, clusterName, err.Error())
+			} else {
+				klog.Infof("Cluster update successful %s", clusterName)
+			}
 		} else {
 			UpdateClustersCache(resource.UID, resource.Properties)
 		}
@@ -258,6 +283,23 @@ func goquDelete(tableName, columnName, arg string) (string, []interface{}, error
 // query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2)
 // ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1"
 func goquInsertUpdate(tableName string, args []interface{}) (string, []interface{}, error) {
+	// tableName = tableName + "_" + strings.ReplaceAll(args[1].(string), "-", "_")
+	// cols := []exp.Expression{}
+	// cols = append(cols, goqu.C("uid"))
+	// cols = append(cols, goqu.C("cluster"))
+	// // exp.ConflictExpression{cols}
+	// conflicts := "cluster," + "uid"
+	// sql, args, err := goqu.From(
+	// 	goqu.S("search").Table(tableName).As("r")).
+	// 	Insert().
+	// 	Rows(goqu.Record{"uid": args[0], "cluster": args[1], "data": args[2]}).
+	// 	OnConflict(goqu.DoUpdate(conflicts,
+	// 		goqu.C("data").Set(args[2])).
+	// 		Where(goqu.L(`"r".uid`).Eq(args[0])).Where(goqu.L(`"r".cluster`).Eq(args[1]))).ToSQL()
+	// // klog.Info("cluster upsert sql: ", sql)
+
+	// return sql, args, err
+
 	// sql := fmt.Sprintf(`INSERT into search.resources as r values('%1s','%2s','%3s')`, args[0], args[1], args[2])
 	// klog.Info("sql: ", sql)
 	// sql := `INSERT into search.resources as r values($1,$2,$3) ON CONFLICT DO NOTHING`
