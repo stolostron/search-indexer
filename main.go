@@ -13,7 +13,7 @@ import (
 	"github.com/stolostron/search-indexer/pkg/clustersync"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/database"
-	"github.com/stolostron/search-indexer/pkg/server"
+	"github.com/stolostron/search-indexer/pkg/mq"
 	"k8s.io/klog/v2"
 )
 
@@ -43,10 +43,12 @@ func main() {
 	go clustersync.ElectLeaderAndStart(ctx)
 
 	// Start the server.
-	srv := &server.ServerConfig{
-		Dao: &dao,
-	}
-	go srv.StartAndListen(ctx)
+	// srv := &server.ServerConfig{
+	// 	Dao: &dao,
+	// }
+	// go srv.StartAndListen(ctx)
+
+	go mq.StartKafkaConsumer(ctx)
 
 	// Listen and wait for termination signal.
 	sigs := make(chan os.Signal, 1)
