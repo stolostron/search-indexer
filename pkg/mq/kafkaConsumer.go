@@ -14,12 +14,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var (
-	brokerList = []string{""}
-	topic      = "cluster.E"
-	partition  = int32(0)
-)
-
 func StartKafkaConsumer(ctx context.Context) {
 	config := sarama.NewConfig()
 	config.Net.TLS.Enable = true

@@ -78,3 +78,14 @@ ifeq (,$(shell which locust))
 	exit 1
 endif
 
+setup-deploy-kafka: ## Deploy Kafka on the current target cluster.
+	oc new-project kafka
+	oc project kafka
+	oc create -f 'https://strimzi.io/install/latest?namespace=kafka' -n kafka
+	sleep 10
+	oc apply -f https://strimzi.io/examples/latest/kafka/kafka-persistent-single.yaml -n kafka
+	oc wait kafka/my-cluster --for=condition=Ready --timeout=300s -n kafka
+	oc patch kafka my-cluster -n kafka --type=json -p '[{"op": "add", "path": "/spec/kafka/listeners/-", "value": {"name": "route", "port": 9094, "tls": true, "type": "route"}}]'
+
+setup-kafka-brokers: ## Get kafka routes and setup local dev
+	oc get routes -n kafka --no-headers --output=custom-columns=ROUTE:.spec.host --ignore-not-found=true --request-timeout='1s'
