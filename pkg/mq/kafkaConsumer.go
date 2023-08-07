@@ -61,7 +61,7 @@ func StartKafkaConsumer(ctx context.Context) {
 				klog.Errorf("Error unmarshalling message: %+v\n", err)
 			}
 
-			klog.Infof("Received message. UID: %s\t Kind: %s\t Name: %+v\n",
+			klog.Infof("Received mq event. UID: %s\t Kind: %s\t Name: %+v\n",
 				mqMessage.UID, mqMessage.Properties["kind"], mqMessage.Properties["name"])
 
 			batchErr := batch.QueueMQ(topic, mqMessage)
