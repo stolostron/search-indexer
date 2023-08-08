@@ -88,6 +88,11 @@ setup-deploy-kafka: ## Deploy Kafka on the current target cluster.
 	oc patch kafka my-cluster -n kafka --type=json -p '[{"op": "add", "path": "/spec/kafka/listeners/-", "value": {"name": "route", "port": 9094, "tls": true, "type": "route"}}]'
 
 setup-kafka-brokers: ## Get kafka routes and setup local dev
-	@echo "\\n[MANUAL STEP] Update the brokerList on pgk/mq/mqConfig.go with the following.\\n"
-	oc get routes -n kafka --no-headers --output=custom-columns=ROUTE:.spec.host --ignore-not-found=true --request-timeout='1s'
-	
+	$(eval space :=)
+	$(eval space +=)
+	$(eval comma ?= ,)
+	$(eval ROUTES ?= $(shell oc get routes -n kafka --no-headers --output=custom-columns=ROUTE:.spec.host --ignore-not-found=true --request-timeout='1s'))
+	$(eval BROKERS_TMP ?= $(subst .com,.com:443,${ROUTES}))
+	$(eval BROKERS ?= $(subst ${space},${comma},${BROKERS_TMP}))
+	@echo "\\n[MANUAL STEP] Set these environment variables.\\n"
+	@echo "export KAFKA_BROKER_LIST=${BROKERS}\\n"

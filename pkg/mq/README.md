@@ -3,22 +3,24 @@ Notes for Search POC with Kafka
 
 # Deploy Kafka
 
-Use the following make targets to deploy Kafka on an OpenShift cluster.
+Use the following make target to deploy Kafka on an OpenShift cluster.
 ```
 make setup-deploy-kafka
 ```
 
-Configure the brokerList
+## Configure Kafka brokers
+
+To configure the Kafka brokers, run the following make target and paste the generated command.
 ```
 make setup-kafka-brokers
 ```
+
 
 ## Questions
 
 1. Topics - Is using 1 topic per cluster scalable?
 2. Message size - Is sending a message per resource scalable?
 3. Initial or full state - How often should collector send the full state. Should collectors read the existing state from kafka when initializing?
-
 
 
 ## Kafka Events:

@@ -9,19 +9,20 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
+	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/database"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
 
 func StartKafkaConsumer(ctx context.Context) {
-	config := sarama.NewConfig()
-	config.Net.TLS.Enable = true
-	config.Net.TLS.Config = &tls.Config{InsecureSkipVerify: true}
-	config.Consumer.Return.Errors = true
-	config.Consumer.Offsets.Initial = sarama.OffsetOldest // TODO this will replay all previous messages. Change to sarama.OffsetNewest to only get new messages.
+	saramaConfig := sarama.NewConfig()
+	saramaConfig.Net.TLS.Enable = true
+	saramaConfig.Net.TLS.Config = &tls.Config{InsecureSkipVerify: true}
+	saramaConfig.Consumer.Return.Errors = true
+	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest // TODO this will replay all previous messages. Change to sarama.OffsetNewest to only get new messages.
 
-	main, err := sarama.NewConsumer(brokerList, config)
+	main, err := sarama.NewConsumer(config.Cfg.KafkaBrokerList, saramaConfig)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -32,13 +33,13 @@ func StartKafkaConsumer(ctx context.Context) {
 		}
 	}()
 
-	consumer, err := main.ConsumePartition(topic, partition, config.Consumer.Offsets.Initial)
+	consumer, err := main.ConsumePartition(config.Cfg.KafkaTopic, config.Cfg.KafkaPartition, saramaConfig.Consumer.Offsets.Initial)
 	if err != nil {
 		log.Panic(err)
 	}
 
 	// TODO: Discover existing topics.
-	// client, clientErr := sarama.NewClient(brokerList, config)
+	// client, clientErr := sarama.NewClient(brokerList, saramaConfig)
 	// if clientErr != nil {
 	// 	log.Panic(clientErr)
 	// }
@@ -64,7 +65,7 @@ func StartKafkaConsumer(ctx context.Context) {
 			klog.Infof("Received mq event. UID: %s\t Kind: %s\t Name: %+v\n",
 				mqMessage.UID, mqMessage.Properties["kind"], mqMessage.Properties["name"])
 
-			batchErr := batch.QueueMQ(topic, mqMessage)
+			batchErr := batch.QueueMQ(config.Cfg.KafkaTopic, mqMessage)
 			if batchErr != nil {
 				klog.Errorf("Error queueing message: %+v\n", batchErr)
 				continue

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
@@ -44,6 +45,10 @@ type Config struct {
 	ServerAddress       string // Web server address
 	SlowLog             int    // Log operations slower than the specified time in ms. Default: 1 sec
 	Version             string
+	KafkaBrokerList     []string // Kafka brokers
+	KafkaMaxRetry       int      // Kafka retries. Default: 3
+	KafkaPartition      int32    // Kafka partition. Default: 0
+	KafkaTopic          string   // Kafka topic. Default: "cluster.{clusterName}"
 }
 
 // Reads config from environment.
@@ -73,6 +78,10 @@ func new() *Config {
 		ServerAddress:    getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		SlowLog:          getEnvAsInt("SLOW_LOG", 1000), // 1 second
 		Version:          COMPONENT_VERSION,
+		KafkaBrokerList:  strings.Split(getEnv("KAFKA_BROKER_LIST", ""), ","), // Kafka brokers
+		KafkaMaxRetry:    getEnvAsInt("KAFKA_MAX_RETRY", 3),                   // Kafka retries. Default: 3
+		KafkaPartition:   int32(getEnvAsInt("KAFKA_PARTITION", 0)),            // Kafka partition. Default: 0
+		KafkaTopic:       getEnv("CLUSTER_NAME", "cluster.local-cluster"),     // Kafka topic. Default: "cluster.{clusterName}"
 	}
 
 	// URLEncode the db password.
