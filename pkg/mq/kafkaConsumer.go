@@ -18,7 +18,7 @@ import (
 func StartKafkaConsumer(ctx context.Context) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Net.TLS.Enable = true
-	saramaConfig.Net.TLS.Config = &tls.Config{InsecureSkipVerify: true}
+	saramaConfig.Net.TLS.Config = &tls.Config{InsecureSkipVerify: true} // #nosec G402 - POC code, won't merge.
 	saramaConfig.Consumer.Return.Errors = true
 	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest // TODO this will replay all previous messages. Change to sarama.OffsetNewest to only get new messages.
 
