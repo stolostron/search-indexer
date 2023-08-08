@@ -2,8 +2,8 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   labels:
-    job-name: benchmark
-  name: benchmark
+    job-name: search-indexer-benchmark
+  name: search-indexer-benchmark
   namespace: open-cluster-management
 spec:
   backoffLimit: 6
@@ -29,23 +29,8 @@ spec:
           value: "10"
         - name: SPAWN_RATE
           value: "1.0"
-        - name: DB_USER
-          valueFrom:
-            secretKeyRef:
-              key: database-user
-              name: search-postgres
-        - name: DB_PASS
-          valueFrom:
-            secretKeyRef:
-              key: database-password
-              name: search-postgres
-        - name: DB_NAME
-          valueFrom:
-            secretKeyRef:
-              key: database-name
-              name: search-postgres
         - name: HOST
-          value: search-indexer-open-cluster-management.apps.sno-4xlarge-413-xxxxx.dev07.red-chesterfield.com
+          value: search-indexer.open-cluster-management.svc
       dnsPolicy: ClusterFirst
       restartPolicy: Never
       schedulerName: default-scheduler
