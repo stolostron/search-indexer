@@ -243,7 +243,7 @@ func addAdditionalProperties(props map[string]interface{}) map[string]interface{
 	// Map apigroup and kind to sync with ManagedClusterInfo for RBAC
 	props["apigroup"] = managedClusterInfoApiGrp
 	props["kind_plural"] = "managedclusterinfos"
-	props["_hubClusterResource"] = "true"
+	props["_hubClusterResource"] = true
 	return props
 }
 
