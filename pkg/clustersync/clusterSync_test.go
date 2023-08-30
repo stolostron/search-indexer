@@ -105,7 +105,7 @@ func initializeVars() {
 		"kubernetesVersion":   "",
 		"memory":              "0",
 		"name":                "name-foo",
-		"_hubClusterResource": "true",
+		"_hubClusterResource": true,
 	}
 	existingCluster = map[string]interface{}{"UID": "cluster__name-foo",
 		"Kind":       "Cluster",
@@ -248,7 +248,7 @@ func Test_ProcessClusterDeleteOnMC(t *testing.T) {
 
 }
 
-//Delete only if addon name is search-collector
+// Delete only if addon name is search-collector
 func Test_ProcessClusterDeleteOnMCASearch(t *testing.T) {
 	initializeVars()
 	obj := newTestUnstructured(managedclusteraddongroupAPIVersion, "ManagedClusterAddOn", "name-foo", "search-collector", "test-mc-uid")
@@ -381,7 +381,7 @@ func Test_DeleteStaleClustersResources(t *testing.T) {
 
 }
 
-//Mock database outage:
+// Mock database outage:
 func Test_DeleteStaleClustersResources_DB_Outage(t *testing.T) {
 	//ensure cluster in cache exists
 	initializeVars()
