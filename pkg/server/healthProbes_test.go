@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stolostron/search-indexer/pkg/database"
 )
 
 // Test the liveness probe.
@@ -16,10 +18,10 @@ func TestLivenessProbe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	s := ServerConfig{Dao: &database.DAO{DBInitialized: true}}
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(LivenessProbe)
+	handler := http.HandlerFunc(s.LivenessProbe)
 
 	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
 	// directly and pass in our Request and ResponseRecorder.
@@ -47,10 +49,11 @@ func TestReadinessProbe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	s := ServerConfig{Dao: &database.DAO{DBInitialized: true}}
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(ReadinessProbe)
+	handler := http.HandlerFunc(s.ReadinessProbe)
 
 	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
 	// directly and pass in our Request and ResponseRecorder.

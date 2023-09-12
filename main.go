@@ -37,16 +37,17 @@ func main() {
 
 	// Initialize the database
 	dao := database.NewDAO(nil)
-	dao.InitializeTables(ctx)
-
-	// Start cluster sync.
-	go clustersync.ElectLeaderAndStart(ctx)
 
 	// Start the server.
 	srv := &server.ServerConfig{
 		Dao: &dao,
 	}
 	go srv.StartAndListen(ctx)
+
+	dao.InitializeTables(ctx)
+
+	// Start cluster sync.
+	go clustersync.ElectLeaderAndStart(ctx)
 
 	// Listen and wait for termination signal.
 	sigs := make(chan os.Signal, 1)

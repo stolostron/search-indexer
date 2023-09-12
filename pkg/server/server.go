@@ -22,8 +22,8 @@ type ServerConfig struct {
 
 func (s *ServerConfig) StartAndListen(ctx context.Context) {
 	router := mux.NewRouter()
-	router.HandleFunc("/liveness", LivenessProbe).Methods("GET")
-	router.HandleFunc("/readiness", ReadinessProbe).Methods("GET")
+	router.HandleFunc("/liveness", s.LivenessProbe).Methods("GET")
+	router.HandleFunc("/readiness", s.ReadinessProbe).Methods("GET")
 	router.Handle("/metrics", promhttp.HandlerFor(metrics.PromRegistry, promhttp.HandlerOpts{})).Methods("GET")
 
 	// Add middleware to the /aggregator subroute.

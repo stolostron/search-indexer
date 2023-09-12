@@ -18,8 +18,9 @@ import (
 
 // Database Access Object. Use a DAO instance so we can replace the pool object in the unit tests.
 type DAO struct {
-	pool      pgxpoolmock.PgxPool
-	batchSize int
+	DBInitialized bool
+	pool          pgxpoolmock.PgxPool
+	batchSize     int
 }
 
 var poolSingleton pgxpoolmock.PgxPool
