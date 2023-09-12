@@ -38,6 +38,7 @@ func NewDAO(p pgxpoolmock.PgxPool) DAO {
 
 	if poolSingleton == nil {
 		poolSingleton = initializePool()
+		dao.DBInitialized = true
 	}
 	dao.pool = poolSingleton
 	return dao

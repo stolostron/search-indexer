@@ -11,15 +11,15 @@ import (
 
 // LivenessProbe is used to check if this service is alive.
 func (s *ServerConfig) LivenessProbe(w http.ResponseWriter, r *http.Request) {
-	klog.V(7).Info("livenessProbe")
+	klog.Info("livenessProbe")
 	fmt.Fprint(w, "OK")
 }
 
 // ReadinessProbe checks if this service is available.
 func (s *ServerConfig) ReadinessProbe(w http.ResponseWriter, r *http.Request) {
-	klog.V(7).Info("readinessProbe")
+	klog.Info("readinessProbe")
 	if !s.Dao.DBInitialized {
-		fmt.Fprint(w, "error: Postgres db not initialized")
+		fmt.Fprint(w, "ReadinessProbe failed with error: Postgres db not initialized")
 	}
 	fmt.Fprint(w, "OK")
 }
