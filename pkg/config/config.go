@@ -49,14 +49,14 @@ type Config struct {
 // Reads config from environment.
 func new() *Config {
 	conf := &Config{
-		DBBatchSize: getEnvAsInt("DB_BATCH_SIZE", 2500),
+		DBBatchSize: getEnvAsInt("DB_BATCH_SIZE", 500),
 		DBHost:      getEnv("DB_HOST", "localhost"),
-		// Postgres has 100 conns by default. Using 10 allows scaling indexer and api.
-		DBMaxConns:          getEnvAsInt("DB_MAX_CONNS", 10),                   // 10 - Overrides pgxpool default
+		// Postgres has 100 conns by default. Using 20 allows scaling indexer and api.
+		DBMaxConns:          getEnvAsInt("DB_MAX_CONNS", 20),                   // 20 - Overrides pgxpool default
 		DBMaxConnLifeJitter: getEnvAsInt("DB_MAX_CONN_LIFE_JITTER", 2*60*1000), // 2 min - Overrides pgxpool default
 		DBMaxConnIdleTime:   getEnvAsInt("DB_MAX_CONN_IDLE_TIME", 30*60*1000),  // 30 min - Default for pgxpool.Config
 		DBMaxConnLifeTime:   getEnvAsInt("DB_MAX_CONN_LIFE_TIME", 60*60*1000),  // 60 min - Default for pgxpool.Config
-		DBMinConns:          getEnvAsInt("DB_MIN_CONNS", 2),                    // 2 - Overrides pgxpool default
+		DBMinConns:          getEnvAsInt("DB_MIN_CONNS", 0),                    // Default for pgxpool.Config
 		DBName:              getEnv("DB_NAME", ""),
 		DBPass:              getEnv("DB_PASS", ""),
 		DBPort:              getEnvAsInt("DB_PORT", 5432),
