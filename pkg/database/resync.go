@@ -15,10 +15,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func logStepDuration(timer *time.Time, cluster, message string) {
-	klog.V(2).Infof("\t> %6s\t - [%10s] %s", time.Since(*timer).Round(time.Millisecond), cluster, message)
-	*timer = time.Now()
-}
 
 // Reset data for the to the incoming state.
 func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
@@ -64,7 +60,7 @@ func (dao *DAO) resyncResources(ctx context.Context, wg *sync.WaitGroup, resourc
 		}
 		existingResourcesMap[id] = struct{}{}
 	}
-	logStepDuration(&timer, clusterName, "QUERY existing resources")
+	metrics.LogStepDuration(&timer, clusterName, "QUERY existing resources")
 
 	// INSERT or UPDATE resources.
 	// In case of conflict update only if data has changed.
@@ -105,7 +101,7 @@ func (dao *DAO) resyncResources(ctx context.Context, wg *sync.WaitGroup, resourc
 		klog.Infof("Deleted %d resources during resync of cluster %s", deletedRows.RowsAffected(), clusterName)
 	}
 	batch.wg.Wait()
-	logStepDuration(&timer, clusterName,
+	metrics.LogStepDuration(&timer, clusterName,
 		fmt.Sprintf("Resync INSERT/UPDATE [%d] DELETE [%d] resources", len(resources), len(existingResourcesMap)))
 }
 
@@ -135,7 +131,7 @@ func (dao *DAO) resyncEdges(ctx context.Context, wg *sync.WaitGroup,
 		}
 		existingEdgesMap[edge.SourceUID+edge.EdgeType+edge.DestUID] = edge
 	}
-	logStepDuration(&timer, clusterName, "Resync QUERY existing edges")
+	metrics.LogStepDuration(&timer, clusterName, "Resync QUERY existing edges")
 
 	// Now compare existing edges with the new edges.
 	for _, edge := range edges {
@@ -178,5 +174,5 @@ func (dao *DAO) resyncEdges(ctx context.Context, wg *sync.WaitGroup,
 
 	batch.flush()
 	batch.wg.Wait()
-	logStepDuration(&timer, clusterName, fmt.Sprintf("Resync INSERT [%d] DELETE [%d] edges", len(edges), len(existingEdgesMap)))
+	metrics.LogStepDuration(&timer, clusterName, fmt.Sprintf("Resync INSERT [%d] DELETE [%d] edges", len(edges), len(existingEdgesMap)))
 }
