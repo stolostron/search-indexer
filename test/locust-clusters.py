@@ -47,7 +47,7 @@ class ClusterBehavior(TaskSet):
 
     def on_start(self):
         self.send_full_state_payload()
-        time.sleep(10)
+        time.sleep(60)
 
     @task(10)
     def send_update(self):
@@ -61,9 +61,9 @@ class ClusterBehavior(TaskSet):
 class Cluster(HttpUser):
     name = ""
     tasks = [ClusterBehavior]
-    wait_time = between(5, 120)
+    wait_time = between(5, 300)
     retries = 0
-    template = "sno-150k.json" # sno-100k.json, sno-150k.json
+    template = "sno-5k.json" # sno-100k.json, sno-150k.json
 
     def on_start(self):
         global clusterCount
