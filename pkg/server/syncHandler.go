@@ -52,7 +52,8 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		err = s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
 	}
 	if err != nil {
-		klog.Warningf("Responding with error to request from [%s].  Error: %s", clusterName, err)
+		klog.Warningf("Responding with error to request from %12s. RequestId: %s  Error: %s",
+			clusterName, syncEvent.RequestId, err)
 		http.Error(w, "Server error while processing the request.", http.StatusInternalServerError)
 		return
 	}
@@ -60,7 +61,8 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	// Get the total cluster resources for validation by the collector.
 	totalResources, totalEdges, validateErr := s.Dao.ClusterTotals(r.Context(), clusterName)
 	if validateErr != nil {
-		klog.Warningf("Responding with error to request from [%s].  Error: %s", clusterName, validateErr)
+		klog.Warningf("Responding with error to request from %12s. RequestId: %s  Error: %s",
+			clusterName, syncEvent.RequestId, validateErr)
 		http.Error(w, "Server error while processing the request.", http.StatusInternalServerError)
 		return
 	}
@@ -76,7 +78,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log request.
-	klog.V(5).Infof("Request from [%s] took [%v] clearAll [%t] addTotal [%d]",
+	klog.V(5).Infof("Request from [%12s] took [%v] clearAll [%t] addTotal [%d]",
 		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
 }

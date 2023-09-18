@@ -15,14 +15,13 @@ import (
 	"k8s.io/klog/v2"
 )
 
-
 // Reset data for the to the incoming state.
 func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	clusterName string, syncResponse *model.SyncResponse) error {
 
 	defer metrics.SlowLog(fmt.Sprintf("Slow resync from cluster %s", clusterName), 0)()
 	klog.Infof(
-		"Starting resync of [%10s]. This is normal, but it could be a problem if it happens often.", clusterName)
+		"Starting resync from %12s. This is normal, but it could be a problem if it happens often.", clusterName)
 
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
@@ -34,7 +33,7 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 
 	// TODO: Need to capture errors from the goroutines above.
 
-	klog.V(1).Infof("Completed resync of cluster %s", clusterName)
+	klog.V(1).Infof("Completed resync of cluster %12s.\t RequestId: %s", clusterName, event.RequestId)
 	return nil // TODO return queueErr
 }
 
@@ -48,7 +47,7 @@ func (dao *DAO) resyncResources(ctx context.Context, wg *sync.WaitGroup, resourc
 	existingResourcesMap := make(map[string]struct{})
 	existingRows, err := dao.pool.Query(ctx, "SELECT uid FROM search.resources WHERE cluster=$1", clusterName)
 	if err != nil {
-		klog.Warningf("Error getting existing resources uids of cluster %s. Error: %+v", clusterName, err)
+		klog.Warningf("Error getting existing resource uids for cluster %12s. Error: %+v", clusterName, err)
 	}
 	defer existingRows.Close()
 	for existingRows.Next() {
@@ -117,7 +116,7 @@ func (dao *DAO) resyncEdges(ctx context.Context, wg *sync.WaitGroup,
 	// Get all existing edges for the cluster.
 	edgeRow, err := dao.pool.Query(ctx, "SELECT sourceId,edgeType,destId FROM search.edges WHERE cluster=$1", clusterName)
 	if err != nil {
-		klog.Warningf("Error getting existing edges during resync of cluster %s. Error: %+v", clusterName, err)
+		klog.Warningf("Error getting existing edges during resync of cluster %12s. Error: %+v", clusterName, err)
 	}
 	defer edgeRow.Close()
 
