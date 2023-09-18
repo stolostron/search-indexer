@@ -36,4 +36,16 @@ Alternatively, we can just use this one line command instead of the UI for more 
 
 For more on locust visit https://docs.locust.io/en/stable/index.html
 
+### Running Locust inside your cluster
+
+1. Build the docker image.
+    ```
+    docker build -f Dockerfile.locust .
+    ```
+2. Publish the docker image.
+3. Deploy the following job on your cluster
+    ```
+    oc apply -f test/locustJob.yaml
+    ```
+
 Rebuild Date: 2022-09-26
