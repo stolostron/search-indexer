@@ -6,10 +6,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
+	"github.com/doug-martin/goqu/v9"
+	"github.com/lib/pq"
 	"github.com/stolostron/search-indexer/pkg/metrics"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
@@ -90,10 +91,15 @@ func (dao *DAO) resyncResources(ctx context.Context, wg *sync.WaitGroup, resourc
 		for resourceUID := range existingResourcesMap {
 			resourcesToDelete = append(resourcesToDelete, "'"+resourceUID+"'")
 		}
-
-		queryStr := fmt.Sprintf("DELETE from search.resources WHERE uid IN (%s)", strings.Join(resourcesToDelete, ","))
-
-		deletedRows, err := dao.pool.Exec(ctx, queryStr) // TODO: Use batch.Queue() instead of Exec()
+		schemaTable := goqu.S("search").Table("resources")
+		// Sample query: DELETE from search.resources WHERE uid IN (%s)", strings.Join(resourcesToDelete, ","))
+		queryStr, params, err := goqu.From(schemaTable).Delete().Where(goqu.C("uid").
+			In(pq.Array(resourcesToDelete))).ToSQL()
+		if err != nil {
+			klog.Warningf("Error creating query to delete resources during resync of cluster %s. Error: %+v",
+				clusterName, err)
+		}
+		deletedRows, err := dao.pool.Exec(ctx, queryStr, params) // TODO: Use batch.Queue() instead of Exec()
 		if err != nil {
 			klog.Warningf("Error deleting resources during resync of cluster %s. Error: %+v", clusterName, err)
 		}
