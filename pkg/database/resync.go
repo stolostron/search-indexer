@@ -114,7 +114,7 @@ func (dao *DAO) resyncEdges(ctx context.Context, wg *sync.WaitGroup,
 	var queueErr error
 
 	// Get all existing edges for the cluster.
-	edgeRow, err := dao.pool.Query(ctx, "SELECT sourceId,edgeType,destId FROM search.edges WHERE cluster=$1", clusterName)
+	edgeRow, err := dao.pool.Query(ctx, "SELECT sourceId,edgeType,destId FROM search.edges WHERE edgetype!='interCluster' AND cluster=$1", clusterName)
 	if err != nil {
 		klog.Warningf("Error getting existing edges during resync of cluster %12s. Error: %+v", clusterName, err)
 	}
