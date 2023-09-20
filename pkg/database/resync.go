@@ -33,6 +33,11 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	wg.Wait()
 
 	// TODO: Need to capture errors from the goroutines above.
+	syncResponse.TotalAdded = len(event.AddResources) - len(syncResponse.AddErrors)
+	syncResponse.TotalUpdated = len(event.UpdateResources) - len(syncResponse.UpdateErrors)
+	syncResponse.TotalDeleted = len(event.DeleteResources) - len(syncResponse.DeleteErrors)
+	syncResponse.TotalEdgesAdded = len(event.AddEdges) - len(syncResponse.AddEdgeErrors)
+	syncResponse.TotalEdgesDeleted = len(event.DeleteEdges) - len(syncResponse.DeleteEdgeErrors)
 
 	klog.V(1).Infof("Completed resync of cluster %12s.\t RequestId: %s", clusterName, event.RequestId)
 	return nil // TODO return queueErr
