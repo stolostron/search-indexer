@@ -125,8 +125,8 @@ func Test_resyncRequest(t *testing.T) {
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 	columns := []string{"sourceId", "edgeType", "destId"}
 	pgxRows := pgxpoolmock.NewRows(columns).AddRow("sourceId1", "edgeType1", "destId1").ToPgxRows()
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT sourceId,edgeType,destId FROM search.edges WHERE edgetype!='interCluster' AND cluster=$1`), []interface{}{"test-cluster"}).Return(pgxRows, nil)
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT uid FROM search.resources WHERE cluster=$1`), []interface{}{"test-cluster"}).Return(pgxRows, nil)
+	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("cluster" = 'test-cluster')`), []interface{}{}).Return(pgxRows, nil)
+	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "sourceid", "edgetype", "destid" FROM "search"."edges" WHERE (("edgetype" != 'interCluster') AND ("cluster" = 'test-cluster'))`), []interface{}{}).Return(pgxRows, nil)
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
@@ -166,8 +166,8 @@ func Test_resyncRequest_withErrorDeletingResources(t *testing.T) {
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT sourceId,edgeType,destId FROM search.edges WHERE edgetype!='interCluster' AND cluster=$1`), []interface{}{"test-cluster"}).Return(pgxRows, nil)
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT uid FROM search.resources WHERE cluster=$1`), []interface{}{"test-cluster"}).Return(pgxRows, nil)
+	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("cluster" = 'test-cluster')`), []interface{}{}).Return(pgxRows, nil)
+	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "sourceid", "edgetype", "destid" FROM "search"."edges" WHERE (("edgetype" != 'interCluster') AND ("cluster" = 'test-cluster'))`), []interface{}{}).Return(pgxRows, nil)
 
 	br := &batchResults{rows: []int{10}, mockErrorOnQuery: errors.New("unexpected EOF")} //mockErrorOnClose: errors.New("Server error while processing the request.")}
 
@@ -200,8 +200,8 @@ func Test_resyncRequest_withErrorDeletingEdges(t *testing.T) {
 	server, mockPool := buildMockServer(t)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any())
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT sourceId,edgeType,destId FROM search.edges WHERE edgetype!='interCluster' AND cluster=$1`), []interface{}{"test-cluster"}).Return(pgxRows, nil)
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT uid FROM search.resources WHERE cluster=$1`), []interface{}{"test-cluster"}).Return(pgxRows, nil)
+	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("cluster" = 'test-cluster')`), []interface{}{}).Return(pgxRows, nil)
+	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "sourceid", "edgetype", "destid" FROM "search"."edges" WHERE (("edgetype" != 'interCluster') AND ("cluster" = 'test-cluster'))`), []interface{}{}).Return(pgxRows, nil)
 
 	br := &batchResults{rows: []int{10}, mockErrorOnQuery: errors.New("unexpected EOF")} //mockErrorOnClose: errors.New("Server error while processing the request.")}
 

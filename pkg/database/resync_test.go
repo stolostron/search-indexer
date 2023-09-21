@@ -22,10 +22,8 @@ func Test_ResyncData(t *testing.T) {
 	pgxRows := pgxpoolmock.NewRows(columns).AddRow([]string{"srcuid1"}).ToPgxRows()
 
 	// Mock PostgreSQL apis
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq(`DELETE FROM "search"."resources" WHERE (("cluster" = 'test-cluster') AND ("uid" != 'cluster__test-cluster'))`), gomock.Eq([]interface{}{})).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq(`DELETE FROM "search"."edges" WHERE ("cluster" = 'test-cluster')`), gomock.Eq([]interface{}{})).Return(nil, nil)
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT sourceId,edgeType,destId FROM search.edges WHERE edgetype!='interCluster' AND cluster=$1`), []interface{}{"test-cluster"}).Return(pgxRows, nil)
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT uid FROM search.resources WHERE cluster=$1`), []interface{}{"test-cluster"}).Return(pgxRows, nil)
+	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("cluster" = 'test-cluster')`), []interface{}{}).Return(pgxRows, nil)
+	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "sourceid", "edgetype", "destid" FROM "search"."edges" WHERE (("edgetype" != 'interCluster') AND ("cluster" = 'test-cluster'))`), []interface{}{}).Return(pgxRows, nil)
 
 	br := BatchResults{}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
