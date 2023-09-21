@@ -47,7 +47,7 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 //	2. Query and iterate existing resources for the cluster.
 //  3. For each existing resource:
 //		- DELETE if not found in the incoming resource.
-//      - UPDATE if doesn't match the incoming resource.
+//		- UPDATE if doesn't match the incoming resource.
 //  4. INSERT incoming resources not found in the existing resources.
 func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, clusterName string,
 	syncResponse *model.SyncResponse) error {
@@ -106,7 +106,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	for uid, resource := range incomingResMap {
 		data, _ := json.Marshal(resource.Properties)
 		// FIXME!!! Using goqu to insert is too slow. Why??
-		
+
 		// query, _, err := useGoqu(
 		// 	"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO NOTHING",
 		// 	[]interface{}{uid, clusterName, string(data)})
