@@ -25,6 +25,6 @@ func SlowLog(msg string, logAfter time.Duration) func() {
 
 // Logs the duration of a step in a process and reset the timer.
 func LogStepDuration(timer *time.Time, cluster, message string) {
-	klog.V(2).Infof("\t> %6s\t [%12s] %s", time.Since(*timer).Round(time.Millisecond), cluster, message)
+	klog.V(5).Infof("\t> %6s\t [%12s] %s", time.Since(*timer).Round(time.Millisecond), cluster, message)
 	*timer = time.Now()
 }
