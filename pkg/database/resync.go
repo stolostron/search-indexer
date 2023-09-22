@@ -149,7 +149,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 			resourcesToDelete)
 		if err == nil {
 			queueErr := batch.Queue(batchItem{
-				action: "deleteResources",
+				action: "deleteResource",
 				query:  query,
 				uid:    fmt.Sprintf("%s", resourcesToDelete),
 				args:   params,
@@ -165,7 +165,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 			resourcesToDelete)
 		if err == nil {
 			queueErr := batch.Queue(batchItem{
-				action: "deleteEdges",
+				action: "deleteEdge",
 				query:  query,
 				uid:    fmt.Sprintf("%s", resourcesToDelete),
 				args:   params,
@@ -177,6 +177,9 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	}
 	batch.flush()
 	batch.wg.Wait()
+	syncResponse.TotalAdded = len(incomingResMap)
+	syncResponse.TotalDeleted = len(resourcesToDelete)
+	syncResponse.TotalUpdated = len(resourcesToUpdate)
 	metrics.LogStepDuration(&timer, clusterName,
 		fmt.Sprintf("Reset resources stats: UNCHANGED [%d] INSERT [%d] UPDATE [%d] DELETE [%d]",
 			len(resources)-len(incomingResMap)-len(resourcesToUpdate),
@@ -186,7 +189,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 }
 
 // Reset Edges
-//	1. Get existing edges for the cluster. Excluding intercluster edges.
+//  1. Get existing edges for the cluster. Excluding intercluster edges.
 //  2. For each incoming edge, INSERT if it doesn't exist.
 //  3. Delete any existing edges that aren't in the incoming sync event.
 func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName string,
@@ -243,6 +246,7 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 				klog.Warningf("Error queuing edges. Error: %+v", queueErr)
 				return queueErr
 			}
+			syncResponse.TotalEdgesAdded++
 		}
 	}
 
@@ -262,12 +266,13 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 				klog.Warningf("Error queuing edges. Error: %+v", queueErr)
 				return queueErr
 			}
+			syncResponse.TotalEdgesDeleted++
 		}
 	}
 
 	batch.flush()
 	batch.wg.Wait()
 	metrics.LogStepDuration(&timer, clusterName, fmt.Sprintf("Reset edges stats: INSERT [%d] DELETE [%d]",
-		len(edges), len(existingEdgesMap)))
+		syncResponse.TotalEdgesAdded, syncResponse.TotalEdgesDeleted))
 	return nil
 }

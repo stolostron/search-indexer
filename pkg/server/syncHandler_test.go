@@ -124,8 +124,9 @@ func Test_resyncRequest(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
+	// Mock existing data.
 	columns := []string{"uid", "data"}
-	nodeRows := pgxpoolmock.NewRows(columns).AddRow("uid", "{}").ToPgxRows()
+	nodeRows := pgxpoolmock.NewRows(columns).AddRow("mock-uid", "{}").ToPgxRows()
 	edgeColumns := []string{"sourceId", "edgeType", "destId"}
 	edgeRows := pgxpoolmock.NewRows(edgeColumns).AddRow("sourceId1", "edgeType1", "destId1").ToPgxRows()
 
@@ -146,10 +147,10 @@ func Test_resyncRequest(t *testing.T) {
 		t.Error("Unable to decode response body.")
 	}
 
-	// expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalResources: 10, TotalEdges: 4}
-	// if fmt.Sprintf("%+v", decodedResp) != fmt.Sprintf("%+v", expected) {
-	// 	t.Errorf("Incorrect response body.\n expected '%+v'\n received '%+v'", expected, decodedResp)
-	// }
+	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalDeleted: 1, TotalResources: 10, TotalEdgesDeleted: 1, TotalEdges: 4}
+	if fmt.Sprintf("%+v", decodedResp) != fmt.Sprintf("%+v", expected) {
+		t.Errorf("Incorrect response body.\n expected '%+v'\n received '%+v'", expected, decodedResp)
+	}
 }
 
 func Test_resyncRequest_withErrorDeletingResources(t *testing.T) {
@@ -163,8 +164,9 @@ func Test_resyncRequest_withErrorDeletingResources(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
 	router := mux.NewRouter()
 
+	// Mock existing data.
 	columns := []string{"uid", "data"}
-	nodeRows := pgxpoolmock.NewRows(columns).AddRow("uid", "{}").ToPgxRows()
+	nodeRows := pgxpoolmock.NewRows(columns).AddRow("mock-uid", "{}").ToPgxRows()
 	edgeColumns := []string{"sourceId", "edgeType", "destId"}
 	edgeRows := pgxpoolmock.NewRows(edgeColumns).AddRow("sourceId1", "edgeType1", "destId1").ToPgxRows()
 
