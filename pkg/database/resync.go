@@ -18,11 +18,9 @@ import (
 func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	clusterName string, syncResponse *model.SyncResponse) error {
 
-	defer metrics.SlowLog(fmt.Sprintf("Slow resync from cluster %s", clusterName), 0)()
+	defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s. RequestId: %d", clusterName, event.RequestId), 0)()
 	klog.Infof(
 		"Starting resync from %12s. This is normal, but it could be a problem if it happens often.", clusterName)
-
-	// FUTURE: Parallelize the resync of resources and edges.
 
 	// Reset resources
 	err := dao.resetResources(ctx, event.AddResources, clusterName, syncResponse)
