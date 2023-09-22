@@ -105,24 +105,21 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	// INSERT resources that weren't found in the database.
 	for uid, resource := range incomingResMap {
 		data, _ := json.Marshal(resource.Properties)
-		// FIXME!!! Using goqu to insert is too slow. Why??
-
-		// query, _, err := useGoqu(
-		// 	"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO NOTHING",
-		// 	[]interface{}{uid, clusterName, string(data)})
-		// if err == nil {
-
-		queueErr := batch.Queue(batchItem{
-			action: "addResource",
-			query:  `INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO NOTHING`,
-			uid:    uid,
-			args:   []interface{}{uid, clusterName, string(data)},
-		})
-		if queueErr != nil {
-			klog.Warningf("Error queuing resources to add. Error: %+v", queueErr)
-			return queueErr
+		query, params, err := useGoqu(
+			"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO NOTHING",
+			[]interface{}{uid, clusterName, string(data)})
+		if err == nil {
+			queueErr := batch.Queue(batchItem{
+				action: "addResource",
+				query:  query,
+				uid:    uid,
+				args:   params,
+			})
+			if queueErr != nil {
+				klog.Warningf("Error queuing resources to add. Error: %+v", queueErr)
+				return queueErr
+			}
 		}
-		// }
 	}
 
 	// UPDATE resources that have changed.
@@ -147,6 +144,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 
 	// DELETE resources that no longer exist and their edges.
 	if len(resourcesToDelete) > 0 {
+		// FIXME!!! DELETE NOT WORKING.
 		query, params, err := useGoqu(
 			"DELETE from search.resources WHERE uid IN ($1)",
 			resourcesToDelete)
@@ -164,7 +162,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 
 		// DELETE edges that point to deleted resources.
 		query, params, err = useGoqu(
-			"DELETE from search.edges WHERE sourceId IN ($1) OR destId IN ($1)",
+			"DELETE from search.edges WHERE sourceid IN ($1) OR destid IN ($1)",
 			resourcesToDelete)
 		if err == nil {
 			queueErr := batch.Queue(batchItem{
@@ -206,7 +204,6 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 		"SELECT sourceid, edgetype, destid FROM search.edges WHERE edgetype!='interCluster' AND cluster=$1",
 		[]interface{}{clusterName})
 	if err == nil {
-		// edgeRow, err := dao.pool.Query(ctx, "SELECT sourceId,edgeType,destId FROM search.edges WHERE edgetype!='interCluster' AND cluster=$1", clusterName)
 		edgeRow, err := dao.pool.Query(ctx, query, params...)
 		if err != nil {
 			klog.Warningf("Error getting existing edges during resync of cluster %12s. Error: %+v", clusterName, err)
@@ -233,22 +230,21 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 			continue
 		}
 		// If the edge doesn't exist, add it.
-		// FIXME!!! Using goqu to insert is too slow. Why??
-		// query, params, err := useGoqu(
-		// 	"INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
-		// 	[]interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName})
-		// if err == nil {
-		queueErr = batch.Queue(batchItem{
-			action: "addEdge",
-			query:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
-			uid:    edge.SourceUID,
-			args:   []interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName},
-		})
-		if queueErr != nil {
-			klog.Warningf("Error queuing edges. Error: %+v", queueErr)
-			return queueErr
+		query, params, err := useGoqu(
+			"INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
+			[]interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName})
+		if err == nil {
+			queueErr = batch.Queue(batchItem{
+				action: "addEdge",
+				query:  query,
+				uid:    edge.SourceUID,
+				args:   params,
+			})
+			if queueErr != nil {
+				klog.Warningf("Error queuing edges. Error: %+v", queueErr)
+				return queueErr
+			}
 		}
-		// }
 	}
 
 	// Delete existing edges that are not in the new sync event.
