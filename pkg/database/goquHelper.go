@@ -30,11 +30,11 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			Update().Set(goqu.Record{"data": params[1].(string)}).Where(goqu.C("uid").Eq(params[0])).ToSQL()
 
 	case "DELETE from search.resources WHERE uid IN ($1)":
-		q, p, er = dialect.From(resources).Prepared(true).
+		q, p, er = dialect.From(resources).
 			Delete().Where(goqu.C("uid").In(params)).ToSQL()
 
 	case "DELETE from search.edges WHERE sourceid IN ($1) OR destid IN ($1)":
-		q, p, er = dialect.From(edges).Prepared(true).
+		q, p, er = dialect.From(edges).
 			Delete().Where(goqu.Or(goqu.C("sourceid").In(params), goqu.C("destid").In(params))).ToSQL()
 
 	// Queries for EDGES table.

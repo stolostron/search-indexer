@@ -43,11 +43,11 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 }
 
 // Reset Resources.
-//	1. Create a map of incoming resources.
-//	2. Query and iterate existing resources for the cluster.
+//  1. Create a map of incoming resources.
+//  2. Query and iterate existing resources for the cluster.
 //  3. For each existing resource:
-//		- DELETE if not found in the incoming resource.
-//		- UPDATE if doesn't match the incoming resource.
+//      - UPDATE if doesn't match the incoming resource.
+//      - DELETE if not found in the incoming resource.
 //  4. INSERT incoming resources not found in the existing resources.
 func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, clusterName string,
 	syncResponse *model.SyncResponse) error {
@@ -144,7 +144,6 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 
 	// DELETE resources that no longer exist and their edges.
 	if len(resourcesToDelete) > 0 {
-		// FIXME!!! DELETE NOT WORKING.
 		query, params, err := useGoqu(
 			"DELETE from search.resources WHERE uid IN ($1)",
 			resourcesToDelete)
@@ -161,7 +160,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 		}
 
 		// DELETE edges that point to deleted resources.
-		query, params, err = useGoqu(
+		query, _, err = useGoqu(
 			"DELETE from search.edges WHERE sourceid IN ($1) OR destid IN ($1)",
 			resourcesToDelete)
 		if err == nil {
