@@ -19,13 +19,13 @@ func Test_ResyncData(t *testing.T) {
 	dao, mockPool := buildMockDAO(t)
 
 	columns := []string{"uid", "data"}
-	resourceRows := pgxpoolmock.NewRows(columns).AddRow([]string{"uid-123", "{}"}).ToPgxRows()
+	resourceRows := pgxpoolmock.NewRows(columns).AddRow("uid-123", `{"kind: "mock"}`).ToPgxRows()
 	edgeColumns := []string{"sourceId", "edgeType", "destId"}
 	edgeRows := pgxpoolmock.NewRows(edgeColumns).AddRow("sourceId1", "edgeType1", "destId1").ToPgxRows()
 
 	// Mock PostgreSQL apis
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("cluster" = 'test-cluster')`), []interface{}{}).Return(resourceRows, nil)
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "sourceid", "edgetype", "destid" FROM "search"."edges" WHERE (("edgetype" != 'interCluster') AND ("cluster" = 'test-cluster'))`), []interface{}{}).Return(edgeRows, nil)
+	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("cluster" = $1)`), []interface{}{"test-cluster"}).Return(resourceRows, nil)
+	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "sourceid", "edgetype", "destid" FROM "search"."edges" WHERE (("edgetype" != $1) AND ("cluster" = $2))`), []interface{}{"interCluster", "test-cluster"}).Return(edgeRows, nil)
 
 	br := BatchResults{}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
