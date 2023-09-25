@@ -62,7 +62,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 
 	// Get existing resources (UID and data) for the cluster.
 	query, params, err := useGoqu(
-		"SELECT uid, data FROM search.resources WHERE cluster=$1",
+		"SELECT uid, data FROM search.resources WHERE cluster=$1 AND uid!='cluster__$1'",
 		[]interface{}{clusterName})
 	if err == nil {
 		existingRows, err := dao.pool.Query(ctx, query, params...)
@@ -169,7 +169,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 				args:   params,
 			})
 			if queueErr != nil {
-				klog.Warningf("Error queing edges for deletion. Error: %+v", queueErr)
+				klog.Warningf("Error queuing edges for deletion. Error: %+v", queueErr)
 			}
 		}
 	}
