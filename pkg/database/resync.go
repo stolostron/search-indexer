@@ -117,6 +117,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 				klog.Warningf("Error queuing resources to add. Error: %+v", queueErr)
 				return queueErr
 			}
+			syncResponse.TotalAdded++
 		}
 	}
 
@@ -137,6 +138,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 				klog.Warningf("Error queuing resources to update. Error: %+v", queueErr)
 				return queueErr
 			}
+			syncResponse.TotalUpdated++
 		}
 	}
 
@@ -155,6 +157,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 			if queueErr != nil {
 				klog.Warningf("Error queuing resources for deletion. Error: %+v", queueErr)
 			}
+			syncResponse.TotalDeleted += len(resourcesToDelete)
 		}
 
 		// DELETE edges that point to deleted resources.
@@ -181,7 +184,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	metrics.LogStepDuration(&timer, clusterName,
 		fmt.Sprintf("Reset resources stats: UNCHANGED [%d] INSERT [%d] UPDATE [%d] DELETE [%d]",
 			len(resources)-len(incomingResMap)-len(resourcesToUpdate),
-			len(incomingResMap), len(resourcesToUpdate), len(resourcesToDelete)))
+			syncResponse.TotalAdded, syncResponse.TotalUpdated, syncResponse.TotalDeleted))
 
 	return nil
 }
