@@ -239,6 +239,9 @@ func (dao *DAO) clusterPropsUpToDate(clusterUID string, resource model.Resource)
 	}
 }
 
+// Create a goqu query to delete a row.
+// Sample query:
+//   DELETE from <tableName> WHERE <columnName> = '<arg>' AND uid != 'cluster__<arg>'
 func goquDelete(tableName, columnName, arg string) (string, []interface{}, error) {
 	var whereDs []exp.Expression
 	whereDs = append(whereDs, goqu.C(columnName).Eq(arg))
