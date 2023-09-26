@@ -123,9 +123,7 @@ func Test_resyncRequest(t *testing.T) {
 
 	br := &batchResults{rows: []int{10, 4}}
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
-
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(5)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)
@@ -163,8 +161,7 @@ func Test_resyncRequest_withErrorDeletingResources(t *testing.T) {
 
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
 
-	br := &batchResults{rows: []int{10}, mockErrorOnQuery: errors.New("unexpected EOF")} //mockErrorOnClose: errors.New("Server error while processing the request.")}
-
+	br := &batchResults{rows: []int{10}, mockErrorOnQuery: errors.New("unexpected EOF")}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
@@ -193,9 +190,9 @@ func Test_resyncRequest_withErrorDeletingEdges(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any())
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
 
-	br := &batchResults{rows: []int{10}, mockErrorOnQuery: errors.New("unexpected EOF")} //mockErrorOnClose: errors.New("Server error while processing the request.")}
-
+	br := &batchResults{rows: []int{10}, mockErrorOnQuery: errors.New("unexpected EOF")}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
+
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)
 

@@ -46,7 +46,7 @@ func Test_ResyncData_errors(t *testing.T) {
 	testutils.MockDatabaseState(mockPool)
 
 	// Mock error on INSERT.
-	br := &testutils.MockBatchResults{Rows: make([]int,0), MockErrorOnClose: errors.New("unexpected EOF")}
+	br := &testutils.MockBatchResults{Rows: make([]int, 0), MockErrorOnClose: errors.New("unexpected EOF")}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	// Prepare Request data.
