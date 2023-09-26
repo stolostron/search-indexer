@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
 	"github.com/jackc/pgconn"
 	pgx "github.com/jackc/pgx/v4"
@@ -53,7 +54,7 @@ func Test_UpsertCluster_NoUpdate(t *testing.T) {
 	AssertEqual(t, ok, true, "existingClustersCache should have an entry for cluster foo")
 }
 
-//Test when number of properties match but values are updated
+// Test when number of properties match but values are updated
 // Values in clusters cache should get updated
 func Test_UpsertCluster_Update1(t *testing.T) {
 	initializeVars()
@@ -144,7 +145,7 @@ func Test_UpsertCluster_Update2(t *testing.T) {
 
 }
 
-//Should insert cluster
+// Should insert cluster
 func Test_UpsertCluster_Insert(t *testing.T) {
 	initializeVars()
 	tmpClusterProps, _ := existingCluster["Properties"].(map[string]interface{})
@@ -196,7 +197,7 @@ func Test_clusterPropsUpToDate_notInCache(t *testing.T) {
 
 }
 
-//select query error condition
+// select query error condition
 func Test_clusterInDB_QueryErr(t *testing.T) {
 
 	// Prepare a mock DAO instance
@@ -342,12 +343,13 @@ func Test_GetManagedCluster(t *testing.T) {
 	}
 	defer mockConn.Close(context.Background())
 	dao, mockPool := buildMockDAO(t)
-	mrows := newMockRows()
+	columns := []string{"cluster"}
+	pgxRows := pgxpoolmock.NewRows(columns).AddRow(clusterName).ToPgxRows()
 
 	mockPool.EXPECT().Query(gomock.Any(),
 		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),
 		gomock.Eq([]interface{}{}),
-	).Return(mrows, nil)
+	).Return(pgxRows, nil)
 
 	// Execute function test.
 	mc, _ := dao.GetManagedClusters(context.Background())
