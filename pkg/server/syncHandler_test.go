@@ -11,11 +11,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/model"
+	"github.com/stolostron/search-indexer/pkg/testutils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -119,23 +119,12 @@ func Test_resyncRequest(t *testing.T) {
 
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
+	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
 
 	br := &batchResults{rows: []int{10, 4}}
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
-	// Mock existing data.
-	columns := []string{"uid", "data"}
-	nodeRows := pgxpoolmock.NewRows(columns).AddRow("mock-uid", "{}").ToPgxRows()
-	edgeColumns := []string{"sourceId", "edgeType", "destId"}
-	edgeRows := pgxpoolmock.NewRows(edgeColumns).AddRow("sourceId1", "edgeType1", "destId1").ToPgxRows()
-
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(
-		`SELECT "uid", "data" FROM "search"."resources" WHERE (("cluster" = $1) AND ("uid" != $2))`),
-		[]interface{}{"test-cluster", "cluster__test-cluster"}).Return(nodeRows, nil)
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(
-		`SELECT "sourceid", "edgetype", "destid" FROM "search"."edges" WHERE (("edgetype" != $1) AND ("cluster" = $2))`),
-		[]interface{}{"interCluster", "test-cluster"}).Return(edgeRows, nil)
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
@@ -168,18 +157,11 @@ func Test_resyncRequest_withErrorDeletingResources(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
 	router := mux.NewRouter()
 
-	// Mock existing data.
-	columns := []string{"uid", "data"}
-	nodeRows := pgxpoolmock.NewRows(columns).AddRow("mock-uid", "{}").ToPgxRows()
-	edgeColumns := []string{"sourceId", "edgeType", "destId"}
-	edgeRows := pgxpoolmock.NewRows(edgeColumns).AddRow("sourceId1", "edgeType1", "destId1").ToPgxRows()
-
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
+	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
+
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE (("cluster" = $1) AND ("uid" != $2))`),
-		[]interface{}{"test-cluster", "cluster__test-cluster"}).Return(nodeRows, nil)
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(`SELECT "sourceid", "edgetype", "destid" FROM "search"."edges" WHERE (("edgetype" != $1) AND ("cluster" = $2))`), []interface{}{"interCluster", "test-cluster"}).Return(edgeRows, nil)
 
 	br := &batchResults{rows: []int{10}, mockErrorOnQuery: errors.New("unexpected EOF")} //mockErrorOnClose: errors.New("Server error while processing the request.")}
 
@@ -205,19 +187,11 @@ func Test_resyncRequest_withErrorDeletingEdges(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
 	router := mux.NewRouter()
 
-	columns := []string{"sourceId", "edgeType", "destId"}
-	pgxRows := pgxpoolmock.NewRows(columns).AddRow("sourceId1", "edgeType1", "destId1").ToPgxRows()
-
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
+	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any())
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(
-		`SELECT "uid", "data" FROM "search"."resources" WHERE (("cluster" = $1) AND ("uid" != $2))`),
-		[]interface{}{"test-cluster", "cluster__test-cluster"}).Return(pgxRows, nil)
-	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(
-		`SELECT "sourceid", "edgetype", "destid" FROM "search"."edges" WHERE (("edgetype" != $1) AND ("cluster" = $2))`),
-		[]interface{}{"interCluster", "test-cluster"}).Return(pgxRows, nil)
 
 	br := &batchResults{rows: []int{10}, mockErrorOnQuery: errors.New("unexpected EOF")} //mockErrorOnClose: errors.New("Server error while processing the request.")}
 

@@ -186,7 +186,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 			len(resources)-len(incomingResMap)-len(resourcesToUpdate),
 			syncResponse.TotalAdded, syncResponse.TotalUpdated, syncResponse.TotalDeleted))
 
-	return nil
+	return batch.connError
 }
 
 // Reset Edges
@@ -275,5 +275,5 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 	batch.wg.Wait()
 	metrics.LogStepDuration(&timer, clusterName, fmt.Sprintf("Reset edges stats: INSERT [%d] DELETE [%d]",
 		syncResponse.TotalEdgesAdded, syncResponse.TotalEdgesDeleted))
-	return nil
+	return batch.connError
 }
