@@ -147,7 +147,7 @@ func newMockRows() *MockRows {
 	var columnHeaders []string
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(clusterResource), &data); err != nil {
-		klog.Error("Error unmarhsaling mockrows")
+		klog.Error("Error unmarshaling mockrows")
 		panic(err)
 	}
 	for k := range data {

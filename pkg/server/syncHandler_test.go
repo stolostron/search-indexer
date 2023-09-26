@@ -15,6 +15,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/model"
+	"github.com/stolostron/search-indexer/pkg/testutils"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -117,15 +119,14 @@ func Test_resyncRequest(t *testing.T) {
 
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
+	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
 
 	br := &batchResults{rows: []int{10, 4}}
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(5)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)
-
-	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalResources: 10, TotalEdges: 4}
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Errorf("Want status '%d', got '%d'", http.StatusOK, responseRecorder.Code)
@@ -134,9 +135,10 @@ func Test_resyncRequest(t *testing.T) {
 	var decodedResp model.SyncResponse
 	err := json.NewDecoder(responseRecorder.Body).Decode(&decodedResp)
 	if err != nil {
-		t.Error("Unable to decode respoonse body.")
+		t.Error("Unable to decode response body.")
 	}
 
+	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalDeleted: 1, TotalResources: 10, TotalEdgesDeleted: 1, TotalEdges: 4}
 	if fmt.Sprintf("%+v", decodedResp) != fmt.Sprintf("%+v", expected) {
 		t.Errorf("Incorrect response body.\n expected '%+v'\n received '%+v'", expected, decodedResp)
 	}
@@ -155,7 +157,12 @@ func Test_resyncRequest_withErrorDeletingResources(t *testing.T) {
 
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
+	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
+
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
+
+	br := &batchResults{rows: []int{10}, mockErrorOnQuery: errors.New("unexpected EOF")}
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)
@@ -179,8 +186,12 @@ func Test_resyncRequest_withErrorDeletingEdges(t *testing.T) {
 
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
+	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any())
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
+
+	br := &batchResults{rows: []int{10}, mockErrorOnQuery: errors.New("unexpected EOF")}
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)
