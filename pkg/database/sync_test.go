@@ -4,11 +4,13 @@ package database
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stolostron/search-indexer/pkg/model"
+	"github.com/stolostron/search-indexer/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +20,7 @@ func Test_SyncData(t *testing.T) {
 	dao.batchSize = 1
 
 	// Mock PosgreSQL calls
-	br := BatchResults{}
+	br := &testutils.MockBatchResults{}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(7)
 
 	// Prepare Request data
@@ -46,8 +48,8 @@ func Test_Sync_With_Exec_Errors(t *testing.T) {
 	dao.batchSize = 1
 
 	// Mock PosgreSQL calls
-	br := BatchResults{
-		mockErrorOnExec: true,
+	br := &testutils.MockBatchResults{
+		MockErrorOnExec: errors.New("mocking error on exec"),
 	}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(7)
 
@@ -57,7 +59,7 @@ func Test_Sync_With_Exec_Errors(t *testing.T) {
 	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
 
 	// Supress console output to prevent log messages from polluting test output.
-	defer SupressConsoleOutput()()
+	defer testutils.SupressConsoleOutput()()
 
 	// Execute test
 	response := &model.SyncResponse{}
@@ -78,8 +80,8 @@ func Test_Sync_With_OnClose_Errors(t *testing.T) {
 	dao.batchSize = 1
 
 	// Mock PosgreSQL calls
-	br := BatchResults{
-		mockErrorOnClose: true,
+	br := &testutils.MockBatchResults{
+		MockErrorOnClose: errors.New("unexpected EOF"),
 	}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(7)
 
@@ -89,7 +91,7 @@ func Test_Sync_With_OnClose_Errors(t *testing.T) {
 	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
 
 	// Supress console output to prevent log messages from polluting test output.
-	defer SupressConsoleOutput()()
+	defer testutils.SupressConsoleOutput()()
 
 	// Execute test
 	response := &model.SyncResponse{}

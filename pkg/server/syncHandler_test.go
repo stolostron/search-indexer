@@ -16,7 +16,6 @@ import (
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"github.com/stolostron/search-indexer/pkg/testutils"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,7 +33,11 @@ func Test_syncRequest(t *testing.T) {
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
 
-	br := &batchResults{rows: []int{5, 3}}
+	br := &testutils.MockBatchResults{
+		MockRows: testutils.MockRows{
+			MockData: []map[string]interface{}{{"count": 5}, {"count": 3}},
+		},
+	}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
@@ -70,7 +73,13 @@ func Test_syncRequest_withError(t *testing.T) {
 
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
-	br := &batchResults{rows: []int{5, 3}, mockErrorOnClose: errors.New("unexpected EOF")}
+
+	br := &testutils.MockBatchResults{
+		MockRows: testutils.MockRows{
+			MockData: []map[string]interface{}{{"count": 5}, {"count": 3}},
+		},
+		MockErrorOnClose: errors.New("unexpected EOF"),
+	}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
@@ -94,7 +103,13 @@ func Test_syncRequest_withErrorQueryingTotalResources(t *testing.T) {
 
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
-	br := &batchResults{rows: []int{10, 4}, mockErrorOnQuery: errors.New("unexpected EOF")}
+
+	br := &testutils.MockBatchResults{
+		MockRows: testutils.MockRows{
+			MockData: []map[string]interface{}{{"count": 10}, {"count": 4}},
+		},
+		MockErrorOnClose: errors.New("unexpected EOF"),
+	}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
@@ -121,7 +136,12 @@ func Test_resyncRequest(t *testing.T) {
 	server, mockPool := buildMockServer(t)
 	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
 
-	br := &batchResults{rows: []int{10, 4}}
+	br := &testutils.MockBatchResults{
+		MockRows: testutils.MockRows{
+			MockData: []map[string]interface{}{{"count": 10}, {"count": 4}},
+		},
+	}
+
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(5)
 
@@ -161,7 +181,12 @@ func Test_resyncRequest_withErrorDeletingResources(t *testing.T) {
 
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
 
-	br := &batchResults{rows: []int{10}, mockErrorOnQuery: errors.New("unexpected EOF")}
+	br := &testutils.MockBatchResults{
+		MockRows: testutils.MockRows{
+			MockData: []map[string]interface{}{{"count": 10}},
+		},
+		MockErrorOnClose: errors.New("unexpected EOF"),
+	}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
@@ -190,7 +215,12 @@ func Test_resyncRequest_withErrorDeletingEdges(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any())
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
 
-	br := &batchResults{rows: []int{10}, mockErrorOnQuery: errors.New("unexpected EOF")}
+	br := &testutils.MockBatchResults{
+		MockRows: testutils.MockRows{
+			MockData: []map[string]interface{}{{"count": 10}},
+		},
+		MockErrorOnClose: errors.New("unexpected EOF"),
+	}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)

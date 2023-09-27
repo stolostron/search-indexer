@@ -21,7 +21,7 @@ func Test_ResyncData(t *testing.T) {
 
 	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
 
-	br := BatchResults{}
+	br := &testutils.MockBatchResults{}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	// Prepare Request data.
@@ -30,7 +30,7 @@ func Test_ResyncData(t *testing.T) {
 	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
 
 	// Supress console output to prevent log messages from polluting test output.
-	defer SupressConsoleOutput()()
+	defer testutils.SupressConsoleOutput()()
 
 	// Execute function test.
 	response := &model.SyncResponse{}
@@ -46,7 +46,7 @@ func Test_ResyncData_errors(t *testing.T) {
 	testutils.MockDatabaseState(mockPool)
 
 	// Mock error on INSERT.
-	br := &testutils.MockBatchResults{Rows: make([]int, 0), MockErrorOnClose: errors.New("unexpected EOF")}
+	br := &testutils.MockBatchResults{MockErrorOnClose: errors.New("unexpected EOF")}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	// Prepare Request data.
@@ -55,7 +55,7 @@ func Test_ResyncData_errors(t *testing.T) {
 	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
 
 	// Supress console output to prevent log messages from polluting test output.
-	defer SupressConsoleOutput()()
+	defer testutils.SupressConsoleOutput()()
 
 	// Execute function test.
 	response := &model.SyncResponse{}

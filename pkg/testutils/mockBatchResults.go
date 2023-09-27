@@ -1,3 +1,4 @@
+// Copyright Contributors to the Open Cluster Management project
 package testutils
 
 import (
@@ -5,29 +6,12 @@ import (
 	"github.com/jackc/pgx/v4"
 )
 
-// ====================================================
-// Mock the Row interface defined in the pgx library.
-// https://github.com/jackc/pgx/blob/master/rows.go#L24
-// ====================================================
-type MockRow struct {
-	MockValue int
-	MockError error
-}
-
-func (r *MockRow) Scan(dest ...interface{}) error {
-	if r.MockError != nil {
-		return r.MockError
-	}
-	*dest[0].(*int) = r.MockValue
-	return nil
-}
-
 // ===========================================================
 // Mock the BatchResults interface defined in the pgx library.
 // https://github.com/jackc/pgx/blob/master/batch.go#L34
 // ===========================================================
 type MockBatchResults struct {
-	Rows             []int
+	MockRows
 	Index            int
 	MockErrorOnClose error // Return an error on Close()
 	MockErrorOnExec  error // Return an error on Exec()
@@ -47,9 +31,7 @@ func (br *MockBatchResults) Query() (pgx.Rows, error) {
 	return nil, nil
 }
 func (br *MockBatchResults) QueryRow() pgx.Row {
-	row := &MockRow{MockValue: br.Rows[br.Index], MockError: br.MockErrorOnQuery}
-	br.Index = br.Index + 1
-	return row
+	return &br.MockRows
 }
 func (br *MockBatchResults) QueryFunc(scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
 	return nil, nil
