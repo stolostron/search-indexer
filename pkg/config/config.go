@@ -49,14 +49,14 @@ type Config struct {
 // Reads config from environment.
 func new() *Config {
 	conf := &Config{
-		DBBatchSize: getEnvAsInt("DB_BATCH_SIZE", 500),
+		DBBatchSize: getEnvAsInt("DB_BATCH_SIZE", 2500),
 		DBHost:      getEnv("DB_HOST", "localhost"),
-		// Postgres has 100 conns by default. Using 20 allows scaling indexer and api.
-		DBMaxConns:          getEnvAsInt("DB_MAX_CONNS", 20),                   // 20 - Overrides pgxpool default
+		// Postgres has 100 conns by default. Using 10 allows scaling indexer and api.
+		DBMaxConns:          getEnvAsInt("DB_MAX_CONNS", 10),                   // 10 - Overrides pgxpool default
 		DBMaxConnLifeJitter: getEnvAsInt("DB_MAX_CONN_LIFE_JITTER", 2*60*1000), // 2 min - Overrides pgxpool default
 		DBMaxConnIdleTime:   getEnvAsInt("DB_MAX_CONN_IDLE_TIME", 30*60*1000),  // 30 min - Default for pgxpool.Config
 		DBMaxConnLifeTime:   getEnvAsInt("DB_MAX_CONN_LIFE_TIME", 60*60*1000),  // 60 min - Default for pgxpool.Config
-		DBMinConns:          getEnvAsInt("DB_MIN_CONNS", 0),                    // Default for pgxpool.Config
+		DBMinConns:          getEnvAsInt("DB_MIN_CONNS", 2),                    // 2 - Overrides pgxpool default
 		DBName:              getEnv("DB_NAME", ""),
 		DBPass:              getEnv("DB_PASS", ""),
 		DBPort:              getEnvAsInt("DB_PORT", 5432),
@@ -69,7 +69,7 @@ func new() *Config {
 		PodName:          getEnv("POD_NAME", "local-dev"),
 		PodNamespace:     getEnv("POD_NAMESPACE", "open-cluster-management"),
 		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 5*60*1000), // 5 min
-		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 50),             // Set to 50 to keep memory below 1GB.
+		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 25),             // Set to 25 to prevent memory issues.
 		ServerAddress:    getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		SlowLog:          getEnvAsInt("SLOW_LOG", 1000), // 1 second
 		Version:          COMPONENT_VERSION,
