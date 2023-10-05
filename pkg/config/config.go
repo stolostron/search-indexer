@@ -65,7 +65,7 @@ func new() *Config {
 		MaxBackoffMS: getEnvAsInt("MAX_BACKOFF_MS", 300000), // 5 min
 		// EdgeBuildRateMS:       getEnvAsInt("EDGE_BUILD_RATE_MS", 15000), // 15 sec
 		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 300000), // 5 min
-		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 50),          // Limit to 50 to keep memory below 1GB.
+		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 20),          // Limit to 20 to keep memory below 1GB.
 		// SkipClusterValidation: getEnvAsBool("SKIP_CLUSTER_VALIDATION", false),
 	}
 
