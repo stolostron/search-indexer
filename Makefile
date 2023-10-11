@@ -46,7 +46,8 @@ docker-build: ## Build the docker image.
 test-send: ## Sends a simulated request for testing using cURL.
 	curl -k -d "@pkg/server/mocks/clusterA.json" -X POST https://localhost:3010/aggregator/clusters/clusterA/sync
 
-N_CLUSTERS ?=2
+CLUSTERS ?=10
+RATE ?=1
 HOST ?= $(shell oc get route search-indexer -o custom-columns=host:.spec.host --no-headers -n open-cluster-management --ignore-not-found=true --request-timeout='1s')
 ifeq ($(strip $(HOST)),)
 	CONFIGURATION_MSG = @echo \\n\\tThe search-indexer route was not found in the target cluster.\\n\
@@ -59,14 +60,14 @@ endif
 show-metrics:
 	curl -k https://localhost:3010/metrics
 
-test-scale: check-locust ## Simulate multiple clusters posting data to the indexer. Use N_CLUSTERS to change the number of simulated clusters.
+test-scale: check-locust ## Simulate multiple clusters posting data to the indexer. Defaults: CLUSTERS=10 RATE=1
 	${CONFIGURATION_MSG}
-	cd test; locust --headless --users ${N_CLUSTERS} --spawn-rate ${N_CLUSTERS} -H https://${HOST} -f locust-clusters.py
+	cd test; locust --headless --users ${CLUSTERS} --spawn-rate ${RATE} -H https://${HOST} -f locust-clusters.py --only-summary
 
-test-scale-ui: check-locust ## Start Locust and open the web browser to drive scale tests.
+test-scale-ui: check-locust ## Start Locust and open the web browser to drive scale tests.  Defaults: CLUSTERS=10 RATE=1
 	${CONFIGURATION_MSG}
 	open http://0.0.0.0:8085/
-	cd test; locust --users ${N_CLUSTERS} --spawn-rate ${N_CLUSTERS} -H https://${HOST} -P 8085 -f locust-clusters.py
+	cd test; locust --users ${CLUSTERS} --spawn-rate ${RATE} -H https://${HOST} -P 8085 -f locust-clusters.py --class-picker 
 
 test-scale-setup: ## Creates the search-indexer route in the current target cluster.
 	oc create route passthrough search-indexer --service=search-indexer -n open-cluster-management
