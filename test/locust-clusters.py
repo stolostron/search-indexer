@@ -32,7 +32,7 @@ class ClusterBehavior(TaskSet):
         self.do_post()
 
     def do_post(self):
-        resp = self.client.post("/aggregator/clusters/{}/sync".format(self.user.name), json=self.client.payload, verify=False)
+        resp = self.client.post("/aggregator/clusters/{}/sync".format(self.user.name), name=self.user.template, json=self.client.payload, verify=False)
         if resp.status_code != 200: # The first request is receiving 0 instead of 429.
             self.user.retries = self.user.retries + 1
             print("%10s -\t Received response code %s. Waiting %d seconds and retrying." % (self.user.name, resp.status_code, self.user.retries * 2))
