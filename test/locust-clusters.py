@@ -14,7 +14,6 @@ class ClusterBehavior(TaskSet):
 #  2. Update state.
 
     def send_full_state_payload(self):
-        print("%s - sending full state" % self.user.name)
         with open("cluster-templates/{}".format(self.user.template), "r") as template_file:
             template_string = template_file.read().replace("<<CLUSTER_NAME>>", self.user.name)
         f = io.StringIO(template_string)
@@ -23,7 +22,7 @@ class ClusterBehavior(TaskSet):
         self.do_post()
 
     def send_update_payload(self):
-        print("%s - sending update" % self.user.name)
+        print("%10s - Sending update" % self.user.name)
         f = open("cluster-templates/add-resources.json",)
         j = json.load(f)        
         for resource in j["addResources"]: 
@@ -33,21 +32,19 @@ class ClusterBehavior(TaskSet):
         self.do_post()
 
     def do_post(self):
-        resp = self.client.post("/aggregator/clusters/{}/sync".format(self.user.name), json=self.client.payload, verify=False)
-        print("[%s] response code: %s" % (self.user.name, resp.status_code))
+        resp = self.client.post("/aggregator/clusters/{}/sync".format(self.user.name), name=self.user.template, json=self.client.payload, verify=False)
         if resp.status_code != 200: # The first request is receiving 0 instead of 429.
             self.user.retries = self.user.retries + 1
-            print("\t> %s Indexer was busy. Waiting %d seconds and retrying." % (self.user.name, self.user.retries * 2))
+            print("%10s -\t Received response code %s. Waiting %d seconds and retrying." % (self.user.name, resp.status_code, self.user.retries * 2))
             time.sleep(self.user.retries * 2)
             self.do_post()
         else:
-            print("%s - completed do_post() with %s retries." % (self.user.name, self.user.retries))
+            print("%10s -\t Completed do_post() with %s retries." % (self.user.name, self.user.retries))
             self.user.retries = 0
-
 
     def on_start(self):
         self.send_full_state_payload()
-        time.sleep(60)
+        time.sleep(120)
 
     @task(10)
     def send_update(self):
@@ -56,17 +53,28 @@ class ClusterBehavior(TaskSet):
     @task(1)
     def send_resync(self):
         self.send_full_state_payload()
-       
-# A Cluster is equivalent to a User.
+
+
 class Cluster(HttpUser):
-    name = ""
+    abstract = True
     tasks = [ClusterBehavior]
     wait_time = between(5, 300)
     retries = 0
-    template = "sno-5k.json" # sno-100k.json, sno-150k.json
-
     def on_start(self):
         global clusterCount
         self.name = "locust-{}".format(clusterCount)
         clusterCount = clusterCount + 1
-        print("Starting cluster [%s]" % self.name)
+        print("%10s - Starting cluster simulation using template %s" % (self.name, self.template))
+        
+
+# Cluster5k - simulates 5k resources.
+class Cluster5k(Cluster):
+    template = "sno-5k.json"
+
+# Cluster100k - simulates 100k resources.
+class Cluster100k(Cluster):
+    template = "sno-100k.json"
+
+# Cluster150k - simulates 150k resources.
+class Cluster150k(Cluster):
+    template = "sno-150k.json"
