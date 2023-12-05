@@ -61,8 +61,6 @@ func ElectLeaderAndStart(ctx context.Context) {
 
 // Watches ManagedCluster objects and updates the database with a Cluster node.
 func syncClusters(ctx context.Context) {
-	klog.Info("Attempting to sync clusters. Begin ClusterWatch routine")
-
 	dynamicFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient,
 		time.Duration(config.Cfg.RediscoverRateMS)*time.Millisecond)
 
