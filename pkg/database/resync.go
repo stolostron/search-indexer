@@ -44,8 +44,8 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 //  1. Create a map of incoming resources.
 //  2. Query and iterate existing resources for the cluster.
 //  3. For each existing resource:
-//      - UPDATE if doesn't match the incoming resource.
-//      - DELETE if not found in the incoming resource.
+//     - UPDATE if doesn't match the incoming resource.
+//     - DELETE if not found in the incoming resource.
 //  4. INSERT incoming resources not found in the existing resources.
 func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, clusterName string,
 	syncResponse *model.SyncResponse) error {

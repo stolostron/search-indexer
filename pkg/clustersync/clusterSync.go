@@ -83,6 +83,7 @@ func syncClusters(ctx context.Context) {
 	managedClusterInfoInformer := dynamicFactory.ForResource(*managedClusterInfoGvr).Informer()
 	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
+	resyncPeriod := time.Duration(15) * time.Minute
 	// Confirm delete event not missed if indexer OR db goes offline:
 	err := deleteStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
 	if err != nil {
@@ -106,11 +107,11 @@ func syncClusters(ctx context.Context) {
 	}
 
 	// Add Handlers to both Informers
-	_, managedClusterErr := managedClusterInformer.AddEventHandler(handlers)
+	_, managedClusterErr := managedClusterInformer.AddEventHandlerWithResyncPeriod(handlers, resyncPeriod)
 	checkError(managedClusterErr, "Error adding eventHandler for managedCluster")
-	_, managedClusterInfoErr := managedClusterInfoInformer.AddEventHandler(handlers)
+	_, managedClusterInfoErr := managedClusterInfoInformer.AddEventHandlerWithResyncPeriod(handlers, resyncPeriod)
 	checkError(managedClusterInfoErr, "Error adding eventHandler for managedClusterInfo")
-	_, managedClusterAddonErr := managedClusterAddonInformer.AddEventHandler(handlers)
+	_, managedClusterAddonErr := managedClusterAddonInformer.AddEventHandlerWithResyncPeriod(handlers, resyncPeriod)
 	checkError(managedClusterAddonErr, "Error adding eventHandler for managedClusterAddon")
 
 	// Periodically check if the ManagedCluster/ManagedClusterInfo resource exists
@@ -169,6 +170,7 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 }
 
 func processClusterUpsert(ctx context.Context, obj interface{}) {
+	klog.Info("In processClusterUpsert for cluster", obj)
 	// Lock so only one goroutine at a time can access add a cluster.
 	// Helps to eliminate duplicate entries.
 	mux.Lock()
