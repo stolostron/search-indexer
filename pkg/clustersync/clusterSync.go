@@ -61,6 +61,8 @@ func ElectLeaderAndStart(ctx context.Context) {
 
 // Watches ManagedCluster objects and updates the database with a Cluster node.
 func syncClusters(ctx context.Context) {
+	klog.Info("Attempting to sync clusters. Begin ClusterWatch routine")
+
 	dynamicFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient,
 		time.Duration(config.Cfg.RediscoverRateMS)*time.Millisecond)
 
@@ -168,7 +170,6 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 }
 
 func processClusterUpsert(ctx context.Context, obj interface{}) {
-	klog.Info("In processClusterUpsert for cluster", obj)
 	// Lock so only one goroutine at a time can access add a cluster.
 	// Helps to eliminate duplicate entries.
 	mux.Lock()
