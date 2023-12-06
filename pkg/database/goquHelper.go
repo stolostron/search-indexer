@@ -10,6 +10,15 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// func validateParams(expectedParams int, params []interface{}, er *error) bool {
+// 	if len(params) != expectedParams {
+// 		er = &errors.New("Invalid number of params for query.")
+// 		// er = &err
+// 		return false
+// 	}
+// 	return true
+// }
+
 func useGoqu(query string, params []interface{}) (q string, p []interface{}, er error) {
 	dialect := goqu.Dialect("postgres")
 	resources := goqu.S("search").Table("resources")
@@ -33,7 +42,7 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 
 	case "INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO NOTHING":
 		if !validateParams(3) {
-			return
+			break
 		}
 		q, p, er = dialect.From(resources).Prepared(true).
 			Insert().Rows(goqu.Record{
