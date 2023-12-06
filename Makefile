@@ -29,7 +29,7 @@ lint: ## Run lint and gosec tool.
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "${GOPATH}/bin" v1.52.2
 	CGO_ENABLED=1 GOGC=25 golangci-lint run --timeout=3m
 	go mod tidy
-	gosec ./... -exclude=G402
+	gosec ./... -exclude=G602
 
 .PHONY: test
 test: ## Run unit tests.

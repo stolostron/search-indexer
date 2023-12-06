@@ -15,6 +15,14 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 	resources := goqu.S("search").Table("resources")
 	edges := goqu.S("search").Table("edges")
 
+	validateParams := func(expectedParams int) bool {
+		if len(params) != expectedParams {
+			er = fmt.Errorf("Invalid number of params for query [%s]", query)
+			return false
+		}
+		return true
+	}
+
 	switch query {
 	case "SELECT uid, data FROM search.resources WHERE cluster=$1 AND uid!='cluster__$1'":
 		q, p, er = dialect.From(resources).Prepared(true).
@@ -24,16 +32,22 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			ToSQL()
 
 	case "INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO NOTHING":
+		if !validateParams(3) {
+			return
+		}
 		q, p, er = dialect.From(resources).Prepared(true).
 			Insert().Rows(goqu.Record{
 			"uid":     params[0],
-			"cluster": params[1],   // #nosec G402
-			"data":    params[2]}). // #nosec G402
+			"cluster": params[1],
+			"data":    params[2]}).
 			OnConflict(goqu.DoNothing()).ToSQL()
 
 	case "UPDATE search.resources SET data=$2 WHERE uid=$1":
+		if !validateParams(2) {
+			return
+		}
 		q, p, er = dialect.From(resources).Prepared(true).
-			Update().Set(goqu.Record{"data": params[1].(string)}). // #nosec G402
+			Update().Set(goqu.Record{"data": params[1].(string)}).
 			Where(goqu.C("uid").Eq(params[0])).ToSQL()
 
 	case "DELETE from search.resources WHERE uid IN ($1)":
@@ -59,11 +73,14 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			OnConflict(goqu.DoNothing()).ToSQL()
 
 	case "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3":
+		if !validateParams(3) {
+			return
+		}
 		q, p, er = dialect.From(edges).Prepared(true).
 			Delete().Where(
 			goqu.C("sourceid").Eq(params[0]),
-			goqu.C("destid").Eq(params[1]),           // #nosec G402
-			goqu.C("edgetype").Eq(params[2])).ToSQL() // #nosec G402
+			goqu.C("destid").Eq(params[1]),
+			goqu.C("edgetype").Eq(params[2])).ToSQL()
 
 	default:
 		er = fmt.Errorf("Unable to build goqu query for [%s]", query)
