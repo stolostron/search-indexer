@@ -10,15 +10,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// func validateParams(expectedParams int, params []interface{}, er *error) bool {
-// 	if len(params) != expectedParams {
-// 		er = &errors.New("Invalid number of params for query.")
-// 		// er = &err
-// 		return false
-// 	}
-// 	return true
-// }
-
 func useGoqu(query string, params []interface{}) (q string, p []interface{}, er error) {
 	dialect := goqu.Dialect("postgres")
 	resources := goqu.S("search").Table("resources")
@@ -45,19 +36,15 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			break
 		}
 		q, p, er = dialect.From(resources).Prepared(true).
-			Insert().Rows(goqu.Record{
-			"uid":     params[0],
-			"cluster": params[1],
-			"data":    params[2]}).
+			Insert().Rows(goqu.Record{"uid": params[0], "cluster": params[1], "data": params[2]}).
 			OnConflict(goqu.DoNothing()).ToSQL()
 
 	case "UPDATE search.resources SET data=$2 WHERE uid=$1":
 		if !validateParams(2) {
-			return
+			break
 		}
 		q, p, er = dialect.From(resources).Prepared(true).
-			Update().Set(goqu.Record{"data": params[1].(string)}).
-			Where(goqu.C("uid").Eq(params[0])).ToSQL()
+			Update().Set(goqu.Record{"data": params[1].(string)}).Where(goqu.C("uid").Eq(params[0])).ToSQL()
 
 	case "DELETE from search.resources WHERE uid IN ($1)":
 		q, p, er = dialect.From(resources).
@@ -83,7 +70,7 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 
 	case "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3":
 		if !validateParams(3) {
-			return
+			break
 		}
 		q, p, er = dialect.From(edges).Prepared(true).
 			Delete().Where(
