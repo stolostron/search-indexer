@@ -39,7 +39,8 @@ type Config struct {
 	MaxBackoffMS        int // Maximum backoff in ms to wait after db connection error
 	PodName             string
 	PodNamespace        string
-	RediscoverRateMS    int    // time in MS we should check on cluster resource type
+	ResyncPeriodMS      int    // Time in MS for the clusters informer. Default: 15 min.
+	RediscoverRateMS    int    // Time in MS we should check on cluster resource type
 	RequestLimit        int    // Max number of concurrent requests. Used to prevent from overloading the database
 	ServerAddress       string // Web server address
 	SlowLog             int    // Log operations slower than the specified time in ms. Default: 1 sec
@@ -69,6 +70,7 @@ func new() *Config {
 		PodName:          getEnv("POD_NAME", "local-dev"),
 		PodNamespace:     getEnv("POD_NAMESPACE", "open-cluster-management"),
 		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 5*60*1000), // 5 min
+		ResyncPeriodMS:   getEnvAsInt("RESYNC_PERIOD_MS", 15*60*1000),  // 15 min - cluster resync period
 		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 25),             // Set to 25 to prevent memory issues.
 		ServerAddress:    getEnv("AGGREGATOR_ADDRESS", ":3010"),
 		SlowLog:          getEnvAsInt("SLOW_LOG", 1000), // 1 second
