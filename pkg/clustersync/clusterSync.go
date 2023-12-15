@@ -83,7 +83,7 @@ func syncClusters(ctx context.Context) {
 	managedClusterInfoInformer := dynamicFactory.ForResource(*managedClusterInfoGvr).Informer()
 	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
-	resyncPeriod := time.Duration(config.Cfg.ResyncPeriod) * time.Minute
+	resyncPeriod := time.Duration(config.Cfg.ResyncPeriodMS) * time.Millisecond
 	// Confirm delete event not missed if indexer OR db goes offline:
 	err := deleteStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
 	if err != nil {
