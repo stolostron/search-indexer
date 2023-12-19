@@ -83,6 +83,7 @@ func syncClusters(ctx context.Context) {
 	managedClusterInfoInformer := dynamicFactory.ForResource(*managedClusterInfoGvr).Informer()
 	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
+	resyncPeriod := time.Duration(config.Cfg.ResyncPeriodMS) * time.Millisecond
 	// Confirm delete event not missed if indexer OR db goes offline:
 	err := deleteStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
 	if err != nil {
@@ -106,11 +107,11 @@ func syncClusters(ctx context.Context) {
 	}
 
 	// Add Handlers to both Informers
-	_, managedClusterErr := managedClusterInformer.AddEventHandler(handlers)
+	_, managedClusterErr := managedClusterInformer.AddEventHandlerWithResyncPeriod(handlers, resyncPeriod)
 	checkError(managedClusterErr, "Error adding eventHandler for managedCluster")
-	_, managedClusterInfoErr := managedClusterInfoInformer.AddEventHandler(handlers)
+	_, managedClusterInfoErr := managedClusterInfoInformer.AddEventHandlerWithResyncPeriod(handlers, resyncPeriod)
 	checkError(managedClusterInfoErr, "Error adding eventHandler for managedClusterInfo")
-	_, managedClusterAddonErr := managedClusterAddonInformer.AddEventHandler(handlers)
+	_, managedClusterAddonErr := managedClusterAddonInformer.AddEventHandlerWithResyncPeriod(handlers, resyncPeriod)
 	checkError(managedClusterAddonErr, "Error adding eventHandler for managedClusterAddon")
 
 	// Periodically check if the ManagedCluster/ManagedClusterInfo resource exists
