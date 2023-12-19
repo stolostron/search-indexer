@@ -15,6 +15,14 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 	resources := goqu.S("search").Table("resources")
 	edges := goqu.S("search").Table("edges")
 
+	validateParams := func(expectedParams int) bool {
+		if len(params) != expectedParams {
+			er = fmt.Errorf("Invalid number of params for query [%s]", query)
+			return false
+		}
+		return true
+	}
+
 	switch query {
 	case "SELECT uid, data FROM search.resources WHERE cluster=$1 AND uid!='cluster__$1'":
 		q, p, er = dialect.From(resources).Prepared(true).
@@ -24,11 +32,17 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			ToSQL()
 
 	case "INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO NOTHING":
+		if !validateParams(3) {
+			break
+		}
 		q, p, er = dialect.From(resources).Prepared(true).
 			Insert().Rows(goqu.Record{"uid": params[0], "cluster": params[1], "data": params[2]}).
 			OnConflict(goqu.DoNothing()).ToSQL()
 
 	case "UPDATE search.resources SET data=$2 WHERE uid=$1":
+		if !validateParams(2) {
+			break
+		}
 		q, p, er = dialect.From(resources).Prepared(true).
 			Update().Set(goqu.Record{"data": params[1].(string)}).Where(goqu.C("uid").Eq(params[0])).ToSQL()
 
@@ -55,6 +69,9 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			OnConflict(goqu.DoNothing()).ToSQL()
 
 	case "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3":
+		if !validateParams(3) {
+			break
+		}
 		q, p, er = dialect.From(edges).Prepared(true).
 			Delete().Where(
 			goqu.C("sourceid").Eq(params[0]),
