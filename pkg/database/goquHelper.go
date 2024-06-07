@@ -36,7 +36,7 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			break
 		}
 		q, p, er = dialect.From(resources).Prepared(true).
-			Insert().Rows(goqu.Record{"uid": params[0], "cluster": params[1], "data": params[2]}). // #nosec G602 - params will be provided
+			Insert().Rows(goqu.Record{"uid": params[0], "cluster": params[1], "data": params[2]}).
 			OnConflict(goqu.DoNothing()).ToSQL()
 
 	case "UPDATE search.resources SET data=$2 WHERE uid=$1":
@@ -44,7 +44,7 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			break
 		}
 		q, p, er = dialect.From(resources).Prepared(true).
-			Update().Set(goqu.Record{"data": params[1].(string)}).Where(goqu.C("uid").Eq(params[0])).ToSQL() // #nosec G602 - params will be provided
+			Update().Set(goqu.Record{"data": params[1].(string)}).Where(goqu.C("uid").Eq(params[0])).ToSQL()
 
 	case "DELETE from search.resources WHERE uid IN ($1)":
 		q, p, er = dialect.From(resources).
@@ -75,8 +75,8 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 		q, p, er = dialect.From(edges).Prepared(true).
 			Delete().Where(
 			goqu.C("sourceid").Eq(params[0]),
-			goqu.C("destid").Eq(params[1]),           // #nosec G602 - params will be provided
-			goqu.C("edgetype").Eq(params[2])).ToSQL() // #nosec G602 - params will be provided
+			goqu.C("destid").Eq(params[1]),
+			goqu.C("edgetype").Eq(params[2])).ToSQL()
 
 	default:
 		er = fmt.Errorf("Unable to build goqu query for [%s]", query)
