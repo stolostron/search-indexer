@@ -157,6 +157,7 @@ func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 	dynamicClient = fakeDynamicClient()
 	// Add props specific to ManagedClusterInfo
 	props := existingCluster["Properties"].(map[string]interface{})
+	props["apiEndpoint"] = ""
 	props["consoleURL"] = ""
 	props["nodes"] = 0
 	existingCluster["Properties"] = props
