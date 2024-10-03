@@ -256,7 +256,7 @@ func transformManagedClusterInfo(managedClusterInfo *clusterv1beta1.ManagedClust
 	props := make(map[string]interface{})
 
 	// Get properties from ManagedClusterInfo
-	props["apiURL"] = managedClusterInfo.Spec.MasterEndpoint
+	props["apiEndpoint"] = managedClusterInfo.Spec.MasterEndpoint
 	props["consoleURL"] = managedClusterInfo.Status.ConsoleURL
 	props["nodes"] = int64(len(managedClusterInfo.Status.NodeList))
 	props["kind"] = "Cluster"
