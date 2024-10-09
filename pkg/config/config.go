@@ -13,7 +13,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const COMPONENT_VERSION = "2.11.0"
+const COMPONENT_VERSION = "2.13.0"
 
 var DEVELOPMENT_MODE = false // Do not change this. See config_development.go to enable.
 var Cfg = new()
