@@ -253,6 +253,7 @@ spec:
     - name: build-source-image
       params:
       - name: BINARY_IMAGE
+        value: $(params.output-image)
       runAfter:
       - build-container
       taskRef:
