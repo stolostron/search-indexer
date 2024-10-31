@@ -84,10 +84,10 @@ func initializePool() pgxpoolmock.PgxPool {
 	config.BeforeAcquire = beforeAcquire // Checks idle connection health before using it.
 	// Add jitter to prevent all connections from being closed at same time.
 	config.MaxConnLifetimeJitter = time.Duration(cfg.DBMaxConnLifeJitter) * time.Millisecond
-	config.MaxConns = int32(cfg.DBMaxConns)
+	config.MaxConns = cfg.DBMaxConns
 	config.MaxConnIdleTime = time.Duration(cfg.DBMaxConnIdleTime) * time.Millisecond
 	config.MaxConnLifetime = time.Duration(cfg.DBMaxConnLifeTime) * time.Millisecond
-	config.MinConns = int32(cfg.DBMinConns)
+	config.MinConns = cfg.DBMinConns
 
 	klog.Infof("Using pgxpool.Config %+v", config)
 
