@@ -18,17 +18,6 @@ type Edge struct {
 }
 
 // SyncEvent - Object sent by the collector with the resources to change.
-// type SyncEvent struct {
-// 	ClearAll bool `json:"clearAll,omitempty"`
-
-// 	AddResources    []Resource
-// 	UpdateResources []Resource
-// 	DeleteResources []DeleteResourceEvent
-
-//		AddEdges    []Edge
-//		DeleteEdges []Edge
-//		RequestId   int
-//	}
 type SyncEvent struct {
 	ClearAll bool `json:"clearAll,omitempty"`
 

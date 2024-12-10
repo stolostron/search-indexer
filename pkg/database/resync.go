@@ -73,16 +73,6 @@ func (dao *DAO) resetResources(ctx context.Context, resources []interface{}, clu
 
 	incomingResMap := make(map[string]*model.Resource)
 	for i, r := range resources {
-		// resource := resourceFromMap(r.(map[string]interface{}))
-		// klog.Infof("Resource: %+v", r)
-		// var r model.Resource
-		// err := json.Unmarshal(resource.([]byte), &r)
-		// if err != nil {
-		// 	klog.Warningf("Error unmarshalling resource. Error: %+v", err)
-		// 	continue
-		// }
-		// key := resource.(model.Resource).UID
-		// value := &resources[i]
 		value := resourceFromMap(resources[i].(map[string]interface{}))
 		incomingResMap[r.(map[string]interface{})["uid"].(string)] = &value
 	}
@@ -113,7 +103,6 @@ func (dao *DAO) resetResources(ctx context.Context, resources []interface{}, clu
 			}
 
 			incomingResource, exists := incomingResMap[id]
-			// incomingResource := (*incomingResourceInterface).(model.Resource)
 			if !exists {
 				// Resource needs to be deleted.
 				resourcesToDelete = append(resourcesToDelete, id)

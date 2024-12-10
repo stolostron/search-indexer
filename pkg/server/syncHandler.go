@@ -4,9 +4,9 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"runtime"
+	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/stolostron/search-indexer/pkg/metrics"
@@ -79,20 +79,29 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
-	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
-	fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
-	fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
-	fmt.Printf("\tNumGC = %v\n", m.NumGC)
+	// var m runtime.MemStats
+	// runtime.ReadMemStats(&m)
+	// // For info on each, see: https://golang.org/pkg/runtime/#MemStats
+	// fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	// fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	// fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
+	// fmt.Printf("\tNumGC = %v\n", m.NumGC)
 
 	// Log request.
 	klog.V(5).Infof("Request from [%12s] took [%v] clearAll [%t] addTotal [%d]",
 		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
+
+	f, err := os.Create("mem.prof")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	if err := pprof.WriteHeapProfile(f); err != nil {
+		panic(err)
+	}
 }
 
-func bToMb(b uint64) uint64 {
-	return b / 1024 / 1024
-}
+// func bToMb(b uint64) uint64 {
+// 	return b / 1024 / 1024
+// }
