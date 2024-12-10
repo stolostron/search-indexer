@@ -14,6 +14,24 @@ import (
 	"k8s.io/klog/v2"
 )
 
+func resourceFromMap(m map[string]interface{}) model.Resource {
+	return model.Resource{
+		Kind:           m["properties"].(map[string]interface{})["kind"].(string),
+		UID:            m["uid"].(string),
+		ResourceString: m["resourceString"].(string),
+		Properties:     m["properties"].(map[string]interface{}),
+	}
+}
+func edgeFromMap(m map[string]interface{}) model.Edge {
+	return model.Edge{
+		SourceUID:  m["SourceUID"].(string),
+		EdgeType:   m["EdgeType"].(string),
+		DestUID:    m["DestUID"].(string),
+		SourceKind: m["SourceKind"].(string),
+		DestKind:   m["DestKind"].(string),
+	}
+}
+
 // Reset data for the cluster to the incoming state.
 func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	clusterName string, syncResponse *model.SyncResponse) error {
@@ -47,15 +65,26 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 //     - UPDATE if doesn't match the incoming resource.
 //     - DELETE if not found in the incoming resource.
 //  4. INSERT incoming resources not found in the existing resources.
-func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, clusterName string,
+func (dao *DAO) resetResources(ctx context.Context, resources []interface{}, clusterName string,
 	syncResponse *model.SyncResponse) error {
 	timer := time.Now()
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
 	incomingResMap := make(map[string]*model.Resource)
-	for i, resource := range resources {
-		incomingResMap[resource.UID] = &resources[i]
+	for i, r := range resources {
+		// resource := resourceFromMap(r.(map[string]interface{}))
+		// klog.Infof("Resource: %+v", r)
+		// var r model.Resource
+		// err := json.Unmarshal(resource.([]byte), &r)
+		// if err != nil {
+		// 	klog.Warningf("Error unmarshalling resource. Error: %+v", err)
+		// 	continue
+		// }
+		// key := resource.(model.Resource).UID
+		// value := &resources[i]
+		value := resourceFromMap(resources[i].(map[string]interface{}))
+		incomingResMap[r.(map[string]interface{})["uid"].(string)] = &value
 	}
 	resourcesToDelete := make([]interface{}, 0)
 	resourcesToUpdate := make([]*model.Resource, 0)
@@ -84,6 +113,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 			}
 
 			incomingResource, exists := incomingResMap[id]
+			// incomingResource := (*incomingResourceInterface).(model.Resource)
 			if !exists {
 				// Resource needs to be deleted.
 				resourcesToDelete = append(resourcesToDelete, id)
@@ -193,7 +223,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 //  1. Get existing edges for the cluster. Excluding intercluster edges.
 //  2. For each incoming edge, INSERT if it doesn't exist.
 //  3. Delete any existing edges that aren't in the incoming sync event.
-func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName string,
+func (dao *DAO) resetEdges(ctx context.Context, edges []interface{}, clusterName string,
 	syncResponse *model.SyncResponse) error {
 	timer := time.Now()
 
@@ -226,7 +256,8 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 	metrics.LogStepDuration(&timer, clusterName, "Resync QUERY existing edges")
 
 	// Now compare existing edges with the new edges.
-	for _, edge := range edges {
+	for _, e := range edges {
+		edge := edgeFromMap(e.(map[string]interface{}))
 		// If the edge already exists, do nothing.
 		if _, ok := existingEdgesMap[edge.SourceUID+edge.EdgeType+edge.DestUID]; ok {
 			delete(existingEdgesMap, edge.SourceUID+edge.EdgeType+edge.DestUID)

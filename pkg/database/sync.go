@@ -22,7 +22,8 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 
 	// ADD RESOURCES
 	// In case of conflict update only if data has changed
-	for _, resource := range event.AddResources {
+	for _, r := range event.AddResources {
+		resource := resourceFromMap(r.(map[string]interface{}))
 		data, _ := json.Marshal(resource.Properties)
 		queueErr = batch.Queue(batchItem{
 			action: "addResource",
@@ -36,7 +37,8 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	// UPDATE RESOURCES
 	// The collector enforces that a resource isn't added and updated in the same sync event.
 	// The uid and cluster fields will never get updated for a resource.
-	for _, resource := range event.UpdateResources {
+	for _, r := range event.UpdateResources {
+		resource := resourceFromMap(r.(map[string]interface{}))
 		data, _ := json.Marshal(resource.Properties)
 		queueErr = batch.Queue(batchItem{
 			action: "updateResource",
@@ -77,7 +79,8 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 
 	// ADD EDGES
 	// Nothing to update in case of conflict as resource kind cannot change
-	for _, edge := range event.AddEdges {
+	for _, e := range event.AddEdges {
+		edge := edgeFromMap(e.(map[string]interface{}))
 		queueErr = batch.Queue(batchItem{
 			action: "addEdge",
 			query:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
@@ -89,7 +92,8 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	// Edges are never updated. The collector only sends ADD and DELETE eveents for edges.
 
 	// DELETE EDGES
-	for _, edge := range event.DeleteEdges {
+	for _, e := range event.DeleteEdges {
+		edge := edgeFromMap(e.(map[string]interface{}))
 		queueErr = batch.Queue(batchItem{
 			action: "deleteEdge",
 			query:  "DELETE from search.edges WHERE sourceId=$1 AND destId=$2 AND edgeType=$3",
