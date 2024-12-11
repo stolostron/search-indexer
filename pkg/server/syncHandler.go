@@ -109,6 +109,7 @@ func PrintMem(msg string) {
 	fmt.Printf("\tNumGC = %v\n", m.NumGC)
 
 	runtime.GC()
+	runtime.ReadMemStats(&m)
 	fmt.Printf(msg + " (GC)" + strings.Repeat("\t", 6-len(msg+" (GC)")/8))
 	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
 	fmt.Printf("\tobjects: %v", m.HeapObjects)
