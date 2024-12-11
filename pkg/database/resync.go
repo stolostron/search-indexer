@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/stolostron/search-indexer/pkg/metrics"
@@ -14,13 +16,34 @@ import (
 	"k8s.io/klog/v2"
 )
 
+func PrintMem(msg string) {
+	fmt.Printf(msg + strings.Repeat("\t", 6-len(msg)/8))
+	bToMb := func(b uint64) uint64 {
+		return b / 1024 / 1024
+	}
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
+	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	// fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	// fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
+	fmt.Printf("\tobjects: %v", m.HeapObjects)
+	fmt.Printf("\tNumGC = %v\n", m.NumGC)
+
+	runtime.GC()
+	fmt.Printf(msg + " (GC)" + strings.Repeat("\t", 6-len(msg+" (GC)")/8))
+	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	fmt.Printf("\tobjects: %v", m.HeapObjects)
+	fmt.Printf("\tNumGC = %v\n", m.NumGC)
+}
+
 // Reset data for the cluster to the incoming state.
 func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	clusterName string, syncResponse *model.SyncResponse) error {
 
-	defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s. RequestId: %d", clusterName, event.RequestId), 0)()
-	klog.Infof(
-		"Starting resync from %12s. This is normal, but it could be a problem if it happens often.", clusterName)
+	// defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s. RequestId: %d", clusterName, event.RequestId), 0)()
+	// klog.Infof(
+	// "Starting resync from %12s. This is normal, but it could be a problem if it happens often.", clusterName)
 
 	// Reset resources
 	err := dao.resetResources(ctx, event.AddResources, clusterName, syncResponse)
@@ -53,12 +76,16 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
+	PrintMem("resetResources START")
+
 	incomingResMap := make(map[string]*model.Resource)
 	for i, resource := range resources {
 		incomingResMap[resource.UID] = &resources[i]
 	}
 	resourcesToDelete := make([]interface{}, 0)
 	resourcesToUpdate := make([]*model.Resource, 0)
+
+	PrintMem("resetResources AFTER incomingResMap")
 
 	// Get existing resources (UID and data) for the cluster.
 	query, params, err := useGoqu(
@@ -100,6 +127,8 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	}
 	metrics.LogStepDuration(&timer, clusterName, "QUERY existing resources.")
 
+	PrintMem("resetResources AFTER reading existing")
+
 	// INSERT resources that weren't found in the database.
 	for uid, resource := range incomingResMap {
 		data, _ := json.Marshal(resource.Properties)
@@ -121,6 +150,8 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 		}
 	}
 
+	PrintMem("resetResources AFTER insert")
+
 	// UPDATE resources that have changed.
 	for _, resource := range resourcesToUpdate {
 		data, _ := json.Marshal(resource.Properties)
@@ -141,6 +172,8 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 			syncResponse.TotalUpdated++
 		}
 	}
+
+	PrintMem("resetResources AFTER update")
 
 	// DELETE resources that no longer exist and their edges.
 	if len(resourcesToDelete) > 0 {
@@ -185,6 +218,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 		fmt.Sprintf("Reset resources stats: UNCHANGED [%d] INSERT [%d] UPDATE [%d] DELETE [%d]",
 			len(resources)-len(incomingResMap)-len(resourcesToUpdate),
 			syncResponse.TotalAdded, syncResponse.TotalUpdated, syncResponse.TotalDeleted))
+	PrintMem("resetResources END")
 
 	return batch.connError
 }
@@ -196,6 +230,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName string,
 	syncResponse *model.SyncResponse) error {
 	timer := time.Now()
+	PrintMem("resetEdges START")
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
@@ -225,6 +260,8 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 	}
 	metrics.LogStepDuration(&timer, clusterName, "Resync QUERY existing edges")
 
+	PrintMem("resetEdges after existingEdges")
+
 	// Now compare existing edges with the new edges.
 	for _, edge := range edges {
 		// If the edge already exists, do nothing.
@@ -250,6 +287,8 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 			syncResponse.TotalEdgesAdded++
 		}
 	}
+
+	PrintMem("resetEdges after inserting")
 
 	// Delete existing edges that are not in the new sync event.
 	for _, edge := range existingEdgesMap {

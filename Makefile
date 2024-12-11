@@ -21,7 +21,7 @@ setup-dev: ## Configure local environment to use the postgres instance on the de
 	@echo "oc port-forward service/search-postgres -n open-cluster-management 5432:5432 \\n"
 
 run: ## Run the service locally.
-	go run -tags development main.go -v=3
+	go run -tags development main.go -v=0
 
 .PHONY: lint
 lint: ## Run lint and gosec tool.
@@ -44,7 +44,7 @@ docker-build: ## Build the docker image.
 
 
 test-send: ## Sends a simulated request for testing using cURL.
-	curl -k -d "@pkg/server/mocks/clusterA.json" -X POST https://localhost:3010/aggregator/clusters/clusterA/sync
+	curl -k -d "@test/cluster-templates/sno-100k.json" -X POST https://localhost:3010/aggregator/clusters/clusterA/sync
 
 CLUSTERS ?=10
 RATE ?=1
