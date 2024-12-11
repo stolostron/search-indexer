@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/stolostron/search-indexer/pkg/metrics"
@@ -15,28 +16,72 @@ import (
 )
 
 // Reset data for the cluster to the incoming state.
-func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
+func (dao *DAO) ResyncData(ctx context.Context, resourceChannels map[string]chan interface{},
 	clusterName string, syncResponse *model.SyncResponse) error {
 
-	defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s. RequestId: %d", clusterName, event.RequestId), 0)()
+	//defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s. RequestId: %d", clusterName, event.RequestId), 0)()
 	klog.Infof(
 		"Starting resync from %12s. This is normal, but it could be a problem if it happens often.", clusterName)
 
+	//incomingResMap := make(map[string]*model.Resource)
+	batchSize := 100
+	var addEdges []model.Edge
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		count := 0
+		resourceBatch := make(map[string]*model.Resource, 100)
+		for resource := range resourceChannels["addResources"] {
+			count++
+			var r model.Resource
+			r = resource.(model.Resource)
+			resourceBatch[resource.(model.Resource).UID] = &r
+			if count >= batchSize {
+				if err := dao.resetResources(ctx, resourceBatch, clusterName, syncResponse); err != nil {
+					klog.Warningf("Error resyncing resources for cluster %12s. Error: %+v", clusterName, err)
+				}
+				resourceBatch = make(map[string]*model.Resource, 100)
+				count = 0
+			}
+		}
+		//err := dao.resetResources(ctx, incomingResMap, clusterName, syncResponse)
+		//if err != nil {
+		//	klog.Warningf("Error resyncing resources for cluster %12s. Error: %+v", clusterName, err)
+		//}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for edge := range resourceChannels["addEdges"] {
+			addEdges = append(addEdges, edge.(model.Edge))
+		}
+		err := dao.resetEdges(ctx, addEdges, clusterName, syncResponse)
+		if err != nil {
+			klog.Warningf("Error resyncing edges for cluster %12s. Error: %+v", clusterName, err)
+		}
+	}()
+	//wg.Add(1)
+	//go func() {
+	//	defer wg.Done()
+	//	for resource := range resourceChannels["requestId"] {
+	//		fmt.Println("requestId: ", resource)
+	//	}
+	//}()
+	//wg.Add(1)
+	//go func() {
+	//	defer wg.Done()
+	//	for resource := range resourceChannels["clearAll"] {
+	//		fmt.Println("clearAll: ", resource)
+	//	}
+	//}()
+	wg.Wait()
+
 	// Reset resources
-	err := dao.resetResources(ctx, event.AddResources, clusterName, syncResponse)
-	if err != nil {
-		klog.Warningf("Error resyncing resources for cluster %12s. Error: %+v", clusterName, err)
-		return err
-	}
 
 	// Reset edges
-	err = dao.resetEdges(ctx, event.AddEdges, clusterName, syncResponse)
-	if err != nil {
-		klog.Warningf("Error resyncing edges for cluster %12s. Error: %+v", clusterName, err)
-		return err
-	}
 
-	klog.V(1).Infof("Completed resync of cluster %12s.\t RequestId: %d", clusterName, event.RequestId)
+	//klog.V(1).Infof("Completed resync of cluster %12s.\t RequestId: %d", clusterName, event.RequestId)
 	return nil
 }
 
@@ -47,16 +92,52 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 //     - UPDATE if doesn't match the incoming resource.
 //     - DELETE if not found in the incoming resource.
 //  4. INSERT incoming resources not found in the existing resources.
-func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, clusterName string,
+func (dao *DAO) resetResources(ctx context.Context, incomingResMap map[string]*model.Resource, clusterName string,
 	syncResponse *model.SyncResponse) error {
 	timer := time.Now()
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
-	incomingResMap := make(map[string]*model.Resource)
-	for i, resource := range resources {
-		incomingResMap[resource.UID] = &resources[i]
-	}
+	//var mapMutex sync.Mutex
+	//incomingResMap := make(map[string]*model.Resource)
+	//var wg sync.WaitGroup
+	//var i int
+	//wg.Add(1)
+	//go func() {
+	//	mapMutex.Lock()
+	//	defer wg.Done()
+	//	for resource := range resourceChannels["addResources"] {
+	//		i++
+	//		var r model.Resource
+	//		r = resource.(model.Resource)
+	//		incomingResMap[resource.(model.Resource).UID] = &r
+	//	}
+	//	mapMutex.Unlock()
+	//}()
+	//wg.Add(1)
+	//go func() {
+	//	defer wg.Done()
+	//	for resource := range resourceChannels["addEdges"] {
+	//		continue
+	//		fmt.Println(resource)
+	//	}
+	//}()
+	//wg.Add(1)
+	//go func() {
+	//	defer wg.Done()
+	//	for resource := range resourceChannels["requestId"] {
+	//		fmt.Println("requestId: ", resource)
+	//	}
+	//}()
+	//wg.Add(1)
+	//go func() {
+	//	defer wg.Done()
+	//	for resource := range resourceChannels["clearAll"] {
+	//		fmt.Println("clearAll: ", resource)
+	//	}
+	//}()
+	//wg.Wait()
+
 	resourcesToDelete := make([]interface{}, 0)
 	resourcesToUpdate := make([]*model.Resource, 0)
 
@@ -181,10 +262,10 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	syncResponse.TotalAdded = len(incomingResMap)
 	syncResponse.TotalDeleted = len(resourcesToDelete)
 	syncResponse.TotalUpdated = len(resourcesToUpdate)
-	metrics.LogStepDuration(&timer, clusterName,
-		fmt.Sprintf("Reset resources stats: UNCHANGED [%d] INSERT [%d] UPDATE [%d] DELETE [%d]",
-			len(resources)-len(incomingResMap)-len(resourcesToUpdate),
-			syncResponse.TotalAdded, syncResponse.TotalUpdated, syncResponse.TotalDeleted))
+	//metrics.LogStepDuration(&timer, clusterName,
+	//	fmt.Sprintf("Reset resources stats: UNCHANGED [%d] INSERT [%d] UPDATE [%d] DELETE [%d]",
+	//		len(resources)-len(incomingResMap)-len(resourcesToUpdate),
+	//		syncResponse.TotalAdded, syncResponse.TotalUpdated, syncResponse.TotalDeleted))
 
 	return batch.connError
 }
