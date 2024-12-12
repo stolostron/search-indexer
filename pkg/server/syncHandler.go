@@ -5,6 +5,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/stolostron/search-indexer/pkg/database"
 	"io"
 	"net/http"
 	"time"
@@ -18,6 +19,7 @@ import (
 )
 
 func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
+	database.PrintMem("SyncResources start")
 	start := time.Now()
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
@@ -82,9 +84,11 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	klog.V(5).Infof("Request from [%12s] took [%v] clearAll [%t] addTotal [%d]",
 		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
+	database.PrintMem("SyncResources end")
 }
 
 func decodeSyncEvent(body io.ReadCloser, clusterName string) (model.SyncEvent, error) {
+	database.PrintMem("decodeSyncEvent start")
 	var syncEvent model.SyncEvent
 	dec := json.NewDecoder(body)
 
@@ -129,6 +133,7 @@ func decodeSyncEvent(body io.ReadCloser, clusterName string) (model.SyncEvent, e
 			}
 		}
 	}
+	database.PrintMem("decodeSyncEvent end")
 
 	return syncEvent, nil
 }
