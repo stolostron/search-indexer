@@ -17,26 +17,29 @@ import (
 )
 
 func PrintMem(msg string) {
-	fmt.Printf(msg + strings.Repeat("\t", 6-len(msg)/8))
-	bToMb := func(b uint64) uint64 {
-		return b / 1024 / 1024
-	}
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
-	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
-	// fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
-	// fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
-	fmt.Printf("\tobjects: %v", m.HeapObjects)
-	fmt.Printf("\tNumGC = %v\n", m.NumGC)
+	klog.Infof("%s%sAlloc = %v MiB\tobjects = %d\tNumGC = %d",
+		msg, strings.Repeat(" ", 48-len(msg)), m.Alloc/1024/1024, m.HeapObjects, m.NumGC)
 
+	// Run garbage collection and re-print memory stats.
 	runtime.GC()
 	runtime.ReadMemStats(&m)
-	fmt.Printf(msg + " (GC)" + strings.Repeat("\t", 6-len(msg+" (GC)")/8))
-	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
-	fmt.Printf("\tobjects: %v", m.HeapObjects)
-	fmt.Printf("\tNumGC = %v\n", m.NumGC)
+	klog.Infof("%s%sAlloc = %v MiB\tobjects = %d\tNumGC = %d",
+		msg+" (GC)", strings.Repeat(" ", 48-len(msg+" (GC)")), m.Alloc/1024/1024, m.HeapObjects, m.NumGC)
 }
+
+// go tool pprof mem.prof
+// func ProfileMem() {
+// 	f, err := os.Create("mem.prof")
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	defer f.Close()
+// 	if err := pprof.WriteHeapProfile(f); err != nil {
+// 		panic(err)
+// 	}
+// }
 
 // Reset data for the cluster to the incoming state.
 func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
@@ -79,12 +82,12 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 
 	PrintMem("resetResources START")
 
-	incomingResMap := make(map[string]*model.Resource)
-	for i, resource := range resources {
-		incomingResMap[resource.UID] = &resources[i]
+	incomingResMap := make(map[string]*model.Resource, len(resources))
+	for i := range resources {
+		incomingResMap[resources[i].UID] = &resources[i]
 	}
-	resourcesToDelete := make([]interface{}, 0)
-	resourcesToUpdate := make([]*model.Resource, 0)
+	resourcesToUpdate := make([]*model.Resource, 0, len(resources))
+	resourcesToDelete := make([]interface{}, len(resources))
 
 	PrintMem("resetResources AFTER incomingResMap")
 
@@ -105,7 +108,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 				continue
 			}
 
-			props := make(map[string]interface{})
+			props := make(map[string]interface{}, 10)
 			jsonErr := json.Unmarshal([]byte(data), &props)
 			if jsonErr != nil {
 				klog.Warningf("Error unmarshalling existing resource data. Error: %+v", err)
@@ -131,8 +134,8 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	PrintMem("resetResources AFTER reading existing")
 
 	// INSERT resources that weren't found in the database.
-	for uid, resource := range incomingResMap {
-		data, _ := json.Marshal(resource.Properties)
+	for uid := range incomingResMap {
+		data, _ := json.Marshal(incomingResMap[uid].Properties)
 		query, params, err := useGoqu(
 			"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO NOTHING",
 			[]interface{}{uid, clusterName, string(data)})
@@ -173,7 +176,6 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 			syncResponse.TotalUpdated++
 		}
 	}
-
 	PrintMem("resetResources AFTER update")
 
 	// DELETE resources that no longer exist and their edges.
@@ -210,8 +212,12 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 			}
 		}
 	}
+	PrintMem("resetResources AFTER delete")
+
 	batch.flush()
+	PrintMem("resetResources AFTER flush")
 	batch.wg.Wait()
+	PrintMem("resetResources AFTER flush and wait")
 	syncResponse.TotalAdded = len(incomingResMap)
 	syncResponse.TotalDeleted = len(resourcesToDelete)
 	syncResponse.TotalUpdated = len(resourcesToUpdate)
@@ -236,7 +242,7 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
 	var queueErr error
-	existingEdgesMap := make(map[string]model.Edge)
+	existingEdgesMap := make(map[string]model.Edge, len(edges))
 
 	// Get all existing edges for the cluster.
 	query, params, err := useGoqu(
@@ -264,7 +270,8 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 	PrintMem("resetEdges after existingEdges")
 
 	// Now compare existing edges with the new edges.
-	for _, edge := range edges {
+	for i := range edges {
+		edge := &edges[i]
 		// If the edge already exists, do nothing.
 		if _, ok := existingEdgesMap[edge.SourceUID+edge.EdgeType+edge.DestUID]; ok {
 			delete(existingEdgesMap, edge.SourceUID+edge.EdgeType+edge.DestUID)

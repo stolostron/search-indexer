@@ -4,16 +4,14 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"runtime"
-	"strings"
 	"time"
 
 	"github.com/stolostron/search-indexer/pkg/metrics"
 
 	"github.com/gorilla/mux"
 	"github.com/stolostron/search-indexer/pkg/config"
+	"github.com/stolostron/search-indexer/pkg/database"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
@@ -25,7 +23,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	clusterName := params["id"]
 
 	klog.Infof("Request content length: %+v MB", r.ContentLength/1024/1024)
-	PrintMem("syncHandler START")
+	database.PrintMem("syncHandler START")
 
 	// Decode SyncEvent from request body.
 	var syncEvent model.SyncEvent
@@ -36,7 +34,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	PrintMem("syncHandler AFTER decode")
+	database.PrintMem("syncHandler AFTER decode")
 
 	resourceTotal := len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)
 	metrics.RequestSize.Observe(float64(resourceTotal))
@@ -91,38 +89,5 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
 
-	PrintMem("syncHandler END")
+	database.PrintMem("syncHandler END")
 }
-
-func PrintMem(msg string) {
-	fmt.Printf(msg + strings.Repeat("\t", 6-len(msg)/8))
-	bToMb := func(b uint64) uint64 {
-		return b / 1024 / 1024
-	}
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
-	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
-	// fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
-	// fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
-	fmt.Printf("\tobjects: %v", m.HeapObjects)
-	fmt.Printf("\tNumGC = %v\n", m.NumGC)
-
-	runtime.GC()
-	runtime.ReadMemStats(&m)
-	fmt.Printf(msg + " (GC)" + strings.Repeat("\t", 6-len(msg+" (GC)")/8))
-	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
-	fmt.Printf("\tobjects: %v", m.HeapObjects)
-	fmt.Printf("\tNumGC = %v\n", m.NumGC)
-}
-
-// func ProfileMem() {
-// 	f, err := os.Create("mem.prof")
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	defer f.Close()
-// 	if err := pprof.WriteHeapProfile(f); err != nil {
-// 		panic(err)
-// 	}
-// }

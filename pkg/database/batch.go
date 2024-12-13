@@ -37,7 +37,7 @@ type batchWithRetry struct {
 func NewBatchWithRetry(ctx context.Context, dao *DAO, syncResponse *model.SyncResponse) batchWithRetry {
 	batch := batchWithRetry{
 		ctx:          ctx,
-		items:        make([]batchItem, 0),
+		items:        make([]batchItem, 0, dao.batchSize),
 		wg:           &sync.WaitGroup{},
 		dao:          dao,
 		syncResponse: syncResponse,
