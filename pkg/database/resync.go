@@ -106,38 +106,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 
 			incomingResource, exists := incomingResMap[id]
 			if !exists {
-				// Resource needs to be deleted.
-				query, params, err := useGoqu(
-					"DELETE from search.resources WHERE uid IN ($1)",
-					[]interface{}{id})
-				if err == nil {
-					queueErr := batch.Queue(batchItem{
-						action: "deleteResource",
-						query:  query,
-						uid:    fmt.Sprintf("%s", resourcesToDelete),
-						args:   params,
-					})
-					if queueErr != nil {
-						klog.Warningf("Error queuing resources for deletion. Error: %+v", queueErr)
-					}
-					syncResponse.TotalDeleted++
-				}
-
-				// DELETE edges that point to deleted resources.
-				query, _, err = useGoqu(
-					"DELETE from search.edges WHERE sourceid IN ($1) OR destid IN ($1)",
-					resourcesToDelete)
-				if err == nil {
-					queueErr := batch.Queue(batchItem{
-						action: "deleteEdge",
-						query:  query,
-						uid:    fmt.Sprintf("%s", resourcesToDelete),
-						args:   params,
-					})
-					if queueErr != nil {
-						klog.Warningf("Error queuing edges for deletion. Error: %+v", queueErr)
-					}
-				}
+				resourcesToDelete = append(resourcesToDelete, id)
 				continue
 			}
 
@@ -165,9 +134,9 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 					}
 					syncResponse.TotalUpdated++
 				}
-				// remove incoming resource from map, all resources left are to be inserted
-				delete(incomingResMap, id)
 			}
+			// remove incoming resource from map, all resources left are to be inserted
+			delete(incomingResMap, id)
 		}
 
 		PrintMem("existingRows end")
@@ -194,17 +163,54 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 		}
 	}
 
+	PrintMem("Deleting resources start")
+	// Resource needs to be deleted.
+	query, params, err = useGoqu(
+		"DELETE from search.resources WHERE uid IN ($1)",
+		resourcesToDelete)
+	if err == nil {
+		queueErr := batch.Queue(batchItem{
+			action: "deleteResource",
+			query:  query,
+			uid:    fmt.Sprintf("%s", resourcesToDelete),
+			args:   params,
+		})
+		if queueErr != nil {
+			klog.Warningf("Error queuing resources for deletion. Error: %+v", queueErr)
+		}
+	}
+	PrintMem("Deleting resources end")
+	PrintMem("Deleting edges start")
+
+	// DELETE edges that point to deleted resources.
+	query, _, err = useGoqu(
+		"DELETE from search.edges WHERE sourceid IN ($1) OR destid IN ($1)",
+		resourcesToDelete)
+	if err == nil {
+		queueErr := batch.Queue(batchItem{
+			action: "deleteEdge",
+			query:  query,
+			uid:    fmt.Sprintf("%s", resourcesToDelete),
+			args:   params,
+		})
+		if queueErr != nil {
+			klog.Warningf("Error queuing edges for deletion. Error: %+v", queueErr)
+		}
+	}
+	PrintMem("Deleting edges end")
+
 	metrics.LogStepDuration(&timer, clusterName, "QUERY existing resources.")
 
 	batch.flush()
 	batch.wg.Wait()
 	syncResponse.TotalAdded = len(incomingResMap)
+	syncResponse.TotalDeleted = len(resourcesToDelete)
 	metrics.LogStepDuration(&timer, clusterName,
 		fmt.Sprintf("Reset resources stats: UNCHANGED [%d] INSERT [%d] UPDATE [%d] DELETE [%d]",
 			len(resources)-syncResponse.TotalAdded-syncResponse.TotalUpdated,
 			syncResponse.TotalAdded, syncResponse.TotalUpdated, syncResponse.TotalDeleted))
 
-	//PrintMem("resetResources end")
+	PrintMem("resetResources end")
 	return batch.connError
 }
 
