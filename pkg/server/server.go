@@ -30,6 +30,7 @@ func (s *ServerConfig) StartAndListen(ctx context.Context) {
 	syncSubrouter := router.PathPrefix("/aggregator").Subrouter()
 	syncSubrouter.Use(metrics.PrometheusMiddleware)
 	syncSubrouter.Use(requestLimiterMiddleware)
+	syncSubrouter.Use(largeRequestLimiterMiddleware)
 	syncSubrouter.HandleFunc("/clusters/{id}/sync", s.SyncResources).Methods("POST")
 
 	// Configure TLS
