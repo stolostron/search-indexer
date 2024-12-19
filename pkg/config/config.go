@@ -42,6 +42,8 @@ type Config struct {
 	ResyncPeriodMS      int    // Time in MS for the clusters informer. Default: 15 min.
 	RediscoverRateMS    int    // Time in MS we should check on cluster resource type
 	RequestLimit        int    // Max number of concurrent requests. Used to prevent from overloading the database
+	LargeRequestLimit   int    // Max number of large concurrent requests. Used to help control memory spikes
+	LargeRequestSize    int    // Size defining a large request. Used by large request limiter middleware to control large requests
 	ServerAddress       string // Web server address
 	SlowLog             int    // Log operations slower than the specified time in ms. Default: 1 sec
 	Version             string
@@ -53,11 +55,11 @@ func new() *Config {
 		DBBatchSize: getEnvAsInt("DB_BATCH_SIZE", 2500),
 		DBHost:      getEnv("DB_HOST", "localhost"),
 		// Postgres has 100 conns by default. Using 10 allows scaling indexer and api.
-		DBMaxConns:          getEnvAsInt32("DB_MAX_CONNS", int32(10)),                   // 10 - Overrides pgxpool default
+		DBMaxConns:          getEnvAsInt32("DB_MAX_CONNS", int32(10)),          // 10 - Overrides pgxpool default
 		DBMaxConnLifeJitter: getEnvAsInt("DB_MAX_CONN_LIFE_JITTER", 2*60*1000), // 2 min - Overrides pgxpool default
 		DBMaxConnIdleTime:   getEnvAsInt("DB_MAX_CONN_IDLE_TIME", 30*60*1000),  // 30 min - Default for pgxpool.Config
 		DBMaxConnLifeTime:   getEnvAsInt("DB_MAX_CONN_LIFE_TIME", 60*60*1000),  // 60 min - Default for pgxpool.Config
-		DBMinConns:          getEnvAsInt32("DB_MIN_CONNS", int32(2)),                    // 2 - Overrides pgxpool default
+		DBMinConns:          getEnvAsInt32("DB_MIN_CONNS", int32(2)),           // 2 - Overrides pgxpool default
 		DBName:              getEnv("DB_NAME", ""),
 		DBPass:              getEnv("DB_PASS", ""),
 		DBPort:              getEnvAsInt("DB_PORT", 5432),
@@ -66,15 +68,17 @@ func new() *Config {
 		HTTPTimeout:         getEnvAsInt("HTTP_TIMEOUT", 5*60*1000), // 5 min
 		KubeConfigPath:      getKubeConfigPath(),
 		// Use 5 min for delete cluster activities and 30 seconds for db reconnect retry
-		MaxBackoffMS:     getEnvAsInt("MAX_BACKOFF_MS", 5*60*1000), // 5 min
-		PodName:          getEnv("POD_NAME", "local-dev"),
-		PodNamespace:     getEnv("POD_NAMESPACE", "open-cluster-management"),
-		RediscoverRateMS: getEnvAsInt("REDISCOVER_RATE_MS", 5*60*1000), // 5 min
-		ResyncPeriodMS:   getEnvAsInt("RESYNC_PERIOD_MS", 15*60*1000),  // 15 min - cluster resync period
-		RequestLimit:     getEnvAsInt("REQUEST_LIMIT", 25),             // Set to 25 to prevent memory issues.
-		ServerAddress:    getEnv("AGGREGATOR_ADDRESS", ":3010"),
-		SlowLog:          getEnvAsInt("SLOW_LOG", 1000), // 1 second
-		Version:          COMPONENT_VERSION,
+		MaxBackoffMS:      getEnvAsInt("MAX_BACKOFF_MS", 5*60*1000), // 5 min
+		PodName:           getEnv("POD_NAME", "local-dev"),
+		PodNamespace:      getEnv("POD_NAMESPACE", "open-cluster-management"),
+		RediscoverRateMS:  getEnvAsInt("REDISCOVER_RATE_MS", 5*60*1000), // 5 min
+		ResyncPeriodMS:    getEnvAsInt("RESYNC_PERIOD_MS", 15*60*1000),  // 15 min - cluster resync period
+		RequestLimit:      getEnvAsInt("REQUEST_LIMIT", 25),             // Set to 25 to prevent memory issues.
+		LargeRequestLimit: getEnvAsInt("LARGE_REQUEST_LIMIT", 5),
+		LargeRequestSize:  getEnvAsInt("LARGE_REQUEST_SIZE", 1024*1024*20), // 20 MB
+		ServerAddress:     getEnv("AGGREGATOR_ADDRESS", ":3010"),
+		SlowLog:           getEnvAsInt("SLOW_LOG", 1000), // 1 second
+		Version:           COMPONENT_VERSION,
 	}
 
 	// URLEncode the db password.
