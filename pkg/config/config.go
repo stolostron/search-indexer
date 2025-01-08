@@ -23,11 +23,11 @@ type Config struct {
 	DBBatchSize         int // Batch size used to write to DB. Default: 500
 	DBHealthCkeckPeriod int // Overrides pgxpool.Config{ HealthCheckPeriod } Default: 1 min
 	DBHost              string
-	DBMinConns          int // Overrides pgxpool.Config{ MinConns } Default: 0
-	DBMaxConns          int // Overrides pgxpool.Config{ MaxConns } Default: 20
-	DBMaxConnIdleTime   int // Overrides pgxpool.Config{ MaxConnIdleTime } Default: 30 min
-	DBMaxConnLifeTime   int // Overrides pgxpool.Config{ MaxConnLifetime } Default: 60 min
-	DBMaxConnLifeJitter int // Overrides pgxpool.Config{ MaxConnLifetimeJitter } Default: 2 min
+	DBMinConns          int32 // Overrides pgxpool.Config{ MinConns } Default: 0
+	DBMaxConns          int32 // Overrides pgxpool.Config{ MaxConns } Default: 20
+	DBMaxConnIdleTime   int   // Overrides pgxpool.Config{ MaxConnIdleTime } Default: 30 min
+	DBMaxConnLifeTime   int   // Overrides pgxpool.Config{ MaxConnLifetime } Default: 60 min
+	DBMaxConnLifeJitter int   // Overrides pgxpool.Config{ MaxConnLifetimeJitter } Default: 2 min
 	DBName              string
 	DBPass              string
 	DBPort              int
@@ -53,11 +53,11 @@ func new() *Config {
 		DBBatchSize: getEnvAsInt("DB_BATCH_SIZE", 2500),
 		DBHost:      getEnv("DB_HOST", "localhost"),
 		// Postgres has 100 conns by default. Using 10 allows scaling indexer and api.
-		DBMaxConns:          getEnvAsInt("DB_MAX_CONNS", 10),                   // 10 - Overrides pgxpool default
+		DBMaxConns:          getEnvAsInt32("DB_MAX_CONNS", int32(10)),          // 10 - Overrides pgxpool default
 		DBMaxConnLifeJitter: getEnvAsInt("DB_MAX_CONN_LIFE_JITTER", 2*60*1000), // 2 min - Overrides pgxpool default
 		DBMaxConnIdleTime:   getEnvAsInt("DB_MAX_CONN_IDLE_TIME", 30*60*1000),  // 30 min - Default for pgxpool.Config
 		DBMaxConnLifeTime:   getEnvAsInt("DB_MAX_CONN_LIFE_TIME", 60*60*1000),  // 60 min - Default for pgxpool.Config
-		DBMinConns:          getEnvAsInt("DB_MIN_CONNS", 2),                    // 2 - Overrides pgxpool default
+		DBMinConns:          getEnvAsInt32("DB_MIN_CONNS", int32(2)),           // 2 - Overrides pgxpool default
 		DBName:              getEnv("DB_NAME", ""),
 		DBPass:              getEnv("DB_PASS", ""),
 		DBPort:              getEnvAsInt("DB_PORT", 5432),
@@ -114,6 +114,15 @@ func getEnvAsInt(name string, defaultVal int) int {
 	valueStr := getEnv(name, "")
 	if value, err := strconv.Atoi(valueStr); err == nil {
 		return value
+	}
+	return defaultVal
+}
+
+// Helper function to read an environment variable into integer32 or return a default value
+func getEnvAsInt32(name string, defaultVal int32) int32 {
+	valueStr := getEnv(name, "")
+	if value, err := strconv.ParseInt(valueStr, 10, 32); err == nil {
+		return int32(value)
 	}
 	return defaultVal
 }
