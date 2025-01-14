@@ -46,6 +46,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	// The collector sends 2 types of requests:
 	// 1. ReSync [ClearAll=true]  - It has the complete current state. It must overwrite any previous state.
 	// 2. Sync   [ClearAll=false] - This is the delta changes from the previous state.
+	lenAddResources := len(syncEvent.AddResources)
 	if syncEvent.ClearAll {
 		err = s.Dao.ResyncData(r.Context(), syncEvent, clusterName, syncResponse)
 	} else {
@@ -79,6 +80,6 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 
 	// Log request.
 	klog.V(5).Infof("Request from [%12s] took [%v] clearAll [%t] addTotal [%d]",
-		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
+		clusterName, time.Since(start), syncEvent.ClearAll, lenAddResources)
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
 }
