@@ -24,20 +24,22 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 	}
 
 	switch query {
-	case "SELECT uid, data FROM search.resources WHERE cluster=$1 AND uid!='cluster__$1'":
+	case "SELECT uid FROM search.resources WHERE cluster=$1 AND uid!='cluster__$1'":
 		q, p, er = dialect.From(resources).Prepared(true).
-			Select("uid", "data").Where(
+			Select("uid").Where(
 			goqu.C("cluster").Eq(params[0]),
 			goqu.C("uid").Neq(fmt.Sprintf("cluster__%s", params[0]))). // Exclude the cluster pseudo-node.
 			ToSQL()
 
-	case "INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO NOTHING":
+	case "INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE data!=$3":
 		if !validateParams(3) {
 			break
 		}
 		q, p, er = dialect.From(resources).Prepared(true).
 			Insert().Rows(goqu.Record{"uid": params[0], "cluster": params[1], "data": params[2]}).
-			OnConflict(goqu.DoNothing()).ToSQL()
+			OnConflict(goqu.DoUpdate("uid", goqu.C("data").Set(params[2])).
+				Where(goqu.C(`search"."resources"."data`).Neq(params[2]))).ToSQL()
+		// TODO: Why do I need to use "search.resources" here? Is this the best goqu syntax?
 
 	case "UPDATE search.resources SET data=$2 WHERE uid=$1":
 		if !validateParams(2) {
@@ -46,15 +48,17 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 		q, p, er = dialect.From(resources).Prepared(true).
 			Update().Set(goqu.Record{"data": params[1].(string)}).Where(goqu.C("uid").Eq(params[0])).ToSQL()
 
-	case "DELETE from search.resources WHERE uid IN ($1)":
+	case "DELETE from search.resources WHERE uid NOT IN ($1)":
 		q, p, er = dialect.From(resources).
-			Delete().Where(goqu.C("uid").In(params)).ToSQL()
+			Delete().Where(goqu.C("uid").NotIn(params)).ToSQL()
 
-	case "DELETE from search.edges WHERE sourceid IN ($1) OR destid IN ($1)":
+	case "DELETE from search.edges WHERE sourceid NOT IN ($1) OR destid NOT IN ($1)":
 		q, p, er = dialect.From(edges).
 			Delete().Where(
-			goqu.Or(goqu.C("sourceid").In(params),
-				goqu.C("destid").In(params))).ToSQL()
+			goqu.Or(
+				goqu.C("sourceid").NotIn(params),
+				goqu.C("destid").NotIn(params),
+			)).ToSQL()
 
 	// Queries for EDGES table.
 	case "SELECT sourceid, edgetype, destid FROM search.edges WHERE edgetype!='interCluster' AND cluster=$1":
