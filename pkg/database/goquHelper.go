@@ -38,8 +38,7 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 		q, p, er = dialect.From(resources).Prepared(true).
 			Insert().Rows(goqu.Record{"uid": params[0], "cluster": params[1], "data": params[2]}).
 			OnConflict(goqu.DoUpdate("uid", goqu.C("data").Set(params[2])).
-				Where(goqu.C(`search"."resources"."data`).Neq(params[2]))).ToSQL()
-		// TODO: Why do I need to use "search.resources" here? Is this the best goqu syntax?
+				Where(resources.Col("data").Neq(params[2]))).ToSQL()
 
 	case "UPDATE search.resources SET data=$2 WHERE uid=$1":
 		if !validateParams(2) {
@@ -55,10 +54,8 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 	case "DELETE from search.edges WHERE sourceid NOT IN ($1) OR destid NOT IN ($1)":
 		q, p, er = dialect.From(edges).
 			Delete().Where(
-			goqu.Or(
-				goqu.C("sourceid").NotIn(params),
-				goqu.C("destid").NotIn(params),
-			)).ToSQL()
+			goqu.Or(goqu.C("sourceid").NotIn(params),
+				goqu.C("destid").NotIn(params))).ToSQL()
 
 	// Queries for EDGES table.
 	case "SELECT sourceid, edgetype, destid FROM search.edges WHERE edgetype!='interCluster' AND cluster=$1":
