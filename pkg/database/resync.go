@@ -110,7 +110,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	batch.flush()
 	batch.wg.Wait()
 	// TODO: These metrics are now harder to generate.
-	// These are only used for debugging, so maybe it's ok to remove.
+	// Will need to check how these are used in the collector.
 	//
 	// syncResponse.TotalAdded = len(incomingUIDs)
 	// syncResponse.TotalDeleted = len(resourcesToDelete)
