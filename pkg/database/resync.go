@@ -72,38 +72,38 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 		incomingUIDs = append(incomingUIDs, uid)
 	}
 
-	// DELETE resources that no longer exist and their edges.
-	if len(incomingUIDs) > 0 {
-		// DELETE resources that no longer exist.
-		query, params, err := useGoqu(
-			"DELETE from search.resources WHERE uid NOT IN ($1)",
-			incomingUIDs)
-		if err == nil {
-			queueErr := batch.Queue(batchItem{
-				action: "deleteResource",
-				query:  query,
-				uid:    fmt.Sprintf("%s", incomingUIDs),
-				args:   params,
-			})
-			if queueErr != nil {
-				klog.Warningf("Error queuing resources for deletion. Error: %+v", queueErr)
-			}
+	// DELETE resources that no longer exist.
+	query, params, err := useGoqu(
+		"DELETE from search.resources WHERE cluster=$1 AND uid NOT IN ($2)",
+		[]interface{}{clusterName, incomingUIDs})
+	if err == nil {
+		queueErr := batch.Queue(batchItem{
+			action: "deleteResource",
+			query:  query,
+			uid:    fmt.Sprintf("%s", incomingUIDs),
+			args:   params,
+		})
+		if queueErr != nil {
+			klog.Warningf("Error queuing resources for deletion. Error: %+v", queueErr)
 		}
+	}
 
-		// DELETE edges pointing to resources that no longer exist.
-		query, _, err = useGoqu(
-			"DELETE from search.edges WHERE sourceid NOT IN ($1) OR destid NOT IN ($1)",
-			incomingUIDs)
-		if err == nil {
-			queueErr := batch.Queue(batchItem{
-				action: "deleteEdge",
-				query:  query,
-				uid:    fmt.Sprintf("%s", incomingUIDs),
-				args:   params,
-			})
-			if queueErr != nil {
-				klog.Warningf("Error queuing edges for deletion. Error: %+v", queueErr)
-			}
+	klog.Info("Done with UPSERT and DELETE resources for ", clusterName)
+
+	// DELETE edges pointing to resources that no longer exist.
+	// FIXME!!! This query is taking too long. Most likely we need an index on cluster.
+	query, _, err = useGoqu(
+		"DELETE from search.edges WHERE cluster=$1 AND sourceid NOT IN ($2) OR destid NOT IN ($2)",
+		[]interface{}{clusterName, incomingUIDs})
+	if err == nil {
+		queueErr := batch.Queue(batchItem{
+			action: "deleteEdge",
+			query:  query,
+			uid:    fmt.Sprintf("%s", incomingUIDs),
+			args:   params,
+		})
+		if queueErr != nil {
+			klog.Warningf("Error queuing edges for deletion. Error: %+v", queueErr)
 		}
 	}
 
@@ -123,7 +123,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	return batch.connError
 }
 
-// TODO: Update to match logic in resources.
+// TODO: Update this function.
 // Reset Edges
 //  1. Get existing edges for the cluster. Excluding intercluster edges.
 //  2. For each incoming edge, INSERT if it doesn't exist.

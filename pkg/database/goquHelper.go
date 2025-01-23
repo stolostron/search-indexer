@@ -47,15 +47,17 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 		q, p, er = dialect.From(resources).Prepared(true).
 			Update().Set(goqu.Record{"data": params[1].(string)}).Where(goqu.C("uid").Eq(params[0])).ToSQL()
 
-	case "DELETE from search.resources WHERE uid NOT IN ($1)":
+	case "DELETE from search.resources WHERE cluster=$1 AND uid NOT IN ($2)":
 		q, p, er = dialect.From(resources).
-			Delete().Where(goqu.C("uid").NotIn(params)).ToSQL()
+			Delete().Where(goqu.C("cluster").Eq(params[0]), goqu.C("uid").NotIn(params[1])).ToSQL()
 
-	case "DELETE from search.edges WHERE sourceid NOT IN ($1) OR destid NOT IN ($1)":
+	case "DELETE from search.edges WHERE cluster=$1 AND sourceid NOT IN ($2) OR destid NOT IN ($2)":
 		q, p, er = dialect.From(edges).
 			Delete().Where(
-			goqu.Or(goqu.C("sourceid").NotIn(params),
-				goqu.C("destid").NotIn(params))).ToSQL()
+			goqu.C("cluster").Eq(params[0]),
+			goqu.Or(
+				goqu.C("sourceid").NotIn(params[1]),
+				goqu.C("destid").NotIn(params[1]))).ToSQL()
 
 	// Queries for EDGES table.
 	case "SELECT sourceid, edgetype, destid FROM search.edges WHERE edgetype!='interCluster' AND cluster=$1":
