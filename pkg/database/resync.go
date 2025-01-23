@@ -71,8 +71,12 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 		}
 		incomingUIDs = append(incomingUIDs, uid)
 	}
+	batch.flush() // TODO: Remove, this is to debug timing.
+	batch.wg.Wait()
+	klog.Info("Done with UPSERT resources for ", clusterName)
 
 	// DELETE resources that no longer exist.
+	// FIXME: This query is takig too long.
 	query, params, err := useGoqu(
 		"DELETE from search.resources WHERE cluster=$1 AND uid NOT IN ($2)",
 		[]interface{}{clusterName, incomingUIDs})
@@ -88,10 +92,11 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 		}
 	}
 
-	klog.Info("Done with UPSERT and DELETE resources for ", clusterName)
+	batch.flush() // TODO: Remove, this is to debug timing.
+	batch.wg.Wait()
+	klog.Info("Done with DELETE resources for ", clusterName)
 
 	// DELETE edges pointing to resources that no longer exist.
-	// FIXME!!! This query is taking too long. Most likely we need an index on cluster.
 	query, _, err = useGoqu(
 		"DELETE from search.edges WHERE cluster=$1 AND sourceid NOT IN ($2) OR destid NOT IN ($2)",
 		[]interface{}{clusterName, incomingUIDs})
@@ -106,9 +111,10 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 			klog.Warningf("Error queuing edges for deletion. Error: %+v", queueErr)
 		}
 	}
-
 	batch.flush()
 	batch.wg.Wait()
+	klog.Info("Done deleting edges to resources that don't exist for ", clusterName)
+
 	// TODO: These metrics are now harder to generate.
 	// Will need to check how these are used in the collector.
 	//
