@@ -19,7 +19,7 @@ func largeRequestLimiterMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		clusterName := params["id"]
-		if r.ContentLength > int64(config.Cfg.LargeRequestLimit) {
+		if r.ContentLength > int64(config.Cfg.LargeRequestSize) {
 			largeRequestCountTrackerLock.RLock()
 			largeRequestCount := largeRequestCountTracker
 			largeRequestCountTrackerLock.RUnlock()
