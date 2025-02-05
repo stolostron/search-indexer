@@ -53,9 +53,9 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
-	incomingResMap := make(map[string]*model.Resource)
-	for i, resource := range resources {
-		incomingResMap[resource.UID] = &resources[i]
+	incomingResMap := make(map[string]*model.Resource, len(resources))
+	for i := range resources {
+		incomingResMap[resources[i].UID] = &resources[i]
 	}
 	resourcesToDelete := make([]interface{}, 0)
 	resourcesToUpdate := make([]*model.Resource, 0)
@@ -76,6 +76,13 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 				klog.Warningf("Error scanning existing resource row. Error: %+v", err)
 				continue
 			}
+			incomingResource, exists := incomingResMap[id]
+			if !exists {
+				// Resource needs to be deleted.
+				resourcesToDelete = append(resourcesToDelete, id)
+				delete(incomingResMap, id)
+				continue
+			}
 
 			props := make(map[string]interface{})
 			jsonErr := json.Unmarshal([]byte(data), &props)
@@ -83,11 +90,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 				klog.Warningf("Error unmarshalling existing resource data. Error: %+v", err)
 			}
 
-			incomingResource, exists := incomingResMap[id]
-			if !exists {
-				// Resource needs to be deleted.
-				resourcesToDelete = append(resourcesToDelete, id)
-			} else if !reflect.DeepEqual(incomingResource.Properties, props) {
+			if !reflect.DeepEqual(incomingResource.Properties, props) {
 				// Resource needs to be updated.
 				resourcesToUpdate = append(resourcesToUpdate, incomingResource)
 				delete(incomingResMap, id)
