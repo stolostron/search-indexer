@@ -17,7 +17,7 @@ import (
 func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	clusterName string, syncResponse *model.SyncResponse) error {
 
-	defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s. RequestId: %d", clusterName, event.RequestId), 0)()
+	defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s.\t RequestId: %d", clusterName, event.RequestId), 0)()
 	klog.Infof(
 		"Starting resync from %12s. This is normal, but it could be a problem if it happens often.", clusterName)
 
@@ -71,12 +71,8 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 		}
 		incomingUIDs = append(incomingUIDs, uid)
 	}
-	batch.flush() // TODO: Remove, this is to debug timing.
-	batch.wg.Wait()
-	klog.Info("Done with UPSERT resources for ", clusterName)
 
 	// DELETE resources that no longer exist.
-	// FIXME: This query is takig too long.
 	query, params, err := useGoqu(
 		"DELETE from search.resources WHERE cluster=$1 AND uid NOT IN ($2)",
 		[]interface{}{clusterName, incomingUIDs})
@@ -91,10 +87,6 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 			klog.Warningf("Error queuing resources for deletion. Error: %+v", queueErr)
 		}
 	}
-
-	batch.flush() // TODO: Remove, this is to debug timing.
-	batch.wg.Wait()
-	klog.Info("Done with DELETE resources for ", clusterName)
 
 	// DELETE edges pointing to resources that no longer exist.
 	query, _, err = useGoqu(
@@ -113,7 +105,6 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	}
 	batch.flush()
 	batch.wg.Wait()
-	klog.Info("Done deleting edges to resources that don't exist for ", clusterName)
 
 	// TODO: These metrics are now harder to generate.
 	// Will need to check how these are used in the collector.
@@ -129,7 +120,6 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	return batch.connError
 }
 
-// TODO: Update this function.
 // Reset Edges
 //  1. Get existing edges for the cluster. Excluding intercluster edges.
 //  2. For each incoming edge, INSERT if it doesn't exist.
