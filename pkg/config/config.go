@@ -58,7 +58,7 @@ func new() *Config {
 		DBMaxConns:          getEnvAsInt32("DB_MAX_CONNS", int32(10)),          // 10     Overrides pgxpool default (4)
 		DBMaxConnIdleTime:   getEnvAsInt("DB_MAX_CONN_IDLE_TIME", 5*60*1000),   // 5 min, Overrides pgxpool default (30)
 		DBMaxConnLifeJitter: getEnvAsInt("DB_MAX_CONN_LIFE_JITTER", 1*60*1000), // 1 min, Overrides pgxpool default
-		DBMaxConnLifeTime:   getEnvAsInt("DB_MAX_CONN_LIFE_TIME", 10*60*1000),  // 5 min, Overrides pgxpool default (60)
+		DBMaxConnLifeTime:   getEnvAsInt("DB_MAX_CONN_LIFE_TIME", 5*60*1000),   // 5 min, Overrides pgxpool default (60)
 		DBMinConns:          getEnvAsInt32("DB_MIN_CONNS", int32(2)),           // 2      Overrides pgxpool default (0)
 		DBName:              getEnv("DB_NAME", ""),
 		DBPass:              getEnv("DB_PASS", ""),
