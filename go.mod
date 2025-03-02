@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgconn v1.14.3
 	github.com/jackc/pgproto3/v2 v2.3.3
-	github.com/jackc/pgx/v4 v4.18.2
+	github.com/jackc/pgx/v4 v4.18.3
 	github.com/pashagolub/pgxmock v1.8.0
 	github.com/prometheus/client_golang v1.15.1
 	github.com/stolostron/multicloud-operators-foundation v1.0.0
