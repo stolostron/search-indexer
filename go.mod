@@ -88,7 +88,7 @@ replace (
 	github.com/openshift/cluster-api-provider-azure => github.com/openshift/cluster-api-provider-azure v0.1.0-alpha.3.0.20241212222828-1c90348f2460
 	github.com/openshift/hive/apis => github.com/openshift/hive/apis v0.0.0-20250221162249-9b3202bdc0dc
 	github.com/stolostron/multicloud-operators-foundation => github.com/stolostron/multicloud-operators-foundation v0.0.0-20220317080545-2ea99b88c0fd // indirect
-	github.com/terraform-providers/terraform-provider-aws => github.com/hashicorp/terraform-provider-aws v1.60.1-0.20250214214949-ddc7bceb2a7a
+	github.com/terraform-providers/terraform-provider-aws => github.com/hashicorp/terraform-provider-aws v1.60.1-0.20250228211732-16f16d20702e
 	github.com/terraform-providers/terraform-provider-ignition/v2 => github.com/community-terraform-providers/terraform-provider-ignition/v2 v2.1.3-0.20220105023746-b0f9e422dda5
 	k8s.io/api => k8s.io/api v0.27.2
 	k8s.io/client-go => k8s.io/client-go v0.27.2
