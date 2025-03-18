@@ -1,6 +1,6 @@
 # Copyright Contributors to the Open Cluster Management project
 
-FROM registry.ci.openshift.org/stolostron/builder:go1.22-linux AS builder
+FROM registry.ci.openshift.org/stolostron/builder:go1.23-linux AS builder
 
 WORKDIR /go/src/github.com/stolostron/search-indexer
 COPY . .
@@ -40,7 +40,7 @@ LABEL org.label-schema.vendor="Red Hat" \
       io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
 
 RUN microdnf update -y &&\
-    microdnf install ca-certificates vi --nodocs -y &&\
+    microdnf install -y ca-certificates vi --nodocs &&\
     microdnf clean all
 
 COPY --from=builder /go/src/github.com/stolostron/search-indexer/main /bin/main
