@@ -39,8 +39,8 @@ LABEL org.label-schema.vendor="Red Hat" \
       io.k8s.description="$IMAGE_DESCRIPTION" \
       io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
 
-RUN microdnf update &&\
-    microdnf install ca-certificates vi --nodocs &&\
+RUN microdnf update -y &&\
+    microdnf install ca-certificates vi --nodocs -y &&\
     microdnf clean all
 
 COPY --from=builder /go/src/github.com/stolostron/search-indexer/main /bin/main
