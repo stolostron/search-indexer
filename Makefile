@@ -42,6 +42,8 @@ coverage: test ## Run unit tests and show code coverage.
 docker-build: ## Build the docker image.
 	docker build -f Dockerfile . -t search-indexer
 
+podman-build: ## Build the docker image.
+	podman build -f Dockerfile . -t search-indexer
 
 test-send: ## Sends a simulated request for testing using cURL.
 	curl -k -d "@pkg/server/mocks/clusterA.json" -X POST https://localhost:3010/aggregator/clusters/clusterA/sync
