@@ -80,8 +80,9 @@ func initializePool() pgxpoolmock.PgxPool {
 	if configErr != nil {
 		klog.Fatal("Error parsing database connection configuration. ", configErr)
 	}
-	config.AfterConnect = afterConnect   // Checks new connection health before using it.
-	config.BeforeAcquire = beforeAcquire // Checks idle connection health before using it.
+	config.AfterConnect = afterConnect          // Checks new connection health before using it.
+	config.BeforeAcquire = beforeAcquire        // Checks idle connection health before using it.
+	config.ConnConfig.BuildStatementCache = nil // Disable statement cache to reduce connection memory usage.
 	// Add jitter to prevent all connections from being closed at same time.
 	config.MaxConnLifetimeJitter = time.Duration(cfg.DBMaxConnLifeJitter) * time.Millisecond
 	config.MaxConns = cfg.DBMaxConns
