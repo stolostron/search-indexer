@@ -93,7 +93,7 @@ replace (
 	k8s.io/api => k8s.io/api v0.27.2
 	k8s.io/client-go => k8s.io/client-go v0.27.2
 	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.2.0
-	sigs.k8s.io/cluster-api-provider-aws => github.com/openshift/cluster-api-provider-aws v0.2.1-0.20220303094158-3c2daa272191
+	sigs.k8s.io/cluster-api-provider-aws => github.com/openshift/cluster-api-provider-aws 287f4e22f8aa
 	sigs.k8s.io/cluster-api-provider-azure => sigs.k8s.io/cluster-api-provider-azure v1.2.1
 	sigs.k8s.io/cluster-api-provider-openstack => sigs.k8s.io/cluster-api-provider-openstack v0.5.1-0.20220325161359-d73965086790
 )
