@@ -8,7 +8,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
-      == "main"
+      == "release-2.13"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: release-acm-213
@@ -86,6 +86,7 @@ spec:
       description: Execute the build with network isolation
       name: hermetic
       type: string
+      value: "true"
     - default: ""
       description: Build dependencies to be prefetched by Cachi2
       name: prefetch-input
