@@ -49,4 +49,3 @@ For more on locust visit https://docs.locust.io/en/stable/index.html
     ```
 
 Rebuild Date: 2025-02-25
-
