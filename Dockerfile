@@ -8,6 +8,9 @@ RUN CGO_ENABLED=1 go build -trimpath -o main main.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
+ARG VCS_REF
+ARG VCS_URL
+
 COPY --from=builder /go/src/github.com/stolostron/search-indexer/main /bin/main
 
 ENV VCS_REF="$VCS_REF" \
