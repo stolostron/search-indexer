@@ -8,9 +8,6 @@ RUN CGO_ENABLED=1 go build -trimpath -o main main.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
-ARG VCS_REF
-ARG VCS_URL
-
 COPY --from=builder /go/src/github.com/stolostron/search-indexer/main /bin/main
 
 ENV VCS_REF="$VCS_REF" \
@@ -19,16 +16,3 @@ ENV VCS_REF="$VCS_REF" \
 EXPOSE 3010
 USER ${USER_UID}
 ENTRYPOINT ["/bin/main"]
-
-LABEL com.redhat.component="acm-search-indexer-container" \
-      description="Search indexer service" \
-      maintainer="acm-contact@redhat.com" \
-      name="search-indexer" \
-      org.label-schema.vcs-ref=$VCS_REF \
-      org.label-schema.vcs-url=$VCS_URL \
-      org.label-schema.license="Red Hat Advanced Cluster Management for Kubernetes EULA" \
-      org.label-schema.schema-version="1.0" \
-      summary="Search indexer service" \
-      io.k8s.display-name="Search collector" \
-      io.k8s.description="Search indexer service" \
-      io.openshift.tags="data,images"
