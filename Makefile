@@ -26,7 +26,7 @@ run: ## Run the service locally.
 .PHONY: lint
 lint: ## Run lint and gosec tool.
 	GOPATH=$(go env GOPATH)
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "${GOPATH}/bin" v1.61.0
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "${GOPATH}/bin" v1.64.6
 	CGO_ENABLED=1 GOGC=25 golangci-lint run --timeout=3m
 	go mod tidy
 	gosec ./...
@@ -42,6 +42,8 @@ coverage: test ## Run unit tests and show code coverage.
 docker-build: ## Build the docker image.
 	docker build -f Dockerfile . -t search-indexer
 
+podman-build: ## Build the docker image.
+	podman build -f Dockerfile . -t search-indexer
 
 test-send: ## Sends a simulated request for testing using cURL.
 	curl -k -d "@pkg/server/mocks/clusterA.json" -X POST https://localhost:3010/aggregator/clusters/clusterA/sync
