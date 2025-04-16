@@ -106,17 +106,6 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	batch.flush()
 	batch.wg.Wait()
 
-	// TODO: These metrics are now harder to generate.
-	// Will need to check how these are used in the collector.
-	//
-	// syncResponse.TotalAdded = len(incomingUIDs)
-	// syncResponse.TotalDeleted = len(resourcesToDelete)
-	// syncResponse.TotalUpdated = len(resourcesToUpdate)
-	// metrics.LogStepDuration(&timer, clusterName,
-	// 	fmt.Sprintf("Reset resources stats: UNCHANGED [%d] INSERT [%d] UPDATE [%d] DELETE [%d]",
-	// 		len(resources)-len(incomingResMap)-len(resourcesToUpdate),
-	// 		syncResponse.TotalAdded, syncResponse.TotalUpdated, syncResponse.TotalDeleted))
-
 	return batch.connError
 }
 
