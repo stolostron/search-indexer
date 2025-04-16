@@ -47,7 +47,7 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
-	incomingUIDs := make([]interface{}, 0)
+	incomingUIDs := make([]interface{}, len(resources))
 
 	// UPSERT resources in the database.
 	for _, resource := range resources {
