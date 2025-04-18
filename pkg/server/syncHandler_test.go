@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,7 +22,7 @@ import (
 
 func Test_syncRequest(t *testing.T) {
 	// Read mock request body.
-	body, readErr := os.Open("./mocks/simple.json")
+	body, readErr := os.Open("./mocks/simple-sync.json")
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
@@ -44,7 +45,7 @@ func Test_syncRequest(t *testing.T) {
 	router.ServeHTTP(responseRecorder, request)
 
 	// Validation
-	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalResources: 5, TotalEdges: 3}
+	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalResources: 5, TotalEdges: 3, RequestId: 123}
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Errorf("Want status '%d', got '%d'", http.StatusOK, responseRecorder.Code)
@@ -63,7 +64,7 @@ func Test_syncRequest(t *testing.T) {
 
 func Test_syncRequest_withError(t *testing.T) {
 	// Read mock request body.
-	body, readErr := os.Open("./mocks/simple.json")
+	body, readErr := os.Open("./mocks/simple-sync.json")
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
@@ -93,7 +94,7 @@ func Test_syncRequest_withError(t *testing.T) {
 
 func Test_syncRequest_withErrorQueryingTotalResources(t *testing.T) {
 	// Read mock request body.
-	body, readErr := os.Open("./mocks/simple.json")
+	body, readErr := os.Open("./mocks/simple-sync.json")
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
@@ -157,7 +158,7 @@ func Test_resyncRequest(t *testing.T) {
 		t.Error("Unable to decode response body.")
 	}
 
-	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalDeleted: 0, TotalResources: 10, TotalEdgesDeleted: 1, TotalEdges: 4}
+	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalDeleted: 0, TotalResources: 10, TotalEdgesDeleted: 1, TotalEdges: 4, RequestId: 123}
 	if fmt.Sprintf("%+v", decodedResp) != fmt.Sprintf("%+v", expected) {
 		t.Errorf("Incorrect response body.\n expected '%+v'\n received '%+v'", expected, decodedResp)
 	}
@@ -247,4 +248,69 @@ func Test_incorrectRequestBody(t *testing.T) {
 	if responseRecorder.Code != http.StatusBadRequest {
 		t.Errorf("Want status '%d', got '%d'", http.StatusBadRequest, responseRecorder.Code)
 	}
+}
+
+//func Test_decodeKeyClearAll(t *testing.T) {
+//	request, readErr := os.Open("./mocks/simple-resync.json")
+//	if readErr != nil {
+//		t.Fatal(readErr)
+//	}
+//	defer request.Close()
+//	requestBytes, ioReadErr := io.ReadAll(request)
+//	if ioReadErr != nil {
+//		t.Fatal(ioReadErr)
+//	}
+//
+//	var clearAll bool
+//
+//	if err := decodeKey(&requestBytes, "clearAll", &clearAll); err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	assert.Equal(t, true, clearAll)
+//}
+//
+//func Test_decodeKeyRequestID(t *testing.T) {
+//	request, readErr := os.Open("./mocks/simple-sync.json")
+//	if readErr != nil {
+//		t.Fatal(readErr)
+//	}
+//	defer request.Close()
+//	requestBytes, ioReadErr := io.ReadAll(request)
+//	if ioReadErr != nil {
+//		t.Fatal(ioReadErr)
+//	}
+//
+//	var requestId int
+//
+//	if err := decodeKey(&requestBytes, "requestId", &requestId); err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	assert.Equal(t, 123, requestId)
+//}
+
+func Test_decodeKeyClearAllAndRequestId(t *testing.T) {
+	request, readErr := os.Open("./mocks/simple-resync.json")
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	defer request.Close()
+	requestBytes, ioReadErr := io.ReadAll(request)
+	if ioReadErr != nil {
+		t.Fatal(ioReadErr)
+	}
+
+	var clearAll bool
+	var requestId int
+
+	if err := decodeKey(&requestBytes, map[string]interface{}{
+		"clearAll":  &clearAll,
+		"requestId": &requestId,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, true, clearAll)
+	assert.Equal(t, 123, requestId)
 }
