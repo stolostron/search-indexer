@@ -3,7 +3,9 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"time"
 
@@ -23,12 +25,24 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 
 	// Decode SyncEvent from request body.
 	var syncEvent model.SyncEvent
-	err := json.NewDecoder(r.Body).Decode(&syncEvent)
+	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
-		klog.Errorf("Error decoding request body from cluster [%s]. Error: %+v\n", clusterName, err)
+		klog.Errorf("Error reading request body from cluster [%s]. Error: %+v\n", clusterName, err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
+	// we need to decode clearAll to know if request is a sync or resync - assume false in case body doesn't carry it
+	syncEvent.ClearAll = false
+	if err = decodeKey(&bodyBytes, map[string]interface{}{
+		"clearAll":  &syncEvent.ClearAll,
+		"requestId": &syncEvent.RequestId,
+	}); err != nil {
+		klog.Errorf("Error decoding clearAll from cluster [%s]: %+v", clusterName, err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	resourceTotal := len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)
 	metrics.RequestSize.Observe(float64(resourceTotal))
 
@@ -47,9 +61,15 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	// 1. ReSync [ClearAll=true]  - It has the complete current state. It must overwrite any previous state.
 	// 2. Sync   [ClearAll=false] - This is the delta changes from the previous state.
 	if syncEvent.ClearAll {
-		err = s.Dao.ResyncData(r.Context(), syncEvent, clusterName, syncResponse)
+		err = s.Dao.ResyncData(r.Context(), syncEvent, clusterName, syncResponse, bodyBytes)
 	} else {
-		err = s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
+		// we can decode the entire request for non resync requests because they are significantly smaller
+		err = json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&syncEvent)
+		if err != nil {
+			klog.Errorf("Error decoding request body from cluster [%s]. Error: %+v\n", clusterName, err)
+		} else {
+			err = s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
+		}
 	}
 	if err != nil {
 		klog.Warningf("Responding with error to request from %12s. RequestId: %d  Error: %s",
@@ -81,4 +101,36 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	klog.V(5).Infof("Request from [%12s] took [%v] clearAll [%t] addTotal [%d]",
 		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
+}
+
+func decodeKey(body *[]byte, fields map[string]interface{}) error {
+	decoder := json.NewDecoder(bytes.NewReader(*body))
+	found := 0
+	for {
+		t, err := decoder.Token()
+		if err != nil {
+			// stop when we've reached the end
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		if k, ok := t.(string); ok {
+			if _, ok = fields[k]; ok {
+				if decoder.More() {
+					if err = decoder.Decode(fields[k]); err != nil {
+						return err
+					}
+					found++
+					// stop when we've found both the values we need
+					if found == 2 {
+						break
+					}
+				}
+			}
+
+		}
+	}
+
+	return nil
 }

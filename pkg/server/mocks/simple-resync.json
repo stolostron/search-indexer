@@ -1,7 +1,4 @@
-{
-    "clearAll": true,
-    "requestId": 123,
-    "addResources":[
+{"addResources":[
     {
         "uid":"local-cluster/e12c2ddd-4ac5-499d-b0e0-20242f508afd",
         "resourceString":"templates",
@@ -44,4 +41,7 @@
         "Metadata":{
             "OwnerUID":"local-cluster/411e30e4-f773-41a6-b745-24c93c173f45"}
         }
-]}
+    ],
+    "clearAll": true,
+    "requestId": 123
+}
