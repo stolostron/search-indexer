@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,6 +28,8 @@ func Test_syncRequest(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
+	request.Header.Set("X-Clear-All", "false")
+	request.Header.Set("X-Request-ID", "123")
 	router := mux.NewRouter()
 
 	// Create server with mock database.
@@ -131,6 +132,8 @@ func Test_resyncRequest(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
+	request.Header.Set("X-Clear-All", "true")
+	request.Header.Set("X-Request-ID", "123")
 	router := mux.NewRouter()
 
 	// Create server with mock database.
@@ -290,27 +293,27 @@ func Test_incorrectRequestBody(t *testing.T) {
 //	assert.Equal(t, 123, requestId)
 //}
 
-func Test_decodeKeyClearAllAndRequestId(t *testing.T) {
-	request, readErr := os.Open("./mocks/simple-resync.json")
-	if readErr != nil {
-		t.Fatal(readErr)
-	}
-	defer request.Close()
-	requestBytes, ioReadErr := io.ReadAll(request)
-	if ioReadErr != nil {
-		t.Fatal(ioReadErr)
-	}
-
-	var clearAll bool
-	var requestId int
-
-	if err := decodeKey(&requestBytes, map[string]interface{}{
-		"clearAll":  &clearAll,
-		"requestId": &requestId,
-	}); err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, true, clearAll)
-	assert.Equal(t, 123, requestId)
-}
+//func Test_decodeKeyClearAllAndRequestId(t *testing.T) {
+//	request, readErr := os.Open("./mocks/simple-resync.json")
+//	if readErr != nil {
+//		t.Fatal(readErr)
+//	}
+//	defer request.Close()
+//	requestBytes, ioReadErr := io.ReadAll(request)
+//	if ioReadErr != nil {
+//		t.Fatal(ioReadErr)
+//	}
+//
+//	var clearAll bool
+//	var requestId int
+//
+//	if err := decodeKey(&requestBytes, map[string]interface{}{
+//		"clearAll":  &clearAll,
+//		"requestId": &requestId,
+//	}); err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	assert.Equal(t, true, clearAll)
+//	assert.Equal(t, 123, requestId)
+//}

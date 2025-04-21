@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/stolostron/search-indexer/pkg/metrics"
@@ -23,7 +24,6 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	clusterName := params["id"]
 
-	// Decode SyncEvent from request body.
 	var syncEvent model.SyncEvent
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -32,15 +32,22 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// we need to decode clearAll to know if request is a sync or resync - assume false in case body doesn't carry it
-	syncEvent.ClearAll = false
-	if err = decodeKey(&bodyBytes, map[string]interface{}{
-		"clearAll":  &syncEvent.ClearAll,
-		"requestId": &syncEvent.RequestId,
-	}); err != nil {
-		klog.Errorf("Error decoding clearAll from cluster [%s]: %+v", clusterName, err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+	clearAllHeader := r.Header.Get("X-Clear-All")
+	clearAll, clearAllErr := strconv.ParseBool(clearAllHeader)
+	if err != nil {
+		klog.Warningf("Invalid X-Clear-All header value [%s] from cluster[%s]: %v", clearAllHeader, clusterName, clearAllErr)
+		syncEvent.ClearAll = false
+	} else {
+		syncEvent.ClearAll = clearAll
+	}
+
+	requestIdHeader := r.Header.Get("X-Request-ID")
+	requestId, requestIdErr := strconv.Atoi(requestIdHeader)
+	if err != nil {
+		klog.Warningf("Invalid X-Request-ID header value [%s] from cluster[%s]: %v", requestIdHeader, clusterName, requestIdErr)
+		syncEvent.RequestId = 0
+	} else {
+		syncEvent.RequestId = requestId
 	}
 
 	resourceTotal := len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)
@@ -67,6 +74,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		err = json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&syncEvent)
 		if err != nil {
 			klog.Errorf("Error decoding request body from cluster [%s]. Error: %+v\n", clusterName, err)
+			w.WriteHeader(http.StatusBadRequest)
 		} else {
 			err = s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
 		}
@@ -103,34 +111,34 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
 }
 
-func decodeKey(body *[]byte, fields map[string]interface{}) error {
-	decoder := json.NewDecoder(bytes.NewReader(*body))
-	found := 0
-	for {
-		t, err := decoder.Token()
-		if err != nil {
-			// stop when we've reached the end
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		if k, ok := t.(string); ok {
-			if _, ok = fields[k]; ok {
-				if decoder.More() {
-					if err = decoder.Decode(fields[k]); err != nil {
-						return err
-					}
-					found++
-					// stop when we've found both the values we need
-					if found == 2 {
-						break
-					}
-				}
-			}
-
-		}
-	}
-
-	return nil
-}
+//func decodeKey(body *[]byte, fields map[string]interface{}) error {
+//	decoder := json.NewDecoder(bytes.NewReader(*body))
+//	found := 0
+//	for {
+//		t, err := decoder.Token()
+//		if err != nil {
+//			// stop when we've reached the end
+//			if err == io.EOF {
+//				return nil
+//			}
+//			return err
+//		}
+//		if k, ok := t.(string); ok {
+//			if _, ok = fields[k]; ok {
+//				if decoder.More() {
+//					if err = decoder.Decode(fields[k]); err != nil {
+//						return err
+//					}
+//					found++
+//					// stop when we've found both the values we need
+//					if found == 2 {
+//						break
+//					}
+//				}
+//			}
+//
+//		}
+//	}
+//
+//	return nil
+//}
