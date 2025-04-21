@@ -41,22 +41,12 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		syncEvent.ClearAll = clearAll
 	}
 
-	requestIdHeader := r.Header.Get("X-Request-ID")
-	requestId, requestIdErr := strconv.Atoi(requestIdHeader)
-	if err != nil {
-		klog.Warningf("Invalid X-Request-ID header value [%s] from cluster[%s]: %v", requestIdHeader, clusterName, requestIdErr)
-		syncEvent.RequestId = 0
-	} else {
-		syncEvent.RequestId = requestId
-	}
-
 	resourceTotal := len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)
 	metrics.RequestSize.Observe(float64(resourceTotal))
 
 	// Initialize SyncResponse object.
 	syncResponse := &model.SyncResponse{
 		Version:          config.COMPONENT_VERSION,
-		RequestId:        syncEvent.RequestId,
 		AddErrors:        make([]model.SyncError, 0),
 		UpdateErrors:     make([]model.SyncError, 0),
 		DeleteErrors:     make([]model.SyncError, 0),
@@ -80,8 +70,8 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
-		klog.Warningf("Responding with error to request from %12s. RequestId: %d  Error: %s",
-			clusterName, syncEvent.RequestId, err)
+		klog.Warningf("Responding with error to request from %12s. Error: %s",
+			clusterName, err)
 		http.Error(w, "Server error while processing the request.", http.StatusInternalServerError)
 		return
 	}
@@ -89,8 +79,8 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	// Get the total cluster resources for validation by the collector.
 	totalResources, totalEdges, validateErr := s.Dao.ClusterTotals(r.Context(), clusterName)
 	if validateErr != nil {
-		klog.Warningf("Responding with error to request from %12s. RequestId: %d  Error: %s",
-			clusterName, syncEvent.RequestId, validateErr)
+		klog.Warningf("Responding with error to request from %12s. Error: %s",
+			clusterName, validateErr)
 		http.Error(w, "Server error while processing the request.", http.StatusInternalServerError)
 		return
 	}
@@ -110,35 +100,3 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
 }
-
-//func decodeKey(body *[]byte, fields map[string]interface{}) error {
-//	decoder := json.NewDecoder(bytes.NewReader(*body))
-//	found := 0
-//	for {
-//		t, err := decoder.Token()
-//		if err != nil {
-//			// stop when we've reached the end
-//			if err == io.EOF {
-//				return nil
-//			}
-//			return err
-//		}
-//		if k, ok := t.(string); ok {
-//			if _, ok = fields[k]; ok {
-//				if decoder.More() {
-//					if err = decoder.Decode(fields[k]); err != nil {
-//						return err
-//					}
-//					found++
-//					// stop when we've found both the values we need
-//					if found == 2 {
-//						break
-//					}
-//				}
-//			}
-//
-//		}
-//	}
-//
-//	return nil
-//}

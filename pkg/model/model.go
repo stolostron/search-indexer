@@ -27,7 +27,6 @@ type SyncEvent struct {
 
 	AddEdges    []Edge
 	DeleteEdges []Edge
-	RequestId   int
 }
 
 // SyncResponse - Response to a SyncEvent
@@ -45,7 +44,6 @@ type SyncResponse struct {
 	AddEdgeErrors     []SyncError
 	DeleteEdgeErrors  []SyncError
 	Version           string
-	RequestId         int
 }
 
 // SyncError is used to respond with errors.

@@ -19,7 +19,7 @@ import (
 func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 	clusterName string, syncResponse *model.SyncResponse, resyncRequest []byte) error {
 
-	defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s.\t RequestId: %d", clusterName, event.RequestId), 0)()
+	defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s.", clusterName), 0)()
 	klog.Infof(
 		"Starting resync from %12s. This is normal, but it could be a problem if it happens often.", clusterName)
 
@@ -37,7 +37,7 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 		return err
 	}
 
-	klog.V(1).Infof("Completed resync of cluster %12s.\t RequestId: %d", clusterName, event.RequestId)
+	klog.V(1).Infof("Completed resync of cluster %12s.", clusterName)
 	return nil
 }
 
