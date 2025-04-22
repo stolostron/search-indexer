@@ -2,9 +2,10 @@
 package testutils
 
 import (
+	"fmt"
+
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgproto3/v2"
-	"k8s.io/klog/v2"
 )
 
 // ====================================================
@@ -70,9 +71,9 @@ func (r *MockRows) Scan(dest ...interface{}) error {
 			case *interface{}:
 				dest[i] = r.MockData[r.Index][r.ColumnHeaders[i]]
 			case nil:
-				klog.Info("error type %T", v)
+				fmt.Printf("error type %T", v)
 			default:
-				klog.Info("unexpected type %T", v)
+				fmt.Printf("unexpected type %T", v)
 
 			}
 		}
