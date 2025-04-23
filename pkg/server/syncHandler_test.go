@@ -28,7 +28,7 @@ func Test_syncRequest(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
-	request.Header.Set("X-Clear-All", "false")
+	request.Header.Set("X-Overwrite-State", "false")
 	router := mux.NewRouter()
 
 	// Create server with mock database.
@@ -131,7 +131,7 @@ func Test_resyncRequest(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
-	request.Header.Set("X-Clear-All", "true")
+	request.Header.Set("X-Overwrite-State", "true")
 	router := mux.NewRouter()
 
 	// Create server with mock database.

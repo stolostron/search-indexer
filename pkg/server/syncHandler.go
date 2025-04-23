@@ -32,10 +32,10 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clearAllHeader := r.Header.Get("X-Clear-All")
+	clearAllHeader := r.Header.Get("X-Overwrite-State")
 	clearAll, clearAllErr := strconv.ParseBool(clearAllHeader)
 	if clearAllErr != nil {
-		klog.Warningf("Invalid X-Clear-All header value [%s] from cluster[%s]: %v", clearAllHeader, clusterName, clearAllErr)
+		klog.Warningf("Invalid X-Overwrite-State header value [%s] from cluster[%s]: %v", clearAllHeader, clusterName, clearAllErr)
 		syncEvent.ClearAll = false
 	} else {
 		syncEvent.ClearAll = clearAll
