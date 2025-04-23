@@ -211,7 +211,7 @@ func addEdges(requestBody []byte, existingEdgesMap *map[string]model.Edge, clust
 	dec := json.NewDecoder(bytes.NewReader(requestBody))
 
 	for {
-		// read tokens until we ge to addEdges
+		// read tokens until we get to addEdges
 		field, err := dec.Token()
 		if err == io.EOF {
 			break

@@ -34,7 +34,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 
 	clearAllHeader := r.Header.Get("X-Clear-All")
 	clearAll, clearAllErr := strconv.ParseBool(clearAllHeader)
-	if err != nil {
+	if clearAllErr != nil {
 		klog.Warningf("Invalid X-Clear-All header value [%s] from cluster[%s]: %v", clearAllHeader, clusterName, clearAllErr)
 		syncEvent.ClearAll = false
 	} else {
