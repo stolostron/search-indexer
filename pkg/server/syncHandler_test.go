@@ -21,7 +21,7 @@ import (
 
 func Test_syncRequest(t *testing.T) {
 	// Read mock request body.
-	body, readErr := os.Open("./mocks/simple-sync.json")
+	body, readErr := os.Open("./mocks/simple.json")
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
@@ -64,12 +64,13 @@ func Test_syncRequest(t *testing.T) {
 
 func Test_syncRequest_withError(t *testing.T) {
 	// Read mock request body.
-	body, readErr := os.Open("./mocks/simple-sync.json")
+	body, readErr := os.Open("./mocks/simple.json")
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
 	responseRecorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
+	request.Header.Set("X-Overwrite-State", "false")
 	router := mux.NewRouter()
 
 	// Create server with mock database.
@@ -94,12 +95,13 @@ func Test_syncRequest_withError(t *testing.T) {
 
 func Test_syncRequest_withErrorQueryingTotalResources(t *testing.T) {
 	// Read mock request body.
-	body, readErr := os.Open("./mocks/simple-sync.json")
+	body, readErr := os.Open("./mocks/simple.json")
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
 	responseRecorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
+	request.Header.Set("X-Overwrite-State", "false")
 	router := mux.NewRouter()
 
 	// Create server with mock database.
@@ -174,6 +176,7 @@ func Test_resyncRequest_withErrorDeletingResources(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
+	request.Header.Set("X-Overwrite-State", "false")
 	router := mux.NewRouter()
 
 	// Create server with mock database.
@@ -208,6 +211,7 @@ func Test_resyncRequest_withErrorDeletingEdges(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/test-cluster/sync", body)
+	request.Header.Set("X-Overwrite-State", "true")
 	router := mux.NewRouter()
 
 	// Create server with mock database.

@@ -25,16 +25,15 @@ func Test_ResyncData(t *testing.T) {
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	// Prepare Request data.
-	data, _ := os.Open("./mocks/simple-resync.json")
+	data, _ := os.Open("./mocks/simple.json")
 	dataBytes, _ := io.ReadAll(data)
-	var syncEvent model.SyncEvent
 
 	// Supress console output to prevent log messages from polluting test output.
-	//defer testutils.SupressConsoleOutput()()
+	defer testutils.SupressConsoleOutput()()
 
 	// Execute function test.
 	response := &model.SyncResponse{}
-	err := dao.ResyncData(context.Background(), syncEvent, "test-cluster", response, dataBytes)
+	err := dao.ResyncData(context.Background(), "test-cluster", response, dataBytes)
 
 	assert.Nil(t, err)
 }
@@ -50,16 +49,15 @@ func Test_ResyncData_errors(t *testing.T) {
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	// Prepare Request data.
-	data, _ := os.Open("./mocks/simple-resync.json")
+	data, _ := os.Open("./mocks/simple.json")
 	dataBytes, _ := io.ReadAll(data)
-	var syncEvent model.SyncEvent
 
 	// Supress console output to prevent log messages from polluting test output.
 	defer testutils.SupressConsoleOutput()()
 
 	// Execute function test.
 	response := &model.SyncResponse{}
-	err := dao.ResyncData(context.Background(), syncEvent, "test-cluster", response, dataBytes)
+	err := dao.ResyncData(context.Background(), "test-cluster", response, dataBytes)
 
 	assert.NotNil(t, err)
 }

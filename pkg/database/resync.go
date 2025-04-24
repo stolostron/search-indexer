@@ -16,8 +16,7 @@ import (
 )
 
 // Reset data for the cluster to the incoming state.
-func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
-	clusterName string, syncResponse *model.SyncResponse, resyncRequest []byte) error {
+func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse *model.SyncResponse, resyncRequest []byte) error {
 
 	defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s.", clusterName), 0)()
 	klog.Infof(
@@ -45,12 +44,12 @@ func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
 // 1. Upsert each incoming resource. Keep the UID.
 // 2. Delete existing UIDs that don't match the incoming UIDs.
 func (dao *DAO) resetResources(ctx context.Context, clusterName string,
-	syncResponse *model.SyncResponse, resyncRequest []byte) error {
+	syncResponse *model.SyncResponse, resyncBody []byte) error {
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
 	// UPSERT resources in the database.
-	incomingUIDs, err := addResources(resyncRequest, clusterName, syncResponse, batch)
+	incomingUIDs, err := addResources(resyncBody, clusterName, syncResponse, batch)
 	if err != nil {
 		return err
 	}
@@ -162,8 +161,8 @@ func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 	return batch.connError
 }
 
-func addResources(requestBody []byte, clusterName string, syncResponse *model.SyncResponse, batch batchWithRetry) ([]interface{}, error) {
-	dec := json.NewDecoder(bytes.NewReader(requestBody))
+func addResources(resyncBody []byte, clusterName string, syncResponse *model.SyncResponse, batch batchWithRetry) ([]interface{}, error) {
+	dec := json.NewDecoder(bytes.NewReader(resyncBody))
 	incomingUIDs := make([]interface{}, 0)
 	for {
 		// read tokens until we get to addResources

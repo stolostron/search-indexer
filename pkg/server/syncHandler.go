@@ -32,13 +32,11 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clearAllHeader := r.Header.Get("X-Overwrite-State")
-	clearAll, clearAllErr := strconv.ParseBool(clearAllHeader)
-	if clearAllErr != nil {
-		klog.Warningf("Invalid X-Overwrite-State header value [%s] from cluster[%s]: %v", clearAllHeader, clusterName, clearAllErr)
-		syncEvent.ClearAll = false
-	} else {
-		syncEvent.ClearAll = clearAll
+	overwriteStateHeader := r.Header.Get("X-Overwrite-State")
+	overwriteState, overwriteStateErr := strconv.ParseBool(overwriteStateHeader)
+	if overwriteStateErr != nil {
+		klog.Infof("Invalid X-Overwrite-State header value [%s] from cluster[%s]: %v", overwriteStateHeader, clusterName, overwriteStateErr)
+		overwriteState = false
 	}
 
 	resourceTotal := len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)
@@ -54,11 +52,11 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		DeleteEdgeErrors: make([]model.SyncError, 0),
 	}
 
-	// The collector sends 2 types of requests:
-	// 1. ReSync [ClearAll=true]  - It has the complete current state. It must overwrite any previous state.
-	// 2. Sync   [ClearAll=false] - This is the delta changes from the previous state.
-	if syncEvent.ClearAll {
-		err = s.Dao.ResyncData(r.Context(), syncEvent, clusterName, syncResponse, bodyBytes)
+	// The collector sends 2 types of requests with the header:
+	// 1. ReSync [X-Overwrite-State=true]  - It has the complete current state. It must overwrite any previous state.
+	// 2. Sync   [X-Overwrite-State=false] - This is the delta changes from the previous state.
+	if overwriteState {
+		err = s.Dao.ResyncData(r.Context(), clusterName, syncResponse, bodyBytes)
 	} else {
 		// we can decode the entire request for non resync requests because they are significantly smaller
 		err = json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&syncEvent)
@@ -96,7 +94,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log request.
-	klog.V(5).Infof("Request from [%12s] took [%v] clearAll [%t] addTotal [%d]",
-		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
+	klog.V(5).Infof("Request from [%12s] took [%v] overwriteState [%t] addTotal [%d]",
+		clusterName, time.Since(start), overwriteState, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
 }
