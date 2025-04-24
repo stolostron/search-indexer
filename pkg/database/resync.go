@@ -47,10 +47,10 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
-	incomingUIDs := make([]interface{}, len(resources))
+	incomingUIDs := make([]interface{}, len(resources)+1)
 
 	// UPSERT resources in the database.
-	for _, resource := range resources {
+	for i, resource := range resources {
 		uid := resource.UID
 		data, _ := json.Marshal(resource.Properties)
 		query, params, err := useGoqu(
@@ -69,8 +69,10 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 			}
 			syncResponse.TotalAdded++
 		}
-		incomingUIDs = append(incomingUIDs, uid)
+		incomingUIDs[i] = uid
 	}
+	// Add the uid of the Cluster pseudo node that is created by the indexer to exclude from deletion
+	incomingUIDs[len(incomingUIDs)-1] = fmt.Sprintf("cluster__%s", clusterName)
 
 	// DELETE resources that no longer exist.
 	query, params, err := useGoqu(
