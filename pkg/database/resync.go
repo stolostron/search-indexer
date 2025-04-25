@@ -200,6 +200,8 @@ func addResources(resyncBody []byte, clusterName string, syncResponse *model.Syn
 				}
 				incomingUIDs = append(incomingUIDs, uid)
 			}
+			batch.flush()
+			batch.wg.Wait()
 			return incomingUIDs, nil
 		}
 	}
@@ -250,6 +252,8 @@ func addEdges(requestBody []byte, existingEdgesMap *map[string]model.Edge, clust
 			}
 		}
 	}
+	batch.flush()
+	batch.wg.Wait()
 
 	return nil
 }

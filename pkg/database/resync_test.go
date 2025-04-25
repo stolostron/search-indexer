@@ -22,7 +22,7 @@ func Test_ResyncData(t *testing.T) {
 	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
 
 	br := &testutils.MockBatchResults{}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(4)
 
 	// Prepare Request data.
 	data, _ := os.Open("./mocks/simple.json")
