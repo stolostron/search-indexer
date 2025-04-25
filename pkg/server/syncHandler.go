@@ -35,7 +35,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	overwriteStateHeader := r.Header.Get("X-Overwrite-State")
 	overwriteState, overwriteStateErr := strconv.ParseBool(overwriteStateHeader)
 	if overwriteStateErr != nil {
-		klog.Infof("Invalid X-Overwrite-State header value [%s] from cluster[%s]: %v", overwriteStateHeader, clusterName, overwriteStateErr)
+		klog.V(1).Infof("Invalid X-Overwrite-State header value [%s] from cluster[%s]: %v", overwriteStateHeader, clusterName, overwriteStateErr)
 		overwriteState = false
 	}
 

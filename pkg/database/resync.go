@@ -16,21 +16,21 @@ import (
 )
 
 // Reset data for the cluster to the incoming state.
-func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse *model.SyncResponse, resyncRequest []byte) error {
+func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse *model.SyncResponse, requestBody []byte) error {
 
 	defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s.", clusterName), 0)()
 	klog.Infof(
 		"Starting resync from %12s. This is normal, but it could be a problem if it happens often.", clusterName)
 
 	// Reset resources
-	err := dao.resetResources(ctx, clusterName, syncResponse, resyncRequest)
+	err := dao.resetResources(ctx, clusterName, syncResponse, requestBody)
 	if err != nil {
 		klog.Warningf("Error resyncing resources for cluster %12s. Error: %+v", clusterName, err)
 		return err
 	}
 
 	// Reset edges
-	err = dao.resetEdges(ctx, clusterName, syncResponse, resyncRequest)
+	err = dao.resetEdges(ctx, clusterName, syncResponse, requestBody)
 	if err != nil {
 		klog.Warningf("Error resyncing edges for cluster %12s. Error: %+v", clusterName, err)
 		return err
