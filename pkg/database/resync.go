@@ -49,7 +49,7 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
 	// UPSERT resources in the database.
-	incomingUIDs, err := addResources(resyncBody, clusterName, syncResponse, batch)
+	incomingUIDs, err := upsertResources(resyncBody, clusterName, syncResponse, batch)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 	return batch.connError
 }
 
-func addResources(resyncBody []byte, clusterName string, syncResponse *model.SyncResponse, batch batchWithRetry) ([]interface{}, error) {
+func upsertResources(resyncBody []byte, clusterName string, syncResponse *model.SyncResponse, batch batchWithRetry) ([]interface{}, error) {
 	dec := json.NewDecoder(bytes.NewReader(resyncBody))
 	incomingUIDs := make([]interface{}, 0)
 	for {
