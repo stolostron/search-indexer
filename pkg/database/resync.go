@@ -51,7 +51,7 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 	// UPSERT resources in the database.
 	incomingUIDs, err := upsertResources(resyncBody, clusterName, syncResponse, &batch)
 	if err != nil {
-		return err
+		klog.Warningf("Error upserting resources for cluster [%s]. Error: %+v", clusterName, err)
 	}
 	// Add the uid of the Cluster pseudo node that is created by the indexer to exclude from deletion
 	incomingUIDs = append(incomingUIDs, fmt.Sprintf("cluster__%s", clusterName))
@@ -96,7 +96,7 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 // Reset Edges
 //  1. Get existing edges for the cluster. Excluding intercluster edges.
 //  2. For each incoming edge, INSERT if it doesn't exist.
-//  3. Delete any existing edges that aren't in the incoming sync event.
+//  3. Delete any existing edges that aren't in the incoming resyncRequest.
 func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 	syncResponse *model.SyncResponse, resyncRequest []byte) error {
 	timer := time.Now()
@@ -131,7 +131,7 @@ func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 
 	// Now insert edges from the reqeust that don't already exist
 	if err = addEdges(resyncRequest, &existingEdgesMap, clusterName, syncResponse, &batch); err != nil {
-		return err
+		klog.Warningf("Error inserting edges for cluster [%s]. %+v", clusterName, err)
 	}
 
 	// Delete existing edges that are not in the new sync event.
