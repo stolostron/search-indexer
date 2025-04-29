@@ -250,8 +250,6 @@ func addEdges(requestBody []byte, existingEdgesMap *map[string]model.Edge, clust
 			}
 		}
 	}
-	batch.flush()
-	batch.wg.Wait()
 
 	return nil
 }
