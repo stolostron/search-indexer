@@ -46,7 +46,7 @@ podman-build: ## Build the docker image.
 	podman build -f Dockerfile . -t search-indexer
 
 test-send: ## Sends a simulated request for testing using cURL.
-	curl -k -H "X-Overwrite-State: true" -d "@pkg/server/mocks/clusterB.json" -X POST https://localhost:3010/aggregator/clusters/clusterA/sync
+	curl -k -H "X-Overwrite-State: true" -d "@pkg/server/mocks/clusterA.json" -X POST https://localhost:3010/aggregator/clusters/clusterA/sync
 
 CLUSTERS ?=10
 RATE ?=1
