@@ -49,10 +49,8 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
 	// UPSERT resources in the database.
-	incomingUIDs, err := upsertResources(resyncBody, clusterName, syncResponse, &batch)
-	if err != nil {
-		klog.Warningf("Error upserting resources for cluster [%s]. Error: %+v", clusterName, err)
-	}
+	incomingUIDs, upsertErr := upsertResources(resyncBody, clusterName, syncResponse, &batch)
+
 	// Add the uid of the Cluster pseudo node that is created by the indexer to exclude from deletion
 	incomingUIDs = append(incomingUIDs, fmt.Sprintf("cluster__%s", clusterName))
 
@@ -89,6 +87,11 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 	}
 	batch.flush()
 	batch.wg.Wait()
+
+	// we check and return upsertErr after deleting resources/edges to prevent continuous DB growth in case of err
+	if upsertErr != nil {
+		return upsertErr
+	}
 
 	return batch.connError
 }
@@ -130,11 +133,9 @@ func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 	metrics.LogStepDuration(&timer, clusterName, "Resync QUERY existing edges")
 
 	// Now insert edges from the reqeust that don't already exist
-	if err = addEdges(resyncRequest, &existingEdgesMap, clusterName, syncResponse, &batch); err != nil {
-		klog.Warningf("Error inserting edges for cluster [%s]. %+v", clusterName, err)
-	}
+	addErr := addEdges(resyncRequest, &existingEdgesMap, clusterName, syncResponse, &batch)
 
-	// Delete existing edges that are not in the new sync event.
+	// Delete existing edges that are not in the resyncRequest.
 	for _, edge := range existingEdgesMap {
 		query, params, err := useGoqu(
 			"DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3",
@@ -158,6 +159,11 @@ func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 	batch.wg.Wait()
 	metrics.LogStepDuration(&timer, clusterName, fmt.Sprintf("Reset edges stats: INSERT [%d] DELETE [%d]",
 		syncResponse.TotalEdgesAdded, syncResponse.TotalEdgesDeleted))
+
+	if addErr != nil {
+		return addErr
+	}
+
 	return batch.connError
 }
 
