@@ -4,6 +4,7 @@ package server
 
 import (
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -36,7 +37,14 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if requestCount >= config.Cfg.RequestLimit && clusterName != "local-cluster" {
+		hubClusterRequestHeader := r.Header.Get("X-Hub-Cluster-Reqeust")
+		hubClusterRequest, hubClusterRequestErr := strconv.ParseBool(hubClusterRequestHeader)
+		if hubClusterRequestErr != nil {
+			klog.V(1).Infof("Invalid X-Hub-Cluster-Request header value [%s] from cluster[%s]: %v", hubClusterRequestHeader, clusterName, hubClusterRequestErr)
+			hubClusterRequest = false
+		}
+
+		if requestCount >= config.Cfg.RequestLimit && !hubClusterRequest {
 			klog.Warningf("Too many pending requests (%d). Rejecting sync from %s", requestCount, clusterName)
 			http.Error(w, "Indexer has too many pending requests, retry later.", http.StatusTooManyRequests)
 			return
