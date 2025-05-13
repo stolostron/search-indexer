@@ -5,7 +5,6 @@ package clustersync
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -379,9 +378,8 @@ func findStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interf
 			hubClusterName = item.GetName()
 		}
 	}
-	// if we can't determine the hub cluster, return err to prevent deleting hub cluster resources
 	if hubClusterName == "" {
-		return nil, fmt.Errorf("error determining hub cluster name from client when finding stale cluster resources")
+		klog.Warning("Unable to determine hub cluster name. This may lead to deletion of hub cluster resources.")
 	}
 	klog.V(3).Infof("Managed Clusters reported from kube client: %+v", managedClustersFromClient)
 
