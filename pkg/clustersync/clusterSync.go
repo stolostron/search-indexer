@@ -367,24 +367,17 @@ func findStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interf
 		return nil, err
 	}
 
-	hubClusterName := ""
 	for _, item := range resourceObj.Items {
 		// Here we want all managed clusters that have the search-collector addon available
 		if item.GetLabels()["local-cluster"] != "true" &&
 			item.GetLabels()["feature.open-cluster-management.io/addon-search-collector"] == "available" {
 			managedClustersFromClient[item.GetName()] = struct{}{}
 		}
-		if item.GetLabels()["local-cluster"] == "true" {
-			hubClusterName = item.GetName()
-		}
-	}
-	if hubClusterName == "" {
-		klog.Warning("Unable to determine hub cluster name. This may lead to deletion of hub cluster resources.")
 	}
 	klog.V(3).Infof("Managed Clusters reported from kube client: %+v", managedClustersFromClient)
 
 	// get all managed clusters from db:
-	managedClustersFromDB, err := dao.GetManagedClusters(ctx, hubClusterName)
+	managedClustersFromDB, err := dao.GetManagedClusters(ctx)
 	if err != nil {
 		klog.Errorf("Error getting managed clusters names from database. %s", err)
 		return nil, err

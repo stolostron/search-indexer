@@ -347,12 +347,12 @@ func Test_GetManagedCluster(t *testing.T) {
 	pgxRows := pgxpoolmock.NewRows(columns).AddRow(clusterName).ToPgxRows()
 
 	mockPool.EXPECT().Query(gomock.Any(),
-		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),
+		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources" WHERE ((data ? '_hubClusterResource') IS FALSE)`),
 		gomock.Eq([]interface{}{}),
 	).Return(pgxRows, nil)
 
 	// Execute function test.
-	mc, _ := dao.GetManagedClusters(context.Background(), "hub-cluster-name")
+	mc, _ := dao.GetManagedClusters(context.Background())
 
 	for _, c := range mc {
 		AssertEqual(t, clusterName, c, "Cluster cluster__name-foo doesn't exist in database")

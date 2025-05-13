@@ -274,14 +274,14 @@ func goquInsertUpdate(tableName string, args []interface{}) (string, []interface
 }
 
 // Query database for managed clusters:
-func (dao *DAO) GetManagedClusters(ctx context.Context, hubClusterName string) ([]string, error) {
+func (dao *DAO) GetManagedClusters(ctx context.Context) ([]string, error) {
 
 	schemaTable := goqu.S("search").Table("resources")
 	ds := goqu.From(schemaTable)
 	var managedClusters []string
 
-	//select distinct cluster from search.resources;
-	query, params, err := ds.Select("cluster").Distinct().ToSQL()
+	//select distinct cluster from search.resources where data ? '_hubClusterResource' is false;
+	query, params, err := ds.Select("cluster").Distinct().Where(goqu.L("(data ? '_hubClusterResource')").Eq(false)).ToSQL()
 	if err != nil {
 		klog.Errorf("Error building select distinct cluster query: %s", err.Error())
 		return nil, err
@@ -302,7 +302,7 @@ func (dao *DAO) GetManagedClusters(ctx context.Context, hubClusterName string) (
 			klog.Errorf("Error reading cluster names. Error: %s Query: %s", err.Error(), query)
 			continue
 		}
-		if mc != "" && mc != hubClusterName { //exclude the hub cluster and cluster node
+		if mc != "" { //exclude the hub cluster and cluster node
 			managedClusters = append(managedClusters, mc)
 		}
 
