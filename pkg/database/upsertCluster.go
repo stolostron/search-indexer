@@ -241,7 +241,8 @@ func (dao *DAO) clusterPropsUpToDate(clusterUID string, resource model.Resource)
 
 // Create a goqu query to delete a row.
 // Sample query:
-//   DELETE from <tableName> WHERE <columnName> = '<arg>' AND uid != 'cluster__<arg>'
+//
+//	DELETE from <tableName> WHERE <columnName> = '<arg>' AND uid != 'cluster__<arg>'
 func goquDelete(tableName, columnName, arg string) (string, []interface{}, error) {
 	var whereDs []exp.Expression
 	whereDs = append(whereDs, goqu.C(columnName).Eq(arg))
@@ -258,7 +259,7 @@ func goquDelete(tableName, columnName, arg string) (string, []interface{}, error
 }
 
 // Create the upsert query
-// query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,'',$2)
+// query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,”,$2)
 // ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1"
 func goquInsertUpdate(tableName string, args []interface{}) (string, []interface{}, error) {
 	sql, args, err := goqu.From(
@@ -273,7 +274,7 @@ func goquInsertUpdate(tableName string, args []interface{}) (string, []interface
 }
 
 // Query database for managed clusters:
-func (dao *DAO) GetManagedClusters(ctx context.Context) ([]string, error) {
+func (dao *DAO) GetManagedClusters(ctx context.Context, hubClusterName string) ([]string, error) {
 
 	schemaTable := goqu.S("search").Table("resources")
 	ds := goqu.From(schemaTable)
@@ -301,7 +302,7 @@ func (dao *DAO) GetManagedClusters(ctx context.Context) ([]string, error) {
 			klog.Errorf("Error reading cluster names. Error: %s Query: %s", err.Error(), query)
 			continue
 		}
-		if mc != "" && mc != "local-cluster" { //exclude the local cluster and cluster node
+		if mc != "" && mc != hubClusterName { //exclude the hub cluster and cluster node
 			managedClusters = append(managedClusters, mc)
 		}
 

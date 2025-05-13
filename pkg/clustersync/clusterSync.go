@@ -5,6 +5,7 @@ package clustersync
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -366,17 +367,26 @@ func findStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interf
 		klog.Warning("Error resolving ManagedClusters with dynamic client", err.Error())
 		return nil, err
 	}
+
+	hubClusterName := ""
 	for _, item := range resourceObj.Items {
 		// Here we want all managed clusters that have the search-collector addon available
-		if item.GetLabels()["local-cluster"] != "true" && //note: need better method instead of using name local-cluster.
+		if item.GetLabels()["local-cluster"] != "true" &&
 			item.GetLabels()["feature.open-cluster-management.io/addon-search-collector"] == "available" {
 			managedClustersFromClient[item.GetName()] = struct{}{}
 		}
+		if item.GetLabels()["local-cluster"] == "true" {
+			hubClusterName = item.GetName()
+		}
+	}
+	// if we can't determine the hub cluster, return err to prevent deleting hub cluster resources
+	if hubClusterName == "" {
+		return nil, fmt.Errorf("error determining hub cluster name from client when finding stale cluster resources")
 	}
 	klog.V(3).Infof("Managed Clusters reported from kube client: %+v", managedClustersFromClient)
 
 	// get all managed clusters from db:
-	managedClustersFromDB, err := dao.GetManagedClusters(ctx)
+	managedClustersFromDB, err := dao.GetManagedClusters(ctx, hubClusterName)
 	if err != nil {
 		klog.Errorf("Error getting managed clusters names from database. %s", err)
 		return nil, err
