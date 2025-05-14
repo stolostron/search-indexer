@@ -23,6 +23,14 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 		params := mux.Vars(r)
 		clusterName := params["id"]
 
+		klog.Infof(">>> Request: %+v", r)
+		klog.Info(">>> Request (URL):\t\t", r.URL)
+		klog.Info(">>> Request (Host):\t\t", r.Host)
+		klog.Info(">>> Request (RemoteAddr):\t", r.RemoteAddr)
+		klog.Info(">>> Request (RequestURI):\t", r.RequestURI)
+		klog.Info(">>> Request (TLS):\t\t", r.TLS)
+		klog.Info(">>> Request (TLS.ServerName):\t", r.TLS.ServerName)
+
 		requestTrackerLock.RLock()
 		requestCount := len(requestTracker)
 		klog.V(6).Info("Checking if we can process incoming request. Current requests: ", requestCount)
