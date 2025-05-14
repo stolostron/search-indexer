@@ -19,15 +19,12 @@ type Edge struct {
 
 // SyncEvent - Object sent by the collector with the resources to change.
 type SyncEvent struct {
-	ClearAll bool `json:"clearAll,omitempty"`
-
 	AddResources    []Resource
 	UpdateResources []Resource
 	DeleteResources []DeleteResourceEvent
 
 	AddEdges    []Edge
 	DeleteEdges []Edge
-	RequestId   int
 }
 
 // SyncResponse - Response to a SyncEvent
@@ -45,7 +42,6 @@ type SyncResponse struct {
 	AddEdgeErrors     []SyncError
 	DeleteEdgeErrors  []SyncError
 	Version           string
-	RequestId         int
 }
 
 // SyncError is used to respond with errors.

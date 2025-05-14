@@ -3,8 +3,11 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/stolostron/search-indexer/pkg/metrics"
@@ -21,21 +24,27 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	clusterName := params["id"]
 
-	// Decode SyncEvent from request body.
 	var syncEvent model.SyncEvent
-	err := json.NewDecoder(r.Body).Decode(&syncEvent)
+	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
-		klog.Errorf("Error decoding request body from cluster [%s]. Error: %+v\n", clusterName, err)
+		klog.Errorf("Error reading request body from cluster [%s]. Error: %+v\n", clusterName, err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
+	overwriteStateHeader := r.Header.Get("X-Overwrite-State")
+	overwriteState, overwriteStateErr := strconv.ParseBool(overwriteStateHeader)
+	if overwriteStateErr != nil {
+		klog.V(1).Infof("Invalid X-Overwrite-State header value [%s] from cluster[%s]: %v", overwriteStateHeader, clusterName, overwriteStateErr)
+		overwriteState = false
+	}
+
 	resourceTotal := len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)
 	metrics.RequestSize.Observe(float64(resourceTotal))
 
 	// Initialize SyncResponse object.
 	syncResponse := &model.SyncResponse{
 		Version:          config.COMPONENT_VERSION,
-		RequestId:        syncEvent.RequestId,
 		AddErrors:        make([]model.SyncError, 0),
 		UpdateErrors:     make([]model.SyncError, 0),
 		DeleteErrors:     make([]model.SyncError, 0),
@@ -43,17 +52,24 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		DeleteEdgeErrors: make([]model.SyncError, 0),
 	}
 
-	// The collector sends 2 types of requests:
-	// 1. ReSync [ClearAll=true]  - It has the complete current state. It must overwrite any previous state.
-	// 2. Sync   [ClearAll=false] - This is the delta changes from the previous state.
-	if syncEvent.ClearAll {
-		err = s.Dao.ResyncData(r.Context(), syncEvent, clusterName, syncResponse)
+	// The collector sends 2 types of requests with the header:
+	// 1. ReSync [X-Overwrite-State=true]  - It has the complete current state. It must overwrite any previous state.
+	// 2. Sync   [X-Overwrite-State=false] - This is the delta changes from the previous state.
+	if overwriteState {
+		err = s.Dao.ResyncData(r.Context(), clusterName, syncResponse, bodyBytes)
 	} else {
-		err = s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
+		// we can decode the entire request for non resync requests because they are significantly smaller
+		err = json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&syncEvent)
+		if err != nil {
+			klog.Errorf("Error decoding request body from cluster [%s]. Error: %+v\n", clusterName, err)
+			w.WriteHeader(http.StatusBadRequest)
+		} else {
+			err = s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
+		}
 	}
 	if err != nil {
-		klog.Warningf("Responding with error to request from %12s. RequestId: %d  Error: %s",
-			clusterName, syncEvent.RequestId, err)
+		klog.Warningf("Responding with error to request from %12s. Error: %s",
+			clusterName, err)
 		http.Error(w, "Server error while processing the request.", http.StatusInternalServerError)
 		return
 	}
@@ -61,8 +77,8 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	// Get the total cluster resources for validation by the collector.
 	totalResources, totalEdges, validateErr := s.Dao.ClusterTotals(r.Context(), clusterName)
 	if validateErr != nil {
-		klog.Warningf("Responding with error to request from %12s. RequestId: %d  Error: %s",
-			clusterName, syncEvent.RequestId, validateErr)
+		klog.Warningf("Responding with error to request from %12s. Error: %s",
+			clusterName, validateErr)
 		http.Error(w, "Server error while processing the request.", http.StatusInternalServerError)
 		return
 	}
@@ -78,7 +94,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log request.
-	klog.V(5).Infof("Request from [%12s] took [%v] clearAll [%t] addTotal [%d]",
-		clusterName, time.Since(start), syncEvent.ClearAll, len(syncEvent.AddResources))
+	klog.V(5).Infof("Request from [%12s] took [%v] overwriteState [%t] addTotal [%d]",
+		clusterName, time.Since(start), overwriteState, len(syncEvent.AddResources))
 	// klog.V(5).Infof("Response for [%s]: %+v", clusterName, syncResponse)
 }

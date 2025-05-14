@@ -3,9 +3,11 @@
 package database
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/stolostron/search-indexer/pkg/metrics"
@@ -14,65 +16,43 @@ import (
 )
 
 // Reset data for the cluster to the incoming state.
-func (dao *DAO) ResyncData(ctx context.Context, event model.SyncEvent,
-	clusterName string, syncResponse *model.SyncResponse) error {
+func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse *model.SyncResponse, requestBody []byte) error {
 
-	defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s.\t RequestId: %d", clusterName, event.RequestId), 0)()
+	defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s.", clusterName), 0)()
 	klog.Infof(
 		"Starting resync from %12s. This is normal, but it could be a problem if it happens often.", clusterName)
 
 	// Reset resources
-	err := dao.resetResources(ctx, event.AddResources, clusterName, syncResponse)
+	err := dao.resetResources(ctx, clusterName, syncResponse, requestBody)
 	if err != nil {
 		klog.Warningf("Error resyncing resources for cluster %12s. Error: %+v", clusterName, err)
 		return err
 	}
 
 	// Reset edges
-	err = dao.resetEdges(ctx, event.AddEdges, clusterName, syncResponse)
+	err = dao.resetEdges(ctx, clusterName, syncResponse, requestBody)
 	if err != nil {
 		klog.Warningf("Error resyncing edges for cluster %12s. Error: %+v", clusterName, err)
 		return err
 	}
 
-	klog.V(1).Infof("Completed resync of cluster %12s.\t RequestId: %d", clusterName, event.RequestId)
+	klog.V(1).Infof("Completed resync of cluster %12s.", clusterName)
 	return nil
 }
 
 // Reset Resources.
 // 1. Upsert each incoming resource. Keep the UID.
 // 2. Delete existing UIDs that don't match the incoming UIDs.
-func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, clusterName string,
-	syncResponse *model.SyncResponse) error {
+func (dao *DAO) resetResources(ctx context.Context, clusterName string,
+	syncResponse *model.SyncResponse, resyncBody []byte) error {
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
-	incomingUIDs := make([]interface{}, len(resources)+1)
-
 	// UPSERT resources in the database.
-	for i, resource := range resources {
-		uid := resource.UID
-		data, _ := json.Marshal(resource.Properties)
-		query, params, err := useGoqu(
-			"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE data!=$3",
-			[]interface{}{uid, clusterName, string(data)})
-		if err == nil {
-			queueErr := batch.Queue(batchItem{
-				action: "addResource",
-				query:  query,
-				uid:    uid,
-				args:   params,
-			})
-			if queueErr != nil {
-				klog.Warningf("Error queuing resources to add. Error: %+v", queueErr)
-				return queueErr
-			}
-			syncResponse.TotalAdded++
-		}
-		incomingUIDs[i] = uid
-	}
+	incomingUIDs, upsertErr := upsertResources(resyncBody, clusterName, syncResponse, &batch)
+
 	// Add the uid of the Cluster pseudo node that is created by the indexer to exclude from deletion
-	incomingUIDs[len(incomingUIDs)-1] = fmt.Sprintf("cluster__%s", clusterName)
+	incomingUIDs = append(incomingUIDs, fmt.Sprintf("cluster__%s", clusterName))
 
 	// DELETE resources that no longer exist.
 	query, params, err := useGoqu(
@@ -108,15 +88,20 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	batch.flush()
 	batch.wg.Wait()
 
+	// we check and return upsertErr after deleting resources/edges to prevent continuous DB growth in case of err
+	if upsertErr != nil {
+		return upsertErr
+	}
+
 	return batch.connError
 }
 
 // Reset Edges
 //  1. Get existing edges for the cluster. Excluding intercluster edges.
 //  2. For each incoming edge, INSERT if it doesn't exist.
-//  3. Delete any existing edges that aren't in the incoming sync event.
-func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName string,
-	syncResponse *model.SyncResponse) error {
+//  3. Delete any existing edges that aren't in the incoming resyncRequest.
+func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
+	syncResponse *model.SyncResponse, resyncRequest []byte) error {
 	timer := time.Now()
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
@@ -147,33 +132,10 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 	}
 	metrics.LogStepDuration(&timer, clusterName, "Resync QUERY existing edges")
 
-	// Now compare existing edges with the new edges.
-	for _, edge := range edges {
-		// If the edge already exists, do nothing.
-		if _, ok := existingEdgesMap[edge.SourceUID+edge.EdgeType+edge.DestUID]; ok {
-			delete(existingEdgesMap, edge.SourceUID+edge.EdgeType+edge.DestUID)
-			continue
-		}
-		// If the edge doesn't exist, add it.
-		query, params, err := useGoqu(
-			"INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
-			[]interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName})
-		if err == nil {
-			queueErr = batch.Queue(batchItem{
-				action: "addEdge",
-				query:  query,
-				uid:    edge.SourceUID,
-				args:   params,
-			})
-			if queueErr != nil {
-				klog.Warningf("Error queuing edges. Error: %+v", queueErr)
-				return queueErr
-			}
-			syncResponse.TotalEdgesAdded++
-		}
-	}
+	// Now insert edges from the reqeust that don't already exist
+	addErr := addEdges(resyncRequest, &existingEdgesMap, clusterName, syncResponse, &batch)
 
-	// Delete existing edges that are not in the new sync event.
+	// Delete existing edges that are not in the resyncRequest.
 	for _, edge := range existingEdgesMap {
 		query, params, err := useGoqu(
 			"DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3",
@@ -197,5 +159,103 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 	batch.wg.Wait()
 	metrics.LogStepDuration(&timer, clusterName, fmt.Sprintf("Reset edges stats: INSERT [%d] DELETE [%d]",
 		syncResponse.TotalEdgesAdded, syncResponse.TotalEdgesDeleted))
+
+	if addErr != nil {
+		return addErr
+	}
+
 	return batch.connError
+}
+
+func upsertResources(resyncBody []byte, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) ([]interface{}, error) {
+	dec := json.NewDecoder(bytes.NewReader(resyncBody))
+	incomingUIDs := make([]interface{}, 0)
+	for {
+		// read tokens until we get to addResources
+		field, err := dec.Token()
+		if err == io.EOF {
+			break
+		}
+		if field == "addResources" {
+			// read opening [
+			if _, err = dec.Token(); err != nil {
+				return incomingUIDs, fmt.Errorf("error reading addResources opening token: %v", err)
+			}
+			for dec.More() {
+				var resource model.Resource
+				if err = dec.Decode(&resource); err != nil {
+					return incomingUIDs, fmt.Errorf("error decoding resource from request: %v", err)
+				}
+				uid := resource.UID
+				data, _ := json.Marshal(resource.Properties)
+				query, params, err := useGoqu(
+					"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE data!=$3",
+					[]interface{}{uid, clusterName, string(data)})
+				if err == nil {
+					queueErr := batch.Queue(batchItem{
+						action: "addResource",
+						query:  query,
+						uid:    uid,
+						args:   params,
+					})
+					if queueErr != nil {
+						klog.Warningf("Error queuing resources to add. Error: %+v", queueErr)
+						return incomingUIDs, queueErr
+					}
+					syncResponse.TotalAdded++
+				}
+				incomingUIDs = append(incomingUIDs, uid)
+			}
+			return incomingUIDs, nil
+		}
+	}
+	return incomingUIDs, nil
+}
+
+func addEdges(requestBody []byte, existingEdgesMap *map[string]model.Edge, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) error {
+	dec := json.NewDecoder(bytes.NewReader(requestBody))
+
+	for {
+		// read tokens until we get to addEdges
+		field, err := dec.Token()
+		if err == io.EOF {
+			break
+		}
+		if field == "addEdges" {
+			// read opening [
+			if _, err := dec.Token(); err != nil {
+				return fmt.Errorf("error reading addEdges opening token: %v", err)
+			}
+			for dec.More() {
+				var edge model.Edge
+				if err = dec.Decode(&edge); err != nil {
+					return fmt.Errorf("error decoding edge from request: %v", err)
+				}
+				// If the edge already exists, do nothing.
+				if _, ok := (*existingEdgesMap)[edge.SourceUID+edge.EdgeType+edge.DestUID]; ok {
+					delete(*existingEdgesMap, edge.SourceUID+edge.EdgeType+edge.DestUID)
+					continue
+				}
+				// If the edge doesn't exist, add it.
+				query, params, err := useGoqu(
+					"INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
+					[]interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName})
+				if err == nil {
+					queueErr := batch.Queue(batchItem{
+						action: "addEdge",
+						query:  query,
+						uid:    edge.SourceUID,
+						args:   params,
+					})
+					if queueErr != nil {
+						klog.Warningf("Error queuing edges. Error: %+v", queueErr)
+						return queueErr
+					}
+					syncResponse.TotalEdgesAdded++
+				}
+			}
+		}
+	}
+
+	return nil
 }

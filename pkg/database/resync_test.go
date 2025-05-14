@@ -4,8 +4,8 @@ package database
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"testing"
 
@@ -22,19 +22,18 @@ func Test_ResyncData(t *testing.T) {
 	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
 
 	br := &testutils.MockBatchResults{}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(4)
 
 	// Prepare Request data.
 	data, _ := os.Open("./mocks/simple.json")
-	var syncEvent model.SyncEvent
-	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
+	dataBytes, _ := io.ReadAll(data)
 
 	// Supress console output to prevent log messages from polluting test output.
 	defer testutils.SupressConsoleOutput()()
 
 	// Execute function test.
 	response := &model.SyncResponse{}
-	err := dao.ResyncData(context.Background(), syncEvent, "test-cluster", response)
+	err := dao.ResyncData(context.Background(), "test-cluster", response, dataBytes)
 
 	assert.Nil(t, err)
 }
@@ -51,15 +50,14 @@ func Test_ResyncData_errors(t *testing.T) {
 
 	// Prepare Request data.
 	data, _ := os.Open("./mocks/simple.json")
-	var syncEvent model.SyncEvent
-	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
+	dataBytes, _ := io.ReadAll(data)
 
 	// Supress console output to prevent log messages from polluting test output.
 	defer testutils.SupressConsoleOutput()()
 
 	// Execute function test.
 	response := &model.SyncResponse{}
-	err := dao.ResyncData(context.Background(), syncEvent, "test-cluster", response)
+	err := dao.ResyncData(context.Background(), "test-cluster", response, dataBytes)
 
 	assert.NotNil(t, err)
 }
