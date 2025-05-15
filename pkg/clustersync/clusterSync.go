@@ -366,9 +366,10 @@ func findStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interf
 		klog.Warning("Error resolving ManagedClusters with dynamic client", err.Error())
 		return nil, err
 	}
+
 	for _, item := range resourceObj.Items {
 		// Here we want all managed clusters that have the search-collector addon available
-		if item.GetLabels()["local-cluster"] != "true" && //note: need better method instead of using name local-cluster.
+		if item.GetLabels()["local-cluster"] != "true" &&
 			item.GetLabels()["feature.open-cluster-management.io/addon-search-collector"] == "available" {
 			managedClustersFromClient[item.GetName()] = struct{}{}
 		}

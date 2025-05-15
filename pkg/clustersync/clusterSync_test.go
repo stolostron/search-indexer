@@ -357,7 +357,7 @@ func Test_DeleteStaleClustersResources(t *testing.T) {
 	pgxRows := pgxpoolmock.NewRows(columns).AddRow("name-foo").AddRow("remaining-managed-foo").ToPgxRows()
 
 	mockPool.EXPECT().Query(gomock.Any(),
-		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),
+		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources" WHERE ((data ? '_hubClusterResource') IS FALSE)`),
 		gomock.Eq([]interface{}{}),
 	).Return(pgxRows, nil).Times(2)
 
@@ -436,7 +436,7 @@ func Test_DeleteStaleClustersResources_DB_Outage(t *testing.T) {
 	pgxRows := pgxpoolmock.NewRows(columns).AddRow("name-foo").AddRow("remaining-managed-foo").ToPgxRows()
 
 	mockPool.EXPECT().Query(gomock.Any(),
-		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),
+		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources" WHERE ((data ? '_hubClusterResource') IS FALSE)`),
 		gomock.Eq([]interface{}{}),
 	).Return(pgxRows, nil)
 
