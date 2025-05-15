@@ -36,7 +36,10 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if requestCount >= config.Cfg.RequestLimit && clusterName != "local-cluster" {
+		// request host is stored as plain text service when originating from hub cluster
+		// request host uses internal IP when coming from proxy service, i.e. managed clusters
+		hubClusterReq := r.Host == "search-indexer.open-cluster-management.svc:3010"
+		if requestCount >= config.Cfg.RequestLimit && !hubClusterReq {
 			klog.Warningf("Too many pending requests (%d). Rejecting sync from %s", requestCount, clusterName)
 			http.Error(w, "Indexer has too many pending requests, retry later.", http.StatusTooManyRequests)
 			return
