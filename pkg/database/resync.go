@@ -10,6 +10,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/doug-martin/goqu/v9"
 	"github.com/stolostron/search-indexer/pkg/metrics"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
@@ -49,7 +50,7 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
 	// UPSERT resources in the database.
-	incomingUIDs, upsertErr := upsertResources(resyncBody, clusterName, syncResponse, &batch)
+	incomingUIDs, upsertErr := dao.upsertResources(ctx, resyncBody, clusterName, syncResponse, &batch)
 
 	// Add the uid of the Cluster pseudo node that is created by the indexer to exclude from deletion
 	incomingUIDs = append(incomingUIDs, fmt.Sprintf("cluster__%s", clusterName))
@@ -167,9 +168,10 @@ func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 	return batch.connError
 }
 
-func upsertResources(resyncBody []byte, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) ([]interface{}, error) {
+func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) ([]interface{}, error) {
 	dec := json.NewDecoder(bytes.NewReader(resyncBody))
 	incomingUIDs := make([]interface{}, 0)
+	var resource model.Resource
 	for {
 		// read tokens until we get to addResources
 		field, err := dec.Token()
@@ -182,7 +184,6 @@ func upsertResources(resyncBody []byte, clusterName string, syncResponse *model.
 				return incomingUIDs, fmt.Errorf("error reading addResources opening token: %v", err)
 			}
 			for dec.More() {
-				var resource model.Resource
 				if err = dec.Decode(&resource); err != nil {
 					return incomingUIDs, fmt.Errorf("error decoding resource from request: %v", err)
 				}
@@ -206,10 +207,77 @@ func upsertResources(resyncBody []byte, clusterName string, syncResponse *model.
 				}
 				incomingUIDs = append(incomingUIDs, uid)
 			}
-			return incomingUIDs, nil
+			err = dao.checkHubClusterRename(ctx, resource, clusterName)
+			return incomingUIDs, err
 		}
 	}
 	return incomingUIDs, nil
+}
+
+func (dao *DAO) checkHubClusterRename(ctx context.Context, resource model.Resource, requestCluster string) error {
+	// check if hub cluster name(s) has changed by comparing existing cluster name
+	//   where _hubClusterResource is true against new resource cluster where _hubClusterResource is true
+	// we check for multiple distinct old hub cluster names in case of the off chance multiple renames have happened
+	//   prior to this old name cleaning
+	if _, ok := resource.Properties["_hubClusterResource"]; ok {
+		// SELECT distinct cluster FROM search.resources WHERE data ? '_hubClusterResource'
+		sql, args, err := goqu.From(goqu.S("search").Table("resources")).
+			Select("cluster").
+			Distinct().
+			Where(goqu.L("???", goqu.C("data"), goqu.Literal("?"), "_hubClusterResource")).ToSQL()
+		if err != nil {
+			klog.Errorf("Error creating query to check existing hub cluster name")
+			return err
+		}
+		rows, err := dao.pool.Query(ctx, sql, args...)
+		if err != nil {
+			klog.Errorf("Error while fetching hub cluster name from database: %s", err.Error())
+			return err
+		}
+
+		clustersToDelete := make([]string, 0)
+		if rows != nil {
+			for rows.Next() {
+				var cluster string
+				err = rows.Scan(&cluster)
+				if err != nil {
+					klog.Errorf("Error %s retrieving cluster with query: %s", err.Error(), sql)
+				}
+				if cluster != requestCluster && cluster != "" {
+					clustersToDelete = append(clustersToDelete, cluster)
+				}
+			}
+		}
+
+		// if old hub cluster name(s) != new hub cluster name, delete all old hub cluster(s) resources and edges
+		for _, c := range clustersToDelete {
+			if err = dao.deleteOldHubClusterFromDBTable(ctx, c, "resources"); err != nil {
+				return err
+			}
+			if err = dao.deleteOldHubClusterFromDBTable(ctx, c, "edges"); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (dao *DAO) deleteOldHubClusterFromDBTable(ctx context.Context, cluster string, table string) error {
+	// DELETE FROM search.? WHERE cluster = ?
+	sql, args, err := goqu.From(goqu.S("search").Table(table)).
+		Delete().Where(goqu.C("cluster").Eq(cluster)).ToSQL()
+	if err != nil {
+		klog.Errorf("Error creating query to delete old hub cluster %s: %s", table, err.Error())
+		return err
+	}
+	res, err := dao.pool.Exec(ctx, sql, args...)
+	if err != nil {
+		klog.Errorf("Error deleting old hub cluster %s: %s", table, err.Error())
+		return err
+	}
+	klog.V(4).Infof("Deleted %d old hub cluster %s", res.RowsAffected(), table)
+
+	return nil
 }
 
 func addEdges(requestBody []byte, existingEdgesMap *map[string]model.Edge, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) error {
