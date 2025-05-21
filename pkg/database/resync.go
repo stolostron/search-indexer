@@ -7,7 +7,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/stolostron/search-indexer/pkg/config"
 	"io"
+	"math"
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
@@ -24,7 +26,7 @@ func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse
 		"Starting resync from %12s. This is normal, but it could be a problem if it happens often.", clusterName)
 
 	// Reset resources
-	err := dao.resetResources(ctx, clusterName, syncResponse, requestBody)
+	lastUpsertResource, err := dao.resetResources(ctx, clusterName, syncResponse, requestBody)
 	if err != nil {
 		klog.Warningf("Error resyncing resources for cluster %12s. Error: %+v", clusterName, err)
 		return err
@@ -37,6 +39,10 @@ func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse
 		return err
 	}
 
+	if _, ok := lastUpsertResource.Properties["_hubClusterResource"]; ok {
+		go dao.hubClusterCleanUpWithRetry(context.Background(), clusterName)
+	}
+
 	klog.V(1).Infof("Completed resync of cluster %12s.", clusterName)
 	return nil
 }
@@ -45,12 +51,12 @@ func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse
 // 1. Upsert each incoming resource. Keep the UID.
 // 2. Delete existing UIDs that don't match the incoming UIDs.
 func (dao *DAO) resetResources(ctx context.Context, clusterName string,
-	syncResponse *model.SyncResponse, resyncBody []byte) error {
+	syncResponse *model.SyncResponse, resyncBody []byte) (model.Resource, error) {
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
 	// UPSERT resources in the database.
-	incomingUIDs, upsertErr := dao.upsertResources(ctx, resyncBody, clusterName, syncResponse, &batch)
+	incomingUIDs, resource, upsertErr := dao.upsertResources(ctx, resyncBody, clusterName, syncResponse, &batch)
 
 	// Add the uid of the Cluster pseudo node that is created by the indexer to exclude from deletion
 	incomingUIDs = append(incomingUIDs, fmt.Sprintf("cluster__%s", clusterName))
@@ -91,10 +97,10 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 
 	// we check and return upsertErr after deleting resources/edges to prevent continuous DB growth in case of err
 	if upsertErr != nil {
-		return upsertErr
+		return resource, upsertErr
 	}
 
-	return batch.connError
+	return resource, batch.connError
 }
 
 // Reset Edges
@@ -168,7 +174,7 @@ func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 	return batch.connError
 }
 
-func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) ([]interface{}, error) {
+func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) ([]interface{}, model.Resource, error) {
 	dec := json.NewDecoder(bytes.NewReader(resyncBody))
 	incomingUIDs := make([]interface{}, 0)
 	var resource model.Resource
@@ -181,11 +187,11 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 		if field == "addResources" {
 			// read opening [
 			if _, err = dec.Token(); err != nil {
-				return incomingUIDs, fmt.Errorf("error reading addResources opening token: %v", err)
+				return incomingUIDs, resource, fmt.Errorf("error reading addResources opening token: %v", err)
 			}
 			for dec.More() {
 				if err = dec.Decode(&resource); err != nil {
-					return incomingUIDs, fmt.Errorf("error decoding resource from request: %v", err)
+					return incomingUIDs, resource, fmt.Errorf("error decoding resource from request: %v", err)
 				}
 				uid := resource.UID
 				data, _ := json.Marshal(resource.Properties)
@@ -201,62 +207,79 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 					})
 					if queueErr != nil {
 						klog.Warningf("Error queuing resources to add. Error: %+v", queueErr)
-						return incomingUIDs, queueErr
+						return incomingUIDs, resource, queueErr
 					}
 					syncResponse.TotalAdded++
 				}
 				incomingUIDs = append(incomingUIDs, uid)
 			}
-			err = dao.checkHubClusterRename(ctx, resource, clusterName)
-			return incomingUIDs, err
+			//err = dao.checkHubClusterRename(ctx, resource, clusterName)
+			return incomingUIDs, resource, err
 		}
 	}
-	return incomingUIDs, nil
+	return incomingUIDs, resource, nil
 }
 
-func (dao *DAO) checkHubClusterRename(ctx context.Context, resource model.Resource, requestCluster string) error {
+func (dao *DAO) hubClusterCleanUpWithRetry(ctx context.Context, requestCluster string) {
+	cfg := config.Cfg
+	retry := 0
+
+	for {
+		if err := dao.checkHubClusterRename(ctx, requestCluster); err != nil {
+			waitMS := int(math.Min(float64(retry*500), float64(cfg.MaxBackoffMS)))
+			timeToSleep := time.Duration(waitMS) * time.Millisecond
+			retry++
+			klog.Errorf("Error handling old hub cluster check and cleanup: %s. Will retry in %s\n", err.Error(), timeToSleep)
+			time.Sleep(timeToSleep)
+		} else {
+			break
+		}
+	}
+}
+
+func (dao *DAO) checkHubClusterRename(ctx context.Context, requestCluster string) error {
 	// check if hub cluster name(s) has changed by comparing existing cluster name
 	//   where _hubClusterResource is true against new resource cluster where _hubClusterResource is true
 	// we check for multiple distinct old hub cluster names in case of the off chance multiple renames have happened
 	//   prior to this old name cleaning
-	if _, ok := resource.Properties["_hubClusterResource"]; ok {
-		// SELECT distinct cluster FROM search.resources WHERE data ? '_hubClusterResource'
-		sql, args, err := goqu.From(goqu.S("search").Table("resources")).
-			Select("cluster").
-			Distinct().
-			Where(goqu.L("???", goqu.C("data"), goqu.Literal("?"), "_hubClusterResource")).ToSQL()
-		if err != nil {
-			klog.Errorf("Error creating query to check existing hub cluster name")
-			return err
-		}
-		rows, err := dao.pool.Query(ctx, sql, args...)
-		if err != nil {
-			klog.Errorf("Error while fetching hub cluster name from database: %s", err.Error())
-			return err
-		}
+	// SELECT distinct cluster FROM search.resources WHERE data ? '_hubClusterResource'
+	sql, args, err := goqu.From(goqu.S("search").Table("resources")).
+		Select("cluster").
+		Distinct().
+		Where(goqu.L("???", goqu.C("data"), goqu.Literal("?"), "_hubClusterResource")).ToSQL()
+	if err != nil {
+		klog.Errorf("Error creating query to check existing hub cluster name")
+		return err
+	}
+	rows, err := dao.pool.Query(ctx, sql, args...)
+	if err != nil {
+		klog.Errorf("Error while fetching hub cluster name from database: %s", err.Error())
+		return err
+	}
 
-		clustersToDelete := make([]string, 0)
-		if rows != nil {
-			for rows.Next() {
-				var cluster string
-				err = rows.Scan(&cluster)
-				if err != nil {
-					klog.Errorf("Error %s retrieving cluster with query: %s", err.Error(), sql)
-				}
-				if cluster != requestCluster && cluster != "" {
-					clustersToDelete = append(clustersToDelete, cluster)
-				}
-			}
-		}
-
-		// if old hub cluster name(s) != new hub cluster name, delete all old hub cluster(s) resources and edges
-		for _, c := range clustersToDelete {
-			if err = dao.deleteOldHubClusterFromDBTable(ctx, c, "resources"); err != nil {
+	clustersToDelete := make([]string, 0)
+	if rows != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var cluster string
+			err = rows.Scan(&cluster)
+			if err != nil {
+				klog.Errorf("Error %s retrieving cluster with query: %s", err.Error(), sql)
 				return err
 			}
-			if err = dao.deleteOldHubClusterFromDBTable(ctx, c, "edges"); err != nil {
-				return err
+			if cluster != requestCluster && cluster != "" {
+				clustersToDelete = append(clustersToDelete, cluster)
 			}
+		}
+	}
+
+	// if old hub cluster name(s) != new hub cluster name, delete all old hub cluster(s) resources and edges
+	for _, c := range clustersToDelete {
+		if err = dao.deleteOldHubClusterFromDBTable(ctx, c, "resources"); err != nil {
+			return err
+		}
+		if err = dao.deleteOldHubClusterFromDBTable(ctx, c, "edges"); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -275,7 +298,7 @@ func (dao *DAO) deleteOldHubClusterFromDBTable(ctx context.Context, cluster stri
 		klog.Errorf("Error deleting old hub cluster %s: %s", table, err.Error())
 		return err
 	}
-	klog.V(4).Infof("Deleted %d old hub cluster %s", res.RowsAffected(), table)
+	klog.Infof("Deleted %d old hub cluster %s", res.RowsAffected(), table)
 
 	return nil
 }
