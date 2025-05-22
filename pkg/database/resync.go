@@ -7,12 +7,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/stolostron/search-indexer/pkg/config"
 	"io"
 	"math"
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
+	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/metrics"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
@@ -220,8 +220,7 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 }
 
 // hubClusterCleanUpWithRetry takes the known hub cluster name from the latest resync request and deletes all other
-//
-//	old hub cluster resources and edges, if any. Retries until success to ensure outdated resources are deleted.
+// old hub cluster resources and edges, if any. Retries until success to ensure outdated resources are deleted.
 func (dao *DAO) hubClusterCleanUpWithRetry(ctx context.Context, requestCluster string) {
 	cfg := config.Cfg
 	retry := 0
