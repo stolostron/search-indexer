@@ -213,7 +213,6 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 				}
 				incomingUIDs = append(incomingUIDs, uid)
 			}
-			//err = dao.checkHubClusterRename(ctx, resource, clusterName)
 			return incomingUIDs, resource, err
 		}
 	}
