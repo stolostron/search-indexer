@@ -233,7 +233,7 @@ func (dao *DAO) hubClusterCleanUpWithRetry(ctx context.Context, requestCluster s
 			klog.Errorf("Error handling old hub cluster check and cleanup: %s. Will retry in %s\n", err.Error(), timeToSleep)
 			time.Sleep(timeToSleep)
 		} else {
-			klog.Info("Successfully completed check and handling of old hub clusters.")
+			klog.V(1).Info("Successfully completed check and handling of old hub clusters.")
 			break
 		}
 	}
