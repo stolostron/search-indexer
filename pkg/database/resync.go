@@ -190,6 +190,7 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 				return incomingUIDs, resource, fmt.Errorf("error reading addResources opening token: %v", err)
 			}
 			for dec.More() {
+				resource = model.Resource{}
 				if err = dec.Decode(&resource); err != nil {
 					return incomingUIDs, resource, fmt.Errorf("error decoding resource from request: %v", err)
 				}
