@@ -33,6 +33,16 @@ jobs:
           python-version: '3.11'
       - name: Install deps
         run: pip install PyGithub openai
+      - name: Debug secrets
+        run: |
+          echo "Checking if OPENAI_API_KEY is set..."
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "ERROR: OPENAI_API_KEY is not set"
+          else
+            echo "OPENAI_API_KEY is set (length: ${#OPENAI_API_KEY})"
+          fi
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       - name: Run AI Review
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
