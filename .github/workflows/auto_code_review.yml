@@ -37,6 +37,10 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
+          echo "Raw env check:"
+          env | grep OPENAI || echo "OPENAI_API_KEY not in environment"
+          echo "Direct check: '$OPENAI_API_KEY'"
+          echo "Length check: ${#OPENAI_API_KEY}"
           echo "Checking if OPENAI_API_KEY is set..."
           if [ -z "$OPENAI_API_KEY" ]; then
             echo "ERROR: OPENAI_API_KEY is not set"
