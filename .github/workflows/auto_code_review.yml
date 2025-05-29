@@ -36,8 +36,12 @@ jobs:
       - name: Debug secrets
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TEST_SECRET: ${{ secrets.TEST_SECRET }}
         run: |
           echo "Raw env check:"
+          echo "=== Testing basic secret ==="
+          echo "TEST_SECRET: '$TEST_SECRET'"
+          echo "TEST_SECRET length: ${#TEST_SECRET}"
           env | grep OPENAI || echo "OPENAI_API_KEY not in environment"
           echo "Direct check: '$OPENAI_API_KEY'"
           echo "Length check: ${#OPENAI_API_KEY}"
