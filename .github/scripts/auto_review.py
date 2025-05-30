@@ -53,7 +53,7 @@ for f in pr.get_files():
         continue
     
     # Only review Python files with changes
-    if not f.filename.endswith(".py") or not f.patch:
+    if not f.patch:
         continue
 
     diff = f.patch
