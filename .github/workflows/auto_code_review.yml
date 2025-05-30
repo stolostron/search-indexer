@@ -4,6 +4,8 @@ on:
   # Automatically trigger on PR events
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '.github/workflows/**'
   # Keep manual trigger option
   workflow_dispatch:
     inputs:
