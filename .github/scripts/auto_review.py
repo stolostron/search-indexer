@@ -38,6 +38,8 @@ repo = gh.get_repo(os.environ["GITHUB_REPOSITORY"])
 pr = repo.get_pull(pr_number)
 
 openai_key = os.environ.get("OPENAI_API_KEY")
+#openai_key = os.getenv('OPENAI_API_KEY')
+
 if not openai_key:
     print("ERROR: OPENAI_API_KEY not set", file=sys.stderr)
     sys.exit(1)
@@ -45,7 +47,12 @@ client = OpenAI(api_key=openai_key)
 
 # ─── Gather diffs and post comments ────────────────────────────────────────────
 for f in pr.get_files():
-    # only review Python files
+    # Skip workflow files
+    if f.filename.startswith('.github/'):
+        print(f"⏭️  Skipping workflow file: {f.filename}")
+        continue
+    
+    # Only review Python files with changes
     if not f.filename.endswith(".py") or not f.patch:
         continue
 
