@@ -1,12 +1,12 @@
-# .github/workflows/ai-code-review.yml
+# .github/workflows/auto-code-review.yml
 name: AI Code Review
 on:
   # Automatically trigger on PR events
   pull_request:
     types: [opened, synchronize, reopened]
-    paths-ignore:
-      - '.github/workflows/**'
-      - '.github/scripts/**'
+    paths:
+      - 'pkg/**'
+      - '!**/*_test.go'
   # Keep manual trigger option
   workflow_dispatch:
     inputs:
@@ -41,13 +41,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TEST_SECRET: ${{ secrets.TEST_SECRET }}
         run: |
-          echo "Raw env check:"
-          echo "=== Testing basic secret ==="
-          echo "TEST_SECRET: '$TEST_SECRET'"
-          echo "TEST_SECRET length: ${#TEST_SECRET}"
           env | grep OPENAI || echo "OPENAI_API_KEY not in environment"
-          echo "Direct check: '$OPENAI_API_KEY'"
-          echo "Length check: ${#OPENAI_API_KEY}"
           echo "Checking if OPENAI_API_KEY is set..."
           if [ -z "$OPENAI_API_KEY" ]; then
             echo "ERROR: OPENAI_API_KEY is not set"
