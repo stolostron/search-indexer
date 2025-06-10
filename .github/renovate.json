@@ -9,7 +9,9 @@
         },
         {
             "enabled": false,
-            "matchBaseBranches": ["release-2.13","release-2.12","release-2.11","release-2.10"]
+            "groupName": "go.mod packages - Disabled branches",
+            "matchBaseBranches": ["release-2.13","release-2.12","release-2.11","release-2.10"],
+            "matchPackageNames": ["*", "*/**"]
         }
     ],
     "vulnerabilityAlerts": {
