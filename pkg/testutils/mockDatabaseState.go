@@ -22,6 +22,6 @@ func MockDatabaseState(mockPool *pgxpoolmock.MockPgxPool) {
 		`SELECT "sourceid", "edgetype", "destid" FROM "search"."edges" WHERE (("edgetype" != $1) AND ("cluster" = $2))`),
 		[]interface{}{"interCluster", "test-cluster"}).Return(edgeRows, nil)
 	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(
-		`SELECT DISTINCT "cluster" FROM "search"."resources" WHERE "data"?'_hubClusterResource'`),
+		`SELECT DISTINCT "cluster" FROM "search"."resources" WHERE ("data"?'_hubClusterResource' AND "data"->>'kind' <> 'Cluster')`),
 		[]interface{}{}).Return(clusterRows, nil)
 }

@@ -249,7 +249,10 @@ func (dao *DAO) checkHubClusterRename(ctx context.Context, requestCluster string
 	sql, args, err := goqu.From(goqu.S("search").Table("resources")).
 		Select("cluster").
 		Distinct().
-		Where(goqu.L("???", goqu.C("data"), goqu.Literal("?"), "_hubClusterResource")).ToSQL()
+		Where(goqu.And(
+			goqu.L("???", goqu.C("data"), goqu.Literal("?"), "_hubClusterResource"),
+			goqu.L("?->>? <> ?", goqu.C("data"), "kind", "Cluster"))).ToSQL()
+	fmt.Println("sql: ", sql)
 	if err != nil {
 		klog.Errorf("Error creating query to check existing hub cluster name")
 		return err
