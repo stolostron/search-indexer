@@ -252,7 +252,6 @@ func (dao *DAO) checkHubClusterRename(ctx context.Context, requestCluster string
 		Where(goqu.And(
 			goqu.L("???", goqu.C("data"), goqu.Literal("?"), "_hubClusterResource"),
 			goqu.L("?->>? <> ?", goqu.C("data"), "kind", "Cluster"))).ToSQL()
-	fmt.Println("sql: ", sql)
 	if err != nil {
 		klog.Errorf("Error creating query to check existing hub cluster name")
 		return err
