@@ -280,20 +280,20 @@ func (dao *DAO) checkHubClusterRename(ctx context.Context, requestCluster string
 
 	// if old hub cluster name(s) != new hub cluster name, delete all old hub cluster(s) resources and edges
 	for _, c := range clustersToDelete {
-		if err = dao.deleteOldHubClusterFromDBTable(ctx, c, "resources"); err != nil {
+		if err = dao.deleteOldHubClusterFromDBTable(ctx, c, "resources", requestCluster); err != nil {
 			return err
 		}
-		if err = dao.deleteOldHubClusterFromDBTable(ctx, c, "edges"); err != nil {
+		if err = dao.deleteOldHubClusterFromDBTable(ctx, c, "edges", requestCluster); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (dao *DAO) deleteOldHubClusterFromDBTable(ctx context.Context, cluster string, table string) error {
+func (dao *DAO) deleteOldHubClusterFromDBTable(ctx context.Context, oldHubCluster string, table string, newHubCluster string) error {
 	// DELETE FROM search.? WHERE cluster = ?
 	sql, args, err := goqu.From(goqu.S("search").Table(table)).
-		Delete().Where(goqu.C("cluster").Eq(cluster)).ToSQL()
+		Delete().Where(goqu.C("cluster").Eq(oldHubCluster)).ToSQL()
 	if err != nil {
 		klog.Errorf("Error creating query to delete old hub cluster %s: %s", table, err.Error())
 		return err
@@ -303,7 +303,7 @@ func (dao *DAO) deleteOldHubClusterFromDBTable(ctx context.Context, cluster stri
 		klog.Errorf("Error deleting old hub cluster %s: %s", table, err.Error())
 		return err
 	}
-	klog.Infof("Deleted %d old hub cluster %s", res.RowsAffected(), table)
+	klog.Infof("Deleted %d old hub cluster %s from cluster: %s. New hub cluster is %s", res.RowsAffected(), table, oldHubCluster, newHubCluster)
 
 	return nil
 }
