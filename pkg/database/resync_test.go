@@ -139,7 +139,7 @@ func Test_HubClusterCleanupWithoutChangeWithRetry(t *testing.T) {
 	cluster := []string{"cluster"}
 	clusterRows := pgxpoolmock.NewRows(cluster).AddRow("test-cluster").ToPgxRows()
 	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(
-		`SELECT DISTINCT "cluster" FROM "search"."resources" WHERE "data"?'_hubClusterResource'`),
+		`SELECT DISTINCT "cluster" FROM "search"."resources" WHERE ("data"?'_hubClusterResource' AND "data"->>'kind' <> 'Cluster')`),
 		[]interface{}{}).Return(clusterRows, nil).Times(4)
 
 	// test-cluster should get cleaned up when we call this with the new hub cluster new-cluster
