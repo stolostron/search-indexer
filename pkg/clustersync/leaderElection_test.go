@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakeClient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
@@ -15,8 +16,15 @@ func Test_runLeaderElectionAndCancel(t *testing.T) {
 
 	// Mock Kube client
 	mockClient := fakeClient.NewSimpleClientset()
-	lock := resourcelock.LeaseLock{
+	lock := &resourcelock.LeaseLock{
+		LeaseMeta: metav1.ObjectMeta{
+			Name:      "test-lock",
+			Namespace: "default",
+		},
 		Client: mockClient.CoordinationV1(),
+		LockConfig: resourcelock.ResourceLockConfig{
+			Identity: "test-pod",
+		},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -30,7 +38,7 @@ func Test_runLeaderElectionAndCancel(t *testing.T) {
 	}
 
 	// Execute the function.
-	go runLeaderElection(ctx, &lock, mockStartLeaderFn)
+	go runLeaderElection(ctx, lock, mockStartLeaderFn)
 
 	// Wait for function to start and get cancelled.
 	time.Sleep(1 * time.Millisecond)
