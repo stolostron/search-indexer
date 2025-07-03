@@ -3,8 +3,6 @@ module github.com/stolostron/search-indexer
 
 go 1.23.6
 
-toolchain go1.23.6
-
 require (
 	github.com/doug-martin/goqu/v9 v9.18.0
 	github.com/driftprogramming/pgxpoolmock v1.1.0
