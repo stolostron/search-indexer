@@ -371,7 +371,6 @@ func Test_DeleteStaleClustersResources(t *testing.T) {
 
 	//ensure that the remaining clusters are deleted from db
 	for _, c := range mc {
-		fmt.Println(c)
 		if c != "remaining-managed-foo" {
 			t.Errorf("Remaining cluster does not match. Expected: remaining-managed-foo Got: %s", c)
 		}
