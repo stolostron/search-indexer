@@ -82,4 +82,5 @@ require (
 replace (
 	k8s.io/api => k8s.io/api v0.30.4
 	k8s.io/client-go => k8s.io/client-go v0.30.4
+	github.com/imdario/mergo => dario.cat/mergo v1.0.2
 )
