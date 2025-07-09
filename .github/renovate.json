@@ -4,13 +4,13 @@
         {
             "enabled": true,
             "groupName": "go.mod packages",
-            "matchBaseBranches": ["main", "release-2.14"],
+            "matchBaseBranches": ["main", "release-2.15"],
             "matchPackageNames": ["*", "*/**"]
         },
         {
             "enabled": false,
             "groupName": "go.mod packages - Disabled branches",
-            "matchBaseBranches": ["release-2.13","release-2.12","release-2.11","release-2.10"],
+            "matchBaseBranches": ["release-2.14","release-2.13","release-2.12","release-2.11","release-2.10"],
             "matchPackageNames": ["*", "*/**"]
         }
     ],
