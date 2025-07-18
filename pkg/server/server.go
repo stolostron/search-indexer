@@ -5,6 +5,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"github.com/segmentio/kafka-go"
 	"net/http"
 	"time"
 
@@ -64,6 +65,25 @@ func (s *ServerConfig) StartAndListen(ctx context.Context) {
 			}
 		}
 	}()
+
+	/*
+		1 goroutine: processed resync in .245 ms with 25 MB and 0.08 cpu
+		10 goroutine: processed resync in ~2500 ms with 25 MB and unk cpu (pod not alive long enough to observe?)
+	*/
+	for i := 0; i < 10; i++ {
+
+		// Consume kafka resource messages
+		go func(ctx context.Context) {
+			r := kafka.NewReader(kafka.ReaderConfig{
+				Brokers:     []string{"kafka-kafka-bootstrap.amq-streams.svc:9092"},
+				GroupID:     "resource-events-consumer-group", // ensures each goroutine gets distinct messages from kafka
+				Topic:       "resource-events",
+				StartOffset: kafka.LastOffset,
+			})
+			defer r.Close()
+			s.KafkaResourceHandler(ctx, r)
+		}(ctx)
+	}
 
 	// Wait for cancel signal
 	<-ctx.Done()

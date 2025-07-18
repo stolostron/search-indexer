@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/segmentio/kafka-go"
 	"io"
 	"math"
 	"time"
@@ -44,6 +45,44 @@ func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse
 	}
 
 	klog.V(1).Infof("Completed resync of cluster %12s.", clusterName)
+	return nil
+}
+
+func (dao *DAO) ResetResourcesKafka(ctx context.Context, reader *kafka.Reader, clusterName string) error {
+	syncResponse := model.SyncResponse{}
+	batch := NewBatchWithRetry(ctx, dao, &syncResponse)
+	incomingUIDs := make([]interface{}, 0)
+
+	for {
+		m, err := reader.ReadMessage(ctx)
+		if err != nil {
+			klog.Errorf("Error reading kafka message: ", err)
+		}
+		//klog.Infof("Read kafka message: %s", m.Value)
+
+		re := ResourceEvent{}
+
+		if err = json.Unmarshal(m.Value, &re); err != nil {
+			klog.Errorf("Error unmarshalling kafka message: ", err)
+		}
+
+		// ONLY HANDLING TYPES OF EVENTS IN A FULL CLUSTER RESYNC
+		switch re.Type {
+		case "addResource":
+			incomingUIDs = append(incomingUIDs, dao.upsertResourcesKafka(re, &batch, clusterName))
+			continue
+		case "addEdge":
+			//klog.Info("TODO addEdge")
+			continue
+		case "CLEAR-ALL-END":
+			klog.Info("Read CLEAR-ALL-END")
+			break
+		default:
+			break
+		}
+		break
+	}
+
 	return nil
 }
 
@@ -172,6 +211,41 @@ func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 	}
 
 	return batch.connError
+}
+
+type ResourceEvent struct {
+	Type    string      `json:"type"` // addResource, updateResource, deleteResource, addEdge, deleteEdge, CLEAR-ALL-START, CLEAR-ALL-END
+	Cluster string      `json:"cluster"`
+	Payload interface{} `json:"payload"` // Node, Edge, Deletion, nil if CLEAR-ALL-START/CLEAR-ALL-END
+}
+
+func (dao *DAO) upsertResourcesKafka(re ResourceEvent, batch *batchWithRetry, cluster string) interface{} {
+	resource := model.Resource{}
+
+	payloadBytes, _ := json.Marshal(re.Payload)
+	if err := json.Unmarshal(payloadBytes, &resource); err != nil {
+		klog.Errorf("Error unmarshalling payload bytes into model.Resource")
+	}
+
+	//uid := resource.UID
+	//data, _ := json.Marshal(resource.Properties)
+	//query, params, err := useGoqu(
+	//	"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE data!=$3",
+	//	[]interface{}{uid, cluster, string(data)})
+	//if err == nil {
+	//	queueErr := batch.Queue(batchItem{
+	//		action: "addResource",
+	//		query:  query,
+	//		uid:    uid,
+	//		args:   params,
+	//	})
+	//	if queueErr != nil {
+	//		klog.Warningf("Error queuing resources to add. Error: %+v", queueErr)
+	//		return uid
+	//	}
+	//}
+	klog.Infof("Inserting resource into db with properties %v", resource.Properties)
+	return nil
 }
 
 func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) ([]interface{}, model.Resource, error) {
