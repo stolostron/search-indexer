@@ -48,19 +48,24 @@ func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse
 	return nil
 }
 
-func (dao *DAO) ResetResourcesKafka(ctx context.Context, reader *kafka.Reader, clusterName string) error {
+//var mu sync.Mutex
+//var incomingUIDs []interface{}
+
+func (dao *DAO) ResetResourcesKafka(ctx context.Context, reader *kafka.Reader, i int) error {
 	syncResponse := model.SyncResponse{}
 	batch := NewBatchWithRetry(ctx, dao, &syncResponse)
-	incomingUIDs := make([]interface{}, 0)
 
 	for {
 		m, err := reader.ReadMessage(ctx)
 		if err != nil {
 			klog.Errorf("Error reading kafka message: ", err)
 		}
-		//klog.Infof("Read kafka message: %s", m.Value)
-
 		re := ResourceEvent{}
+		if err = json.Unmarshal(m.Value, &re); err != nil {
+			klog.Errorf("Error unmarshalling resource event: %v", err)
+			continue
+		}
+		//klog.Infof("Read kafka message: %s", m.Value)
 
 		if err = json.Unmarshal(m.Value, &re); err != nil {
 			klog.Errorf("Error unmarshalling kafka message: ", err)
@@ -69,20 +74,58 @@ func (dao *DAO) ResetResourcesKafka(ctx context.Context, reader *kafka.Reader, c
 		// ONLY HANDLING TYPES OF EVENTS IN A FULL CLUSTER RESYNC
 		switch re.Type {
 		case "addResource":
-			incomingUIDs = append(incomingUIDs, dao.upsertResourcesKafka(re, &batch, clusterName))
+			uid := dao.upsertResourcesKafka(re, &batch, re.Cluster)
+			if i == 0 {
+				klog.Infof("thread %s upserted uid %s", i, uid)
+			}
 			continue
 		case "addEdge":
 			//klog.Info("TODO addEdge")
 			continue
-		case "CLEAR-ALL-END":
-			klog.Info("Read CLEAR-ALL-END")
-			break
 		default:
-			break
+			continue
 		}
-		break
 	}
 
+	//mu.Lock()
+	//incomingUIDs = append(incomingUIDs, batchOfIncomingUIDs)
+	//mu.Unlock()
+	//
+	//// DELETE resources that no longer exist.
+	//query, params, err := useGoqu(
+	//	"DELETE from search.resources WHERE cluster=$1 AND uid NOT IN ($2)",
+	//	[]interface{}{clusterName, incomingUIDs})
+	//if err == nil {
+	//	queueErr := batch.Queue(batchItem{
+	//		action: "deleteResource",
+	//		query:  query,
+	//		uid:    fmt.Sprintf("%s", incomingUIDs),
+	//		args:   params,
+	//	})
+	//	if queueErr != nil {
+	//		klog.Warningf("Error queuing resources for deletion. Error: %+v", queueErr)
+	//	}
+	//}
+	//
+	//// DELETE edges pointing to resources that no longer exist.
+	//query, _, err = useGoqu(
+	//	"DELETE from search.edges WHERE cluster=$1 AND sourceid NOT IN ($2) OR destid NOT IN ($2)",
+	//	[]interface{}{clusterName, incomingUIDs})
+	//if err == nil {
+	//	queueErr := batch.Queue(batchItem{
+	//		action: "deleteEdge",
+	//		query:  query,
+	//		uid:    fmt.Sprintf("%s", incomingUIDs),
+	//		args:   params,
+	//	})
+	//	if queueErr != nil {
+	//		klog.Warningf("Error queuing edges for deletion. Error: %+v", queueErr)
+	//	}
+	//}
+	//batch.flush()
+	//batch.wg.Wait()
+
+	klog.Infof("finished processing all resources")
 	return nil
 }
 
@@ -227,25 +270,25 @@ func (dao *DAO) upsertResourcesKafka(re ResourceEvent, batch *batchWithRetry, cl
 		klog.Errorf("Error unmarshalling payload bytes into model.Resource")
 	}
 
-	//uid := resource.UID
-	//data, _ := json.Marshal(resource.Properties)
-	//query, params, err := useGoqu(
-	//	"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE data!=$3",
-	//	[]interface{}{uid, cluster, string(data)})
-	//if err == nil {
-	//	queueErr := batch.Queue(batchItem{
-	//		action: "addResource",
-	//		query:  query,
-	//		uid:    uid,
-	//		args:   params,
-	//	})
-	//	if queueErr != nil {
-	//		klog.Warningf("Error queuing resources to add. Error: %+v", queueErr)
-	//		return uid
-	//	}
-	//}
-	klog.Infof("Inserting resource into db with properties %v", resource.Properties)
-	return nil
+	uid := resource.UID
+	data, _ := json.Marshal(resource.Properties)
+	query, params, err := useGoqu(
+		"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE data!=$3",
+		[]interface{}{uid, cluster, string(data)})
+	if err == nil {
+		queueErr := batch.Queue(batchItem{
+			action: "addResource",
+			query:  query,
+			uid:    uid,
+			args:   params,
+		})
+		if queueErr != nil {
+			klog.Warningf("Error queuing resources to add. Error: %+v", queueErr)
+			return uid
+		}
+	}
+	//klog.Infof("Inserting resource into db with properties %v", resource.Properties)
+	return uid
 }
 
 func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) ([]interface{}, model.Resource, error) {
