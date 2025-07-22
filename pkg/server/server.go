@@ -5,6 +5,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"github.com/segmentio/kafka-go"
 	"net/http"
 	"time"
 
@@ -64,6 +65,21 @@ func (s *ServerConfig) StartAndListen(ctx context.Context) {
 			}
 		}
 	}()
+
+	for i := 0; i < 6; i++ {
+
+		// Consume kafka resource messages
+		go func(ctx context.Context, i int) {
+			r := kafka.NewReader(kafka.ReaderConfig{
+				Brokers:     []string{"kafka-kafka-bootstrap.amq-streams.svc:9092"},
+				Topic:       "resource-events",
+				StartOffset: kafka.LastOffset,
+				Partition:   i,
+			})
+			defer r.Close()
+			s.KafkaResourceHandler(ctx, r, i)
+		}(ctx, i)
+	}
 
 	// Wait for cancel signal
 	<-ctx.Done()
