@@ -29,7 +29,7 @@ spec:
     - linux/x86_64
     - linux/arm64
     - linux/ppc64le
-    - linux/x390x
+    - linux/s390x
   - name: dockerfile
     value: Dockerfile.rhtap
   - name: build-source-image
