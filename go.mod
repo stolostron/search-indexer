@@ -1,7 +1,7 @@
 // Copyright Contributors to the Open Cluster Management project
 module github.com/stolostron/search-indexer
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/doug-martin/goqu/v9 v9.18.0
