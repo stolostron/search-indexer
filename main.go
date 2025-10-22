@@ -7,6 +7,7 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -39,14 +40,25 @@ func main() {
 	dao := database.NewDAO(nil)
 	dao.InitializeTables(ctx)
 
+	// WaitGroup to ensure graceful shutdown of goroutines
+	var wg sync.WaitGroup
+
 	// Start cluster sync.
-	go clustersync.ElectLeaderAndStart(ctx)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		clustersync.ElectLeaderAndStart(ctx)
+	}()
 
 	// Start the server.
 	srv := &server.ServerConfig{
 		Dao: &dao,
 	}
-	go srv.StartAndListen(ctx)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		srv.StartAndListen(ctx)
+	}()
 
 	// Listen and wait for termination signal.
 	sigs := make(chan os.Signal, 1)
@@ -56,8 +68,18 @@ func main() {
 	klog.Warningf("Received termination signal %s. Exiting server and clustersync routines. ", sig)
 	exitRoutines()
 
-	// We could use a waitgroup to wait for leader election and server to shutdown
-	// but it add more complexity so keeping simple for now.
-	time.Sleep(5 * time.Second)
+	// Wait for all goroutines to finish gracefully
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		klog.Info("All goroutines stopped gracefully.")
+	case <-time.After(10 * time.Second):
+		klog.Warning("Timeout waiting for goroutines to stop.")
+	}
 	klog.Warning("Exiting search-indexer.")
 }

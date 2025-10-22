@@ -57,6 +57,7 @@ func ElectLeaderAndStart(ctx context.Context) {
 	}
 	lock := getNewLock(client, lockName, podName, podNamespace)
 	runLeaderElection(ctx, lock, syncClusters)
+	klog.Info("Exiting ElectLeaderAndStart.")
 }
 
 // Watches ManagedCluster objects and updates the database with a Cluster node.
@@ -115,10 +116,24 @@ func syncClusters(ctx context.Context) {
 	checkError(managedClusterAddonErr, "Error adding eventHandler for managedClusterAddon")
 
 	// Periodically check if the ManagedCluster/ManagedClusterInfo resource exists
-	go stopAndStartInformer(ctx, "cluster.open-cluster-management.io/v1", managedClusterInformer)
-	go stopAndStartInformer(ctx, "internal.open-cluster-management.io/v1beta1", managedClusterInfoInformer)
-	go stopAndStartInformer(ctx, "addon.open-cluster-management.io/v1alpha1", managedClusterAddonInformer)
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		stopAndStartInformer(ctx, "cluster.open-cluster-management.io/v1", managedClusterInformer)
+	}()
+	go func() {
+		defer wg.Done()
+		stopAndStartInformer(ctx, "internal.open-cluster-management.io/v1beta1", managedClusterInfoInformer)
+	}()
+	go func() {
+		defer wg.Done()
+		stopAndStartInformer(ctx, "addon.open-cluster-management.io/v1alpha1", managedClusterAddonInformer)
+	}()
 
+	// Wait for all informer goroutines to finish when context is cancelled
+	wg.Wait()
+	klog.Info("All cluster sync goroutines have stopped.")
 }
 
 func deleteStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interface,
@@ -145,7 +160,9 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 		select {
 		case <-ctx.Done():
 			klog.Info("Exit informers for clusterwatch.")
-			stopper <- struct{}{}
+			if stopper != nil {
+				close(stopper)
+			}
 			return
 		case <-time.After(wait):
 			_, err := config.Cfg.KubeClient.ServerResourcesForGroupVersion(groupVersion)
@@ -155,7 +172,7 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 			} else {
 				if informerRunning && isClusterCrdMissing(err) {
 					klog.Infof("Stopping cluster informer routine because %s resource not found.", groupVersion)
-					stopper <- struct{}{}
+					close(stopper)
 					informerRunning = false
 				} else if !informerRunning && !isClusterCrdMissing(err) {
 					klog.Infof("Starting cluster informer routine for cluster watch for %s resource", groupVersion)

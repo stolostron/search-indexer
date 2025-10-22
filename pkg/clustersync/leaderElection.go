@@ -63,6 +63,11 @@ func runLeaderElection(ctx context.Context, lock *resourcelock.LeaseLock, runLea
 					},
 				},
 			})
+			// Check if context was cancelled while we were in RunOrDie
+			if ctx.Err() != nil {
+				klog.Info("Context cancelled, exiting leader election.")
+				return
+			}
 		}
 	}
 }
