@@ -78,3 +78,7 @@ class Cluster100k(Cluster):
 # Cluster150k - simulates 150k resources.
 class Cluster150k(Cluster):
     template = "sno-150k.json"
+
+# ClusterCNV - simulates a CNV cluster.
+class ClusterCNV(Cluster):
+    template = "vm-cluster.json"
