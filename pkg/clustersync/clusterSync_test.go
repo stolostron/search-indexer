@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
@@ -20,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic/fake"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
 
@@ -379,6 +381,32 @@ func Test_DeleteStaleClustersResources(t *testing.T) {
 		AssertEqual(t, ok, false, "existingClustersCache should not have an entry for cluster foo")
 	}
 
+}
+
+// [AI] Test that stopAndStartInformer exits promptly when context is canceled
+func Test_stopAndStartInformer_ContextCanceled(t *testing.T) {
+	// Create a context that we'll cancel immediately
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	// Create a nil informer (it won't be used since context is already canceled)
+	var informer cache.SharedIndexInformer
+
+	// Start the function in a goroutine
+	done := make(chan bool)
+	go func() {
+		stopAndStartInformer(ctx, "test.group/v1", informer)
+		done <- true
+	}()
+
+	// Wait for the function to exit (with timeout)
+	// Since context is already canceled, it should exit immediately
+	select {
+	case <-done:
+		// Success - function exited when it detected the canceled context
+	case <-time.After(10 * time.Millisecond):
+		t.Error("stopAndStartInformer did not exit within timeout after context cancellation")
+	}
 }
 
 // Mock database outage:
