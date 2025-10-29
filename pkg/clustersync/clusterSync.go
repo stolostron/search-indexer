@@ -114,13 +114,24 @@ func syncClusters(ctx context.Context) {
 	_, managedClusterAddonErr := managedClusterAddonInformer.AddEventHandlerWithResyncPeriod(handlers, resyncPeriod)
 	checkError(managedClusterAddonErr, "Error adding eventHandler for managedClusterAddon")
 
+	wg := sync.WaitGroup{}
+	wg.Add(3)
 	// Periodically check if the ManagedCluster/ManagedClusterInfo resource exists
-	go stopAndStartInformer(ctx, "cluster.open-cluster-management.io/v1", managedClusterInformer)
-	go stopAndStartInformer(ctx, "internal.open-cluster-management.io/v1beta1", managedClusterInfoInformer)
-	go stopAndStartInformer(ctx, "addon.open-cluster-management.io/v1alpha1", managedClusterAddonInformer)
+	go func() {
+		defer wg.Done()
+		stopAndStartInformer(ctx, "cluster.open-cluster-management.io/v1", managedClusterInformer)
+	}()
+	go func() {
+		defer wg.Done()
+		stopAndStartInformer(ctx, "internal.open-cluster-management.io/v1beta1", managedClusterInfoInformer)
+	}()
+	go func() {
+		defer wg.Done()
+		stopAndStartInformer(ctx, "addon.open-cluster-management.io/v1alpha1", managedClusterAddonInformer)
+	}()
 
 	// block until goroutines to finish
-	<-ctx.Done()
+	wg.Wait()
 	klog.Info("Context canceled in syncClusters, informer goroutines will exit")
 }
 
