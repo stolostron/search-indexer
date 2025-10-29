@@ -119,6 +119,9 @@ func syncClusters(ctx context.Context) {
 	go stopAndStartInformer(ctx, "internal.open-cluster-management.io/v1beta1", managedClusterInfoInformer)
 	go stopAndStartInformer(ctx, "addon.open-cluster-management.io/v1alpha1", managedClusterAddonInformer)
 
+	// block until goroutines to finish
+	<-ctx.Done()
+	klog.Info("Context canceled in syncClusters, informer goroutines will exit")
 }
 
 func deleteStaleClusterResources(ctx context.Context, dynamicClient dynamic.Interface,
@@ -145,7 +148,9 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 		select {
 		case <-ctx.Done():
 			klog.Info("Exit informers for clusterwatch.")
-			stopper <- struct{}{}
+			if informerRunning && stopper != nil {
+				close(stopper)
+			}
 			return
 		case <-time.After(wait):
 			_, err := config.Cfg.KubeClient.ServerResourcesForGroupVersion(groupVersion)
@@ -155,7 +160,8 @@ func stopAndStartInformer(ctx context.Context, groupVersion string, informer cac
 			} else {
 				if informerRunning && isClusterCrdMissing(err) {
 					klog.Infof("Stopping cluster informer routine because %s resource not found.", groupVersion)
-					stopper <- struct{}{}
+					close(stopper)
+					stopper = nil
 					informerRunning = false
 				} else if !informerRunning && !isClusterCrdMissing(err) {
 					klog.Infof("Starting cluster informer routine for cluster watch for %s resource", groupVersion)
