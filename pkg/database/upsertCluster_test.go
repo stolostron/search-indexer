@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"regexp"
 	"testing"
 
@@ -380,7 +381,7 @@ func Test_UpsertCluster_ContextCanceled(t *testing.T) {
 	dao.UpsertCluster(ctx, currCluster)
 
 	// Verify no cluster was added to cache
-	AssertEqual(t, len(existingClustersCache), 0, "existingClustersCache should be empty when context is canceled")
+	assert.Equal(t, len(existingClustersCache), 0, "existingClustersCache should be empty when context is canceled")
 }
 
 // [AI] Test clusterInDB with canceled context
@@ -397,7 +398,7 @@ func Test_clusterInDB_ContextCanceled(t *testing.T) {
 
 	// Execute function test - should return false without querying database
 	ok := dao.clusterInDB(ctx, "cluster__name-foo")
-	AssertEqual(t, ok, false, "clusterInDB should return false when context is canceled")
+	assert.Equal(t, ok, false, "clusterInDB should return false when context is canceled")
 }
 
 // [AI] Test clusterInDB with context.Canceled error from database query
@@ -416,7 +417,7 @@ func Test_clusterInDB_QueryContextCanceled(t *testing.T) {
 
 	// Execute function test
 	ok := dao.clusterInDB(context.Background(), "cluster__name-foo")
-	AssertEqual(t, ok, false, "clusterInDB should return false when database query returns context.Canceled")
+	assert.Equal(t, ok, false, "clusterInDB should return false when database query returns context.Canceled")
 }
 
 // [AI] Test UpsertCluster with context.Canceled error during database exec
@@ -453,7 +454,7 @@ func Test_UpsertCluster_ExecContextCanceled(t *testing.T) {
 	dao.UpsertCluster(context.Background(), currCluster)
 
 	// Verify cluster was NOT added to cache when DB operation fails with context.Canceled
-	AssertEqual(t, len(existingClustersCache), 0, "existingClustersCache should not have the cluster when DB operation fails with context.Canceled")
+	assert.Equal(t, len(existingClustersCache), 0, "existingClustersCache should not have the cluster when DB operation fails with context.Canceled")
 }
 
 // [AI] Test deleteWithRetry with canceled context before retry loop
@@ -477,7 +478,7 @@ func Test_deleteWithRetry_ContextCanceledBeforeLoop(t *testing.T) {
 	err := dao.deleteWithRetry(deleteFunc, ctx, clusterName)
 
 	// Should return context.Canceled error
-	AssertEqual(t, err, context.Canceled, "deleteWithRetry should return context.Canceled when context is canceled before loop")
+	assert.Equal(t, err, context.Canceled, "deleteWithRetry should return context.Canceled when context is canceled before loop")
 }
 
 // [AI] Test deleteWithRetry with context.Canceled error from deleteFunction
@@ -498,8 +499,8 @@ func Test_deleteWithRetry_DeleteFunctionReturnsContextCanceled(t *testing.T) {
 	err := dao.deleteWithRetry(deleteFunc, context.Background(), clusterName)
 
 	// Should return context.Canceled error and not retry
-	AssertEqual(t, err, context.Canceled, "deleteWithRetry should return context.Canceled and not retry")
-	AssertEqual(t, callCount, 1, "deleteFunc should only be called once, not retried on context.Canceled")
+	assert.Equal(t, err, context.Canceled, "deleteWithRetry should return context.Canceled and not retry")
+	assert.Equal(t, callCount, 1, "deleteFunc should only be called once, not retried on context.Canceled")
 }
 
 // [AI] Test deleteWithRetry with context.DeadlineExceeded error from deleteFunction
@@ -520,6 +521,6 @@ func Test_deleteWithRetry_DeleteFunctionReturnsDeadlineExceeded(t *testing.T) {
 	err := dao.deleteWithRetry(deleteFunc, context.Background(), clusterName)
 
 	// Should return context.DeadlineExceeded error and not retry
-	AssertEqual(t, err, context.DeadlineExceeded, "deleteWithRetry should return context.DeadlineExceeded and not retry")
-	AssertEqual(t, callCount, 1, "deleteFunc should only be called once, not retried on context.DeadlineExceeded")
+	assert.Equal(t, err, context.DeadlineExceeded, "deleteWithRetry should return context.DeadlineExceeded and not retry")
+	assert.Equal(t, callCount, 1, "deleteFunc should only be called once, not retried on context.DeadlineExceeded")
 }
