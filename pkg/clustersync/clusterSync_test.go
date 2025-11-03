@@ -504,7 +504,7 @@ func Test_syncClusters_ContextCanceled(t *testing.T) {
 	columns := []string{"cluster"}
 	pgxRows := pgxpoolmock.NewRows(columns).ToPgxRows()
 	mockPool.EXPECT().Query(gomock.Any(),
-		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources" WHERE ((data ? '_hubClusterResource') IS FALSE)`),
+		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),
 		gomock.Eq([]interface{}{}),
 	).Return(pgxRows, nil).AnyTimes()
 
@@ -554,6 +554,14 @@ func Test_syncClusters_DeleteStaleError(t *testing.T) {
 		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources" WHERE ((data ? '_hubClusterResource') IS FALSE)`),
 		gomock.Eq([]interface{}{}),
 	).Return(nil, errors.New("database connection error")).AnyTimes()
+
+	// Mock the GetManagedClusters query
+	columns := []string{"cluster"}
+	managedClustersRows := pgxpoolmock.NewRows(columns).ToPgxRows()
+	mockPool.EXPECT().Query(gomock.Any(),
+		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),
+		gomock.Eq([]interface{}{}),
+	).Return(managedClustersRows, nil).AnyTimes()
 
 	// Mock the upsert operations that will be triggered by informers processing existing resources
 	// Allow any Query calls for checking existing resources
