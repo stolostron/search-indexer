@@ -504,7 +504,7 @@ func Test_syncClusters_ContextCanceled(t *testing.T) {
 	columns := []string{"cluster"}
 	pgxRows := pgxpoolmock.NewRows(columns).ToPgxRows()
 	mockPool.EXPECT().Query(gomock.Any(),
-		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources" WHERE ((data ? '_hubClusterResource') IS FALSE)`),
+		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),
 		gomock.Eq([]interface{}{}),
 	).Return(pgxRows, nil).AnyTimes()
 
