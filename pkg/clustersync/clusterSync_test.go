@@ -551,7 +551,7 @@ func Test_syncClusters_DeleteStaleError(t *testing.T) {
 
 	// Mock the deleteStaleClusterResources call to return an error
 	mockPool.EXPECT().Query(gomock.Any(),
-		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources" WHERE ((data ? '_hubClusterResource') IS FALSE)`),
+		gomock.Eq(`SELECT DISTINCT "cluster" FROM "search"."resources"`),
 		gomock.Eq([]interface{}{}),
 	).Return(nil, errors.New("database connection error")).AnyTimes()
 
