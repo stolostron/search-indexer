@@ -13,7 +13,7 @@ require (
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/pashagolub/pgxmock v1.8.0
 	github.com/prometheus/client_golang v1.22.0
-	github.com/stolostron/cluster-lifecycle-api v0.0.0-20250625062343-7394aeb3186c
+	github.com/stolostron/cluster-lifecycle-api 64a17b44b598
 	github.com/stretchr/testify v1.10.0
 	k8s.io/apimachinery v0.32.2
 	k8s.io/client-go v0.32.2
