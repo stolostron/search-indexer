@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"regexp"
 	"testing"
 
@@ -358,4 +359,168 @@ func Test_GetManagedCluster(t *testing.T) {
 		AssertEqual(t, clusterName, c, "Cluster cluster__name-foo doesn't exist in database")
 
 	}
+}
+
+// [AI] Test UpsertCluster with canceled context at start
+func Test_UpsertCluster_ContextCanceled(t *testing.T) {
+	initializeVars()
+	currCluster := model.Resource{Kind: existingCluster["Kind"].(string), UID: existingCluster["UID"].(string),
+		Properties: existingCluster["Properties"].(map[string]interface{})}
+
+	// Prepare a mock DAO instance
+	dao, _ := buildMockDAO(t)
+
+	// Clear the cache before test
+	existingClustersCache = make(map[string]interface{})
+
+	// Create a canceled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// Execute function test - should return early without doing anything
+	dao.UpsertCluster(ctx, currCluster)
+
+	// Verify no cluster was added to cache
+	assert.Equal(t, len(existingClustersCache), 0, "existingClustersCache should be empty when context is canceled")
+}
+
+// [AI] Test clusterInDB with canceled context
+func Test_clusterInDB_ContextCanceled(t *testing.T) {
+	// Prepare a mock DAO instance
+	dao, _ := buildMockDAO(t)
+
+	// Clear cache to force database query
+	existingClustersCache = make(map[string]interface{})
+
+	// Create a canceled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// Execute function test - should return false without querying database
+	ok := dao.clusterInDB(ctx, "cluster__name-foo")
+	assert.Equal(t, ok, false, "clusterInDB should return false when context is canceled")
+}
+
+// [AI] Test clusterInDB with context.Canceled error from database query
+func Test_clusterInDB_QueryContextCanceled(t *testing.T) {
+	// Prepare a mock DAO instance
+	dao, mockPool := buildMockDAO(t)
+
+	// Clear cache to force database query
+	existingClustersCache = make(map[string]interface{})
+
+	// Mock database query to return context.Canceled error
+	mockPool.EXPECT().Query(gomock.Any(),
+		gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq([]interface{}{}),
+	).Return(nil, context.Canceled)
+
+	// Execute function test
+	ok := dao.clusterInDB(context.Background(), "cluster__name-foo")
+	assert.Equal(t, ok, false, "clusterInDB should return false when database query returns context.Canceled")
+}
+
+// [AI] Test UpsertCluster with context.Canceled error during database exec
+func Test_UpsertCluster_ExecContextCanceled(t *testing.T) {
+	initializeVars()
+	tmpClusterProps, _ := existingCluster["Properties"].(map[string]interface{})
+	tmpClusterProps["cpu"] = int64(10)
+	existingCluster["Properties"] = tmpClusterProps
+
+	currCluster := model.Resource{Kind: existingCluster["Kind"].(string),
+		UID:        existingCluster["UID"].(string),
+		Properties: existingCluster["Properties"].(map[string]interface{})}
+
+	// Prepare a mock DAO instance
+	dao, mockPool := buildMockDAO(t)
+
+	// Clear cluster cache
+	existingClustersCache = make(map[string]interface{})
+	mockPool.EXPECT().Query(gomock.Any(),
+		gomock.Eq(`SELECT "uid", "data" FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
+		gomock.Eq([]interface{}{}),
+	).Return(nil, nil)
+
+	expectedProps, _ := json.Marshal(currCluster.Properties)
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE ("r".uid = '%[2]s')`, string(expectedProps), "cluster__name-foo")
+
+	// Mock Exec to return context.Canceled error
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq(sql),
+		gomock.Eq([]interface{}{}),
+	).Return(nil, context.Canceled)
+
+	// Execute function test - should handle context.Canceled gracefully
+	dao.UpsertCluster(context.Background(), currCluster)
+
+	// Verify cluster was NOT added to cache when DB operation fails with context.Canceled
+	assert.Equal(t, len(existingClustersCache), 0, "existingClustersCache should not have the cluster when DB operation fails with context.Canceled")
+}
+
+// [AI] Test deleteWithRetry with canceled context before retry loop
+func Test_deleteWithRetry_ContextCanceledBeforeLoop(t *testing.T) {
+	clusterName := "name-foo"
+	UpdateClustersCache("cluster__name-foo", nil)
+
+	dao, _ := buildMockDAO(t)
+
+	// Create a canceled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// Create a simple delete function that should not be called
+	deleteFunc := func(ctx context.Context, name string) error {
+		t.Error("deleteFunc should not be called when context is already canceled")
+		return nil
+	}
+
+	// Execute function test
+	err := dao.deleteWithRetry(deleteFunc, ctx, clusterName)
+
+	// Should return context.Canceled error
+	assert.Equal(t, err, context.Canceled, "deleteWithRetry should return context.Canceled when context is canceled before loop")
+}
+
+// [AI] Test deleteWithRetry with context.Canceled error from deleteFunction
+func Test_deleteWithRetry_DeleteFunctionReturnsContextCanceled(t *testing.T) {
+	clusterName := "name-foo"
+	UpdateClustersCache("cluster__name-foo", nil)
+
+	dao, _ := buildMockDAO(t)
+
+	callCount := 0
+	// Create a delete function that returns context.Canceled
+	deleteFunc := func(ctx context.Context, name string) error {
+		callCount++
+		return context.Canceled
+	}
+
+	// Execute function test
+	err := dao.deleteWithRetry(deleteFunc, context.Background(), clusterName)
+
+	// Should return context.Canceled error and not retry
+	assert.Equal(t, err, context.Canceled, "deleteWithRetry should return context.Canceled and not retry")
+	assert.Equal(t, callCount, 1, "deleteFunc should only be called once, not retried on context.Canceled")
+}
+
+// [AI] Test deleteWithRetry with context.DeadlineExceeded error from deleteFunction
+func Test_deleteWithRetry_DeleteFunctionReturnsDeadlineExceeded(t *testing.T) {
+	clusterName := "name-foo"
+	UpdateClustersCache("cluster__name-foo", nil)
+
+	dao, _ := buildMockDAO(t)
+
+	callCount := 0
+	// Create a delete function that returns context.DeadlineExceeded
+	deleteFunc := func(ctx context.Context, name string) error {
+		callCount++
+		return context.DeadlineExceeded
+	}
+
+	// Execute function test
+	err := dao.deleteWithRetry(deleteFunc, context.Background(), clusterName)
+
+	// Should return context.DeadlineExceeded error and not retry
+	assert.Equal(t, err, context.DeadlineExceeded, "deleteWithRetry should return context.DeadlineExceeded and not retry")
+	assert.Equal(t, callCount, 1, "deleteFunc should only be called once, not retried on context.DeadlineExceeded")
 }
