@@ -40,10 +40,21 @@ func (dao *DAO) deleteWithRetry(deleteFunction func(context.Context, string) err
 
 	// Retry cluster deletion till it succeeds
 	for {
+		if ctx.Err() != nil {
+			klog.Infof("Context canceled, stopping delete retry for cluster %s: %v", clusterName, ctx.Err())
+			return ctx.Err()
+		}
+
 		// If a statement within a transaction fails, the transaction can get aborted and rest of the statements
 		// can get skipped. So if any statements fail, we retry the entire transaction
 		err := deleteFunction(ctx, clusterName)
 		if err != nil {
+			// Don't retry if context is canceled or deadline exceeded
+			if err == context.Canceled || err == context.DeadlineExceeded {
+				klog.Errorf("Context error during cluster delete for %s, not retrying: %v", clusterName, err)
+				return err
+			}
+
 			waitMS := int(math.Min(float64(retry*500), float64(cfg.MaxBackoffMS)))
 			timetoSleep := time.Duration(waitMS) * time.Millisecond
 			retry++
@@ -147,6 +158,11 @@ func (dao *DAO) DeleteClusterTxn(ctx context.Context, clusterUID string) error {
 }
 
 func (dao *DAO) UpsertCluster(ctx context.Context, resource model.Resource) {
+	if ctx.Err() != nil {
+		klog.Infof("Context canceled, skipping upsert for cluster: %v. This may not be a problem unless it happens often.", ctx.Err())
+		return
+	}
+
 	data, _ := json.Marshal(resource.Properties)
 	clusterName := resource.Properties["name"].(string)
 	sql, args, err := goquInsertUpdate("resources", []interface{}{resource.UID, clusterName, string(data)})
@@ -160,7 +176,12 @@ func (dao *DAO) UpsertCluster(ctx context.Context, resource model.Resource) {
 	if !dao.clusterInDB(ctx, resource.UID) || !dao.clusterPropsUpToDate(resource.UID, resource) {
 		_, err := dao.pool.Exec(ctx, sql, args...)
 		if err != nil {
-			klog.Warningf("Error inserting/updating cluster with query %s, %s: %s ", sql, clusterName, err.Error())
+			// we see these when a leader's lease fails to renew or server shutdown, not necessarily indicative of a problem
+			if err == context.Canceled || err == context.DeadlineExceeded {
+				klog.Infof("Context canceled during cluster upsert for %s: %v. This may not be a problem unless it happens often.", clusterName, err)
+			} else {
+				klog.Warningf("Error inserting/updating cluster with query %s, %s: %s ", sql, clusterName, err.Error())
+			}
 		} else {
 			UpdateClustersCache(resource.UID, resource.Properties)
 		}
@@ -174,6 +195,11 @@ func (dao *DAO) UpsertCluster(ctx context.Context, resource model.Resource) {
 func (dao *DAO) clusterInDB(ctx context.Context, clusterUID string) bool {
 	_, ok := ReadClustersCache(clusterUID)
 	if !ok {
+		if ctx.Err() != nil {
+			klog.Infof("Context canceled, cannot check if cluster %s is in DB: %v. This may not be a problem unless it happens often.", clusterUID, ctx.Err())
+			return false
+		}
+
 		klog.V(3).Infof("Cluster [%s] is not in existingClustersCache. Updating cache with latest state from database.",
 			clusterUID)
 
@@ -189,8 +215,13 @@ func (dao *DAO) clusterInDB(ctx context.Context, clusterUID string) bool {
 			clusterUID, sql, args)
 		rows, err := dao.pool.Query(ctx, sql, args...)
 		if err != nil {
-			klog.Errorf("Error while fetching cluster %s from database: %s", clusterUID, err.Error())
-			return false // insert/update the cluster node in db
+			// we see these when a leader's lease fails to renew or server shutdown, not necessarily indicative of a problem
+			if err == context.Canceled || err == context.DeadlineExceeded {
+				klog.Infof("Context canceled while fetching cluster %s from database: %v. This may not be a problem unless it happens often.", clusterUID, err)
+			} else {
+				klog.Errorf("Error while fetching cluster %s from database: %s", clusterUID, err.Error())
+			}
+			return false
 		}
 
 		if rows != nil {
