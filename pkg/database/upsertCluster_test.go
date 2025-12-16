@@ -223,7 +223,9 @@ func Test_DelClusterResources(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mockConn.Close(context.Background())
+	defer func(mockConn pgxmock.PgxConnIface, ctx context.Context) {
+		_ = mockConn.Close(ctx)
+	}(mockConn, context.Background())
 	dao, mockPool := buildMockDAO(t)
 	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Return(mockConn, nil)
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE (("cluster" = 'name-foo') AND ("uid" != 'cluster__name-foo'))`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
@@ -248,7 +250,9 @@ func Test_DelCluster(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mockConn.Close(context.Background())
+	defer func(mockConn pgxmock.PgxConnIface, ctx context.Context) {
+		_ = mockConn.Close(ctx)
+	}(mockConn, context.Background())
 	dao, mockPool := buildMockDAO(t)
 	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Return(mockConn, nil)
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE (("cluster" = 'name-foo') AND ("uid" != 'cluster__name-foo'))`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
@@ -280,7 +284,9 @@ func Test_DelClusterResourcesError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mockConn.Close(context.Background())
+	defer func(mockConn pgxmock.PgxConnIface, ctx context.Context) {
+		_ = mockConn.Close(ctx)
+	}(mockConn, context.Background())
 	dao, mockPool := buildMockDAO(t)
 
 	// Delete cluster resources and edges
@@ -342,7 +348,9 @@ func Test_GetManagedCluster(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mockConn.Close(context.Background())
+	defer func(mockConn pgxmock.PgxConnIface, ctx context.Context) {
+		_ = mockConn.Close(ctx)
+	}(mockConn, context.Background())
 	dao, mockPool := buildMockDAO(t)
 	columns := []string{"cluster"}
 	pgxRows := pgxpoolmock.NewRows(columns).AddRow(clusterName).ToPgxRows()
