@@ -90,21 +90,21 @@ func Test_Validate(t *testing.T) {
 	_ = os.Setenv("DB_PASS", "")
 	conf = new()
 	result = conf.Validate()
-	if result.Error() != "Required environment DB_PASS is not set." {
-		t.Errorf("Expected %s Got: %s", "Required environment DB_PASS is not set.", result)
+	if result.Error() != "required environment DB_PASS is not set" {
+		t.Errorf("Expected %s Got: %s", "required environment DB_PASS is not set", result)
 	}
 
 	_ = os.Setenv("DB_USER", "")
 	conf = new()
 	result = conf.Validate()
-	if result.Error() != "Required environment DB_USER is not set." {
-		t.Errorf("Expected %s Got: %s", "Required environment DB_USER is not set.", result)
+	if result.Error() != "required environment DB_USER is not set" {
+		t.Errorf("Expected %s Got: %s", "required environment DB_USER is not set", result)
 	}
 
 	_ = os.Setenv("DB_NAME", "")
 	conf = new()
 	result = conf.Validate()
-	if result.Error() != "Required environment DB_NAME is not set." {
-		t.Errorf("Expected %s Got: %s", "Required environment DB_NAME is not set.", result)
+	if result.Error() != "required environment DB_NAME is not set" {
+		t.Errorf("Expected %s Got: %s", "required environment DB_NAME is not set", result)
 	}
 }
