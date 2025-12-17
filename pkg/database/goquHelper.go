@@ -17,7 +17,7 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 
 	validateParams := func(expectedParams int) bool {
 		if len(params) != expectedParams {
-			er = fmt.Errorf("Invalid number of params for query [%s]", query)
+			er = fmt.Errorf("invalid number of params for query [%s]", query)
 			return false
 		}
 		return true
@@ -82,7 +82,7 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			goqu.C("edgetype").Eq(params[2])).ToSQL()
 
 	default:
-		er = fmt.Errorf("Unable to build goqu query for [%s]", query)
+		er = fmt.Errorf("unable to build goqu query for [%s]", query)
 	}
 
 	if er != nil {
