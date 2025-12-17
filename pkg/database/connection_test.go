@@ -37,7 +37,9 @@ func Test_checkErrorAndRollback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mockConn.Close(context.Background())
+	defer func(mockConn pgxmock.PgxConnIface, ctx context.Context) {
+		_ = mockConn.Close(ctx)
+	}(mockConn, context.Background())
 	mockConn.ExpectRollback()
 	e := errors.New("table resources not found")
 	logMessage := "Error commiting delete cluster transaction for cluster: cluster_foo"
@@ -50,7 +52,9 @@ func Test_checkErrorAndRollbackError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mockConn.Close(context.Background())
+	defer func(mockConn pgxmock.PgxConnIface, ctx context.Context) {
+		_ = mockConn.Close(ctx)
+	}(mockConn, context.Background())
 	e := errors.New("table resources not found")
 
 	mockConn.ExpectRollback().WillReturnError(e) // Rollback returns error

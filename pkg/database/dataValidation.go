@@ -41,7 +41,9 @@ func (dao *DAO) ClusterTotals(ctx context.Context, clusterName string) (resource
 	batch.Queue(edgeCountSql, params...)
 
 	br := dao.pool.SendBatch(ctx, batch)
-	defer br.Close()
+	defer func(br pgx.BatchResults) {
+		_ = br.Close()
+	}(br)
 
 	resourcesRow := br.QueryRow()
 	resourcesErr := resourcesRow.Scan(&resources)
