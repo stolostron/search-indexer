@@ -18,6 +18,8 @@ EXPOSE 3010
 USER ${USER_UID}
 ENTRYPOINT ["/bin/main"]
 
+ARG ACM_VERSION=${ACM_VERSION}
+
 LABEL com.redhat.component="acm-search-indexer-container" \
       description="Search indexer service" \
       maintainer="acm-contact@redhat.com" \
@@ -27,4 +29,5 @@ LABEL com.redhat.component="acm-search-indexer-container" \
       summary="Search indexer service" \
       io.k8s.display-name="Search indexer" \
       io.k8s.description="Search indexer service" \
-      io.openshift.tags="data,images"
+      io.openshift.tags="data,images" \
+      cpe="cpe:/a:redhat:acm:${ACM_VERSION}::el9"
