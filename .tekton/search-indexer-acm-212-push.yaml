@@ -42,7 +42,7 @@ spec:
     value: .
   - name: build-args
     value:
-    - ACM_VERSION=2.15
+    - ACM_VERSION=2.12
   pipelineRef:
     resolver: git
     params:
