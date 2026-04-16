@@ -10,5 +10,3 @@ knowledge_base:
       instructions: "Tests the search service"
     - repository: "stolostron/search-mcp-server"
       instructions: "Provides the MCP server for the search service"
-    - repository: "stolostron/search-postgres"
-      instructions: "Provides the database for the search service"
