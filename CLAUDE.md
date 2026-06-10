@@ -7,26 +7,14 @@ For system architecture, data flows, and module layout, see [docs/ARCHITECTURE.m
 ## Commands
 
 ```bash
-# Run locally (development mode — disables strict TLS validation)
-make setup                          # Generate self-signed TLS cert (required before first run)
-go run -tags development main.go -v=3
-
-# Test
-go test ./... -failfast             # Unit tests
-go test ./... -failfast -v -coverprofile cover.out  # With coverage
-
-# Build
-go build ./...
-docker build -f Dockerfile . -t search-indexer
-podman build -f Dockerfile . -t search-indexer
-
-# Lint (requires golangci-lint v2.4.0 and gosec installed)
-CGO_ENABLED=1 GOGC=25 golangci-lint run --timeout=3m
-go mod tidy
-gosec ./...
-
-# Simulate a sync request locally
-curl -k -H "X-Overwrite-State: true" -d "@pkg/server/mocks/clusterA.json" -X POST https://localhost:3010/aggregator/clusters/clusterA/sync
+make setup          # Generate self-signed TLS cert (required before first run)
+make run            # Run locally in development mode
+make test           # Unit tests
+make coverage       # Unit tests with HTML coverage report
+make docker-build   # Build Docker image
+make podman-build   # Build with Podman
+make lint           # Run golangci-lint + gosec (downloads golangci-lint if not present)
+make test-send      # Simulate a sync request against the local instance
 ```
 
 ## Required environment variables
@@ -49,7 +37,11 @@ Optional overrides (defaults shown): `DB_HOST=localhost`, `DB_PORT=5432`, `AGGRE
 - **Cluster node UID format** is `cluster__<clusterName>` (two underscores). Hub cluster resources carry a `_hubClusterResource` property that triggers cleanup of any old hub cluster data on resync.
 - **Database schema** uses the `search` schema, not the default public schema: `search.resources` and `search.edges`.
 - **Leader election** (`pkg/clustersync`) uses a Kubernetes lease lock named `search-indexer.open-cluster-management.io`. Only the leader runs the ManagedCluster informers.
-- **`make lint`** re-downloads golangci-lint on every run. Run `golangci-lint` directly if it is already installed.
+- **`make lint`** re-downloads golangci-lint on every run if it is not already installed.
+
+## Fleet Engineering Skills
+
+All skills are available as slash commands. See the [Fleet Engineering skills catalog](https://github.com/OpenShift-Fleet/agentic-sdlc/blob/main/skills/README.md) for the full list with when-to-use guidance.
 
 ## Personal configuration
 
@@ -58,7 +50,3 @@ Use the tool-aware fallback chain: `~/.config/opencode/user.local.md` (OpenCode)
 `.claude/user.local.md` (Claude Code), or `.cursor/rules/user.local.mdc` (Cursor, already in context).
 If none exist, fall back to agent memory (`user-config`), then placeholders.
 Run `make personalize` to generate all three files (if this repo uses Fleet Engineering tooling).
-
-## Fleet Engineering Skills
-
-All skills are available as slash commands. See the [Fleet Engineering skills catalog](https://github.com/OpenShift-Fleet/agentic-sdlc/blob/main/skills/README.md) for the full list with when-to-use guidance.
