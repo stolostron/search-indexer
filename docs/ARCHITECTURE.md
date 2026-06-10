@@ -4,7 +4,7 @@
 
 search-indexer is a Go HTTPS service running inside the ACM hub cluster. It is the write path for the ACM Search datastore. Each managed cluster runs a `search-collector` agent that sends sync events to this service; the indexer writes those events to a shared PostgreSQL database that `search-api` reads from.
 
-```
+```text
 search-collector (per managed cluster)
         │  HTTPS POST /aggregator/clusters/{id}/sync
         ▼
