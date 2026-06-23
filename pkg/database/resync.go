@@ -40,7 +40,7 @@ func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse
 	}
 
 	if _, ok := lastUpsertResource.Properties["_hubClusterResource"]; ok {
-		go dao.hubClusterCleanUpWithRetry(context.Background(), clusterName)
+		go dao.hubClusterCleanUpWithRetry(context.Background(), clusterName) // #nosec G118 -- Background cleanup goroutine intentionally uses independent context
 	}
 
 	klog.V(1).Infof("Completed resync of cluster %12s.", clusterName)
