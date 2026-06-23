@@ -18,7 +18,7 @@ import (
 // NOTE: This may need to be enhanced to support development on different OS.
 func getKubeConfigPath() string {
 	defaultKubePath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
-	if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) {
+	if _, err := os.Stat(defaultKubePath); os.IsNotExist(err) { // #nosec G703 -- Standard kubeconfig path resolution
 		// set default to empty string if path does not reslove
 		defaultKubePath = ""
 	}
