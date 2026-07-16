@@ -17,7 +17,8 @@ import (
 )
 
 type ServerConfig struct {
-	Dao *database.DAO
+	Dao       *database.DAO
+	TLSConfig *tls.Config
 }
 
 func (s *ServerConfig) StartAndListen(ctx context.Context) {
@@ -33,19 +34,10 @@ func (s *ServerConfig) StartAndListen(ctx context.Context) {
 	syncSubrouter.Use(largeRequestLimiterMiddleware)
 	syncSubrouter.HandleFunc("/clusters/{id}/sync", s.SyncResources).Methods("POST")
 
-	// Configure TLS
-	cfg := &tls.Config{
-		MinVersion:               tls.VersionTLS12,
-		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-		PreferServerCipherSuites: true,
-		CipherSuites: []uint16{
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-		},
-	}
 	srv := &http.Server{
 		Addr:              config.Cfg.ServerAddress,
 		Handler:           router,
-		TLSConfig:         cfg,
+		TLSConfig:         s.TLSConfig,
 		ReadHeaderTimeout: time.Duration(config.Cfg.HTTPTimeout) * time.Millisecond,
 		ReadTimeout:       time.Duration(config.Cfg.HTTPTimeout) * time.Millisecond,
 		WriteTimeout:      time.Duration(config.Cfg.HTTPTimeout) * time.Millisecond,

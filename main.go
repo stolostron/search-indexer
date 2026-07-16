@@ -35,6 +35,12 @@ func main() {
 
 	ctx, exitRoutines := context.WithCancel(context.Background())
 
+	// Get TLS configuration from OpenShift APIServer profile.
+	tlsCfg, err := config.GetTLSConfig(ctx)
+	if err != nil {
+		klog.Warningf("Failed to get APIServer TLS profile, using default: %v", err)
+	}
+
 	// Initialize the database
 	dao := database.NewDAO(nil)
 	dao.InitializeTables(ctx)
@@ -44,7 +50,8 @@ func main() {
 
 	// Start the server.
 	srv := &server.ServerConfig{
-		Dao: &dao,
+		Dao:       &dao,
+		TLSConfig: tlsCfg,
 	}
 	go srv.StartAndListen(ctx)
 
