@@ -59,7 +59,7 @@ require (
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/oauth2 v0.29.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
