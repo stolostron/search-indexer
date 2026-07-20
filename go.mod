@@ -11,7 +11,6 @@ require (
 	github.com/jackc/pgconn v1.14.3
 	github.com/jackc/pgproto3/v2 v2.3.3
 	github.com/jackc/pgx/v4 v4.18.3
-	github.com/openshift/api v0.0.0-20251013165757-fe48e8fd548b
 	github.com/pashagolub/pgxmock v1.8.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20250625062343-7394aeb3186c
