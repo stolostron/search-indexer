@@ -35,6 +35,9 @@ func main() {
 
 	ctx, exitRoutines := context.WithCancel(context.Background())
 
+	// Get TLS configuration from operator-provided env vars (or defaults).
+	tlsCfg := config.GetTLSConfig()
+
 	// Initialize the database
 	dao := database.NewDAO(nil)
 	dao.InitializeTables(ctx)
@@ -44,7 +47,8 @@ func main() {
 
 	// Start the server.
 	srv := &server.ServerConfig{
-		Dao: &dao,
+		Dao:       &dao,
+		TLSConfig: tlsCfg,
 	}
 	go srv.StartAndListen(ctx)
 
