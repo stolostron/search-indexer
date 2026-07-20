@@ -68,9 +68,9 @@ func TestConvertCipherSuites(t *testing.T) {
 			want:  nil,
 		},
 		{
-			name:  "all unknown",
-			input: []string{"FAKE-CIPHER-1", "FAKE-CIPHER-2"},
-			want:  nil,
+			name:  "partial unknown logs warning but returns mapped ciphers",
+			input: []string{"DHE-RSA-AES128-GCM-SHA256", "ECDHE-RSA-AES256-GCM-SHA384"},
+			want:  []uint16{tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
 		},
 	}
 
@@ -80,6 +80,15 @@ func TestConvertCipherSuites(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestConvertCipherSuites_AllUnmappedFallsBackToIntermediate(t *testing.T) {
+	result := convertCipherSuites([]string{"DHE-RSA-AES128-GCM-SHA256", "DHE-RSA-AES256-GCM-SHA384"})
+	assert.True(t, len(result) > 1, "Should fall back to Intermediate profile ciphers when no ciphers map")
+
+	// Verify it matches the Intermediate profile
+	expected := convertCipherSuites(configv1.TLSProfiles[configv1.TLSProfileIntermediateType].Ciphers)
+	assert.Equal(t, expected, result)
 }
 
 func newFakeAPIServer(tlsProfile map[string]interface{}) *unstructured.Unstructured {

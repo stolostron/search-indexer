@@ -146,6 +146,7 @@ func convertCipherSuites(cipherNames []string) []uint16 {
 	}
 
 	var result []uint16
+	var unmapped []string
 	for _, name := range cipherNames {
 		// Skip TLS 1.3 cipher suites (auto-managed by Go)
 		if len(name) > 4 && name[:4] == "TLS_" {
@@ -153,7 +154,17 @@ func convertCipherSuites(cipherNames []string) []uint16 {
 		}
 		if cipher, ok := cipherMap[name]; ok {
 			result = append(result, cipher)
+		} else {
+			unmapped = append(unmapped, name)
 		}
+	}
+
+	if len(unmapped) > 0 {
+		klog.Warningf("TLS cipher suites not supported by Go, skipped: %v", unmapped)
+	}
+	if len(result) == 0 && len(cipherNames) > 0 {
+		klog.Warning("No requested TLS 1.0-1.2 cipher suites could be mapped; using Intermediate profile ciphers")
+		return convertCipherSuites(configv1.TLSProfiles[configv1.TLSProfileIntermediateType].Ciphers)
 	}
 
 	return result
