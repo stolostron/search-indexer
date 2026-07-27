@@ -16,7 +16,7 @@ require (
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20250625062343-7394aeb3186c
 	github.com/stretchr/testify v1.10.0
 	k8s.io/apimachinery v0.33.2
-	k8s.io/client-go v0.32.2
+	k8s.io/client-go v0.33.2
 	k8s.io/klog/v2 v2.130.1
 	open-cluster-management.io/api v0.16.2-0.20250422072120-cadf714c3055
 )
@@ -32,7 +32,6 @@ require (
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
