@@ -229,7 +229,9 @@ func Test_ProcessClusterDeleteOnMC(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mockConn.Close(context.Background())
+	defer func(mockConn pgxmock.PgxConnIface, ctx context.Context) {
+		_ = mockConn.Close(ctx)
+	}(mockConn, context.Background())
 	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Return(mockConn, nil)
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE (("cluster" = 'name-foo') AND ("uid" != 'cluster__name-foo'))`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
@@ -265,7 +267,9 @@ func Test_ProcessClusterDeleteOnMCASearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mockConn.Close(context.Background())
+	defer func(mockConn pgxmock.PgxConnIface, ctx context.Context) {
+		_ = mockConn.Close(ctx)
+	}(mockConn, context.Background())
 	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Return(mockConn, nil)
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE (("cluster" = 'name-foo') AND ("uid" != 'cluster__name-foo'))`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
@@ -339,7 +343,9 @@ func Test_DeleteStaleClustersResources(t *testing.T) {
 		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer mockConn.Close(context.Background())
+	defer func(mockConn pgxmock.PgxConnIface, ctx context.Context) {
+		_ = mockConn.Close(ctx)
+	}(mockConn, context.Background())
 	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Return(mockConn, nil)
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE (("cluster" = 'name-foo') AND ("uid" != 'cluster__name-foo'))`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
@@ -417,7 +423,9 @@ func Test_DeleteStaleClustersResources_DB_Outage(t *testing.T) {
 		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer mockConn.Close(context.Background())
+	defer func(mockConn pgxmock.PgxConnIface, ctx context.Context) {
+		_ = mockConn.Close(ctx)
+	}(mockConn, context.Background())
 	mockPool.EXPECT().BeginTx(context.Background(), pgx.TxOptions{}).Return(mockConn, fakeErr).Times(1).Return(mockConn, nil).Times(1) // return mock error
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."resources" WHERE (("cluster" = 'name-foo') AND ("uid" != 'cluster__name-foo'))`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))
 	mockConn.ExpectExec(regexp.QuoteMeta(`DELETE FROM "search"."edges" WHERE ("cluster" = 'name-foo')`)).WillReturnResult(pgxmock.NewResult("DELETE", 1))

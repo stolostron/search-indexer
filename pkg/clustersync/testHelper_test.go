@@ -19,7 +19,9 @@ func supressConsoleOutput() func() {
 	os.Stderr = nullFile
 
 	return func() {
-		defer nullFile.Close()
+		defer func(nullFile *os.File) {
+			_ = nullFile.Close()
+		}(nullFile)
 		os.Stderr = stdErr
 	}
 }
