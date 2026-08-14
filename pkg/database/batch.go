@@ -78,7 +78,7 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 		if strings.Contains(closeErr.Error(), "unexpected EOF") || strings.Contains(closeErr.Error(), "failed to connect") {
 			b.connError = closeErr
 			klog.Error("Send batch failed because database is unavailable. Won't retry.")
-			return errors.New("Failed to connect to database.")
+			return errors.New("failed to connect to database")
 		}
 		klog.Error("Error closing batch result. ", closeErr)
 		return closeErr
