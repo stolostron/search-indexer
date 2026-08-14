@@ -134,13 +134,13 @@ func getEnvAsInt32(name string, defaultVal int32) int32 {
 // Validate required configuration.
 func (cfg *Config) Validate() error {
 	if cfg.DBName == "" {
-		return errors.New("Required environment DB_NAME is not set.")
+		return errors.New("required environment DB_NAME is not set")
 	}
 	if cfg.DBUser == "" {
-		return errors.New("Required environment DB_USER is not set.")
+		return errors.New("required environment DB_USER is not set")
 	}
 	if cfg.DBPass == "" {
-		return errors.New("Required environment DB_PASS is not set.")
+		return errors.New("required environment DB_PASS is not set")
 	}
 	return nil
 }
