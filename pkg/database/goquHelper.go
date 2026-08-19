@@ -72,7 +72,7 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			Insert().Cols("sourceid", "sourcekind", "destid", "destkind", "edgetype", "cluster").Vals(params).
 			OnConflict(goqu.DoNothing()).ToSQL()
 
-	case "DELETE from search.edges WHERE sourceId=$1 AND destId=$2 AND edgeType=$3 AND cluster=$4":
+	case "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4":
 		if !validateParams(4) {
 			break
 		}

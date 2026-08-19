@@ -93,7 +93,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 		})
 		queueErr = batch.Queue(batchItem{
 			action: "deleteEdge",
-			query:  fmt.Sprintf("DELETE from search.edges WHERE cluster=$1 AND (sourceId IN (%s) OR destId IN (%s))", paramStr, paramStr),
+			query:  fmt.Sprintf("DELETE from search.edges WHERE cluster=$1 AND (sourceid IN (%s) OR destid IN (%s))", paramStr, paramStr),
 			uid:    fmt.Sprintf("%s", uids),
 			args:   args,
 		})
@@ -120,7 +120,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	for _, edge := range event.DeleteEdges {
 		queueErr = batch.Queue(batchItem{
 			action: "deleteEdge",
-			query:  "DELETE from search.edges WHERE sourceId=$1 AND destId=$2 AND edgeType=$3 AND cluster=$4",
+			query:  "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4",
 			uid:    edge.SourceUID,
 			args:   []interface{}{edge.SourceUID, edge.DestUID, edge.EdgeType, clusterName}})
 	}
