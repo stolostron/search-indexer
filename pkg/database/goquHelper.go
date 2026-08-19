@@ -40,12 +40,13 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			OnConflict(goqu.DoUpdate("uid", goqu.C("data").Set(params[2])).
 				Where(resources.Col("data").Neq(params[2]))).ToSQL()
 
-	case "UPDATE search.resources SET data=$2 WHERE uid=$1":
-		if !validateParams(2) {
+	case "UPDATE search.resources SET data=$2 WHERE uid=$1 AND cluster=$3":
+		if !validateParams(3) {
 			break
 		}
 		q, p, er = dialect.From(resources).Prepared(true).
-			Update().Set(goqu.Record{"data": params[1].(string)}).Where(goqu.C("uid").Eq(params[0])).ToSQL()
+			Update().Set(goqu.Record{"data": params[1].(string)}).
+			Where(goqu.C("uid").Eq(params[0]), goqu.C("cluster").Eq(params[2])).ToSQL()
 
 	case "DELETE from search.resources WHERE cluster=$1 AND uid NOT IN ($2)":
 		q, p, er = dialect.From(resources).
@@ -71,15 +72,16 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			Insert().Cols("sourceid", "sourcekind", "destid", "destkind", "edgetype", "cluster").Vals(params).
 			OnConflict(goqu.DoNothing()).ToSQL()
 
-	case "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3":
-		if !validateParams(3) {
+	case "DELETE from search.edges WHERE sourceId=$1 AND destId=$2 AND edgeType=$3 AND cluster=$4":
+		if !validateParams(4) {
 			break
 		}
 		q, p, er = dialect.From(edges).Prepared(true).
 			Delete().Where(
 			goqu.C("sourceid").Eq(params[0]),
 			goqu.C("destid").Eq(params[1]),
-			goqu.C("edgetype").Eq(params[2])).ToSQL()
+			goqu.C("edgetype").Eq(params[2]),
+			goqu.C("cluster").Eq(params[3])).ToSQL()
 
 	default:
 		er = fmt.Errorf("unable to build goqu query for [%s]", query)
