@@ -24,7 +24,9 @@ func loadSimpleSyncEvent(t *testing.T) model.SyncEvent {
 	}
 	defer data.Close() //nolint: errcheck
 	var syncEvent model.SyncEvent
-	json.NewDecoder(data).Decode(&syncEvent) //nolint: errcheck
+	if err := json.NewDecoder(data).Decode(&syncEvent); err != nil {
+		t.Fatalf("failed to decode mock sync payload: %v", err)
+	}
 	return syncEvent
 }
 

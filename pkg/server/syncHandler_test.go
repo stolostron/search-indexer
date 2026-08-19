@@ -176,7 +176,7 @@ func Test_resyncRequest_withErrorDeletingResources(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/local-cluster/sync", body)
-	request.Header.Set("X-Overwrite-State", "false")
+	request.Header.Set("X-Overwrite-State", "true") // full resync — triggers resource/edge cleanup
 	router := mux.NewRouter()
 
 	// Create server with mock database.
