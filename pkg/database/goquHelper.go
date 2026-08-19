@@ -40,6 +40,16 @@ func useGoqu(query string, params []interface{}) (q string, p []interface{}, er 
 			OnConflict(goqu.DoUpdate("uid", goqu.C("data").Set(params[2])).
 				Where(resources.Col("data").Neq(params[2]))).ToSQL()
 
+	// Cluster-scoped resync variant: only overwrites the row when it belongs to this cluster.
+	case "INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE r.cluster=$2 AND data!=$3":
+		if !validateParams(3) {
+			break
+		}
+		q, p, er = dialect.From(resources).Prepared(true).
+			Insert().Rows(goqu.Record{"uid": params[0], "cluster": params[1], "data": params[2]}).
+			OnConflict(goqu.DoUpdate("uid", goqu.C("data").Set(params[2])).
+				Where(resources.Col("cluster").Eq(params[1]), resources.Col("data").Neq(params[2]))).ToSQL()
+
 	case "UPDATE search.resources SET data=$2 WHERE uid=$1 AND cluster=$3":
 		if !validateParams(3) {
 			break
