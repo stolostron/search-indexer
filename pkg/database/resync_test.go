@@ -36,7 +36,7 @@ func Test_ResyncData(t *testing.T) {
 
 	// Execute function test.
 	response := &model.SyncResponse{}
-	err := dao.ResyncData(context.Background(), "test-cluster", response, dataBytes)
+	err := dao.ResyncData(context.Background(), "local-cluster", response, dataBytes)
 
 	assert.Nil(t, err)
 }
@@ -60,7 +60,7 @@ func Test_ResyncData_errors(t *testing.T) {
 
 	// Execute function test.
 	response := &model.SyncResponse{}
-	err := dao.ResyncData(context.Background(), "test-cluster", response, dataBytes)
+	err := dao.ResyncData(context.Background(), "local-cluster", response, dataBytes)
 
 	assert.NotNil(t, err)
 }
@@ -69,11 +69,11 @@ func Test_CheckHubClusterRenameWithoutChange(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao, mockPool := buildMockDAO(t)
 
-	// Mock Postgres state with existing hub cluster test-cluster
+	// Mock Postgres state with existing hub cluster local-cluster
 	testutils.MockDatabaseState(mockPool)
 
-	// test-cluster is the only cluster to exist in the database, no cleanup should happen
-	err := dao.checkHubClusterRename(context.Background(), "test-cluster")
+	// local-cluster is the only cluster to exist in the database, no cleanup should happen
+	err := dao.checkHubClusterRename(context.Background(), "local-cluster")
 
 	// no further mock queries and old hub cluster cleanup was required
 	assert.Nil(t, err)
@@ -83,20 +83,20 @@ func Test_CheckHubClusterRenameWithChange(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao, mockPool := buildMockDAO(t)
 
-	// Mock Postgres state with existing hub cluster test-cluster
+	// Mock Postgres state with existing hub cluster local-cluster
 	testutils.MockDatabaseState(mockPool)
 
-	// test-cluster gets cleaned up from search.resources
+	// local-cluster gets cleaned up from search.resources
 	mockPool.EXPECT().Exec(gomock.Any(),
-		`DELETE FROM "search"."resources" WHERE ("cluster" = 'test-cluster')`,
+		`DELETE FROM "search"."resources" WHERE ("cluster" = 'local-cluster')`,
 		[]interface{}{}).Return(pgxmock.NewResult("DELETE", 1), nil)
 
-	// test-cluster gets cleaned up from search.edges
+	// local-cluster gets cleaned up from search.edges
 	mockPool.EXPECT().Exec(gomock.Any(),
-		`DELETE FROM "search"."edges" WHERE ("cluster" = 'test-cluster')`,
+		`DELETE FROM "search"."edges" WHERE ("cluster" = 'local-cluster')`,
 		[]interface{}{}).Return(pgxmock.NewResult("DELETE", 1), nil)
 
-	// test-cluster should get cleaned up when we call this with the new hub cluster new-cluster
+	// local-cluster should get cleaned up when we call this with the new hub cluster new-cluster
 	err := dao.checkHubClusterRename(context.Background(), "new-cluster")
 
 	assert.Nil(t, err)
@@ -106,13 +106,13 @@ func Test_HubClusterCleanupWithoutChangeWithRetry(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao, mockPool := buildMockDAO(t)
 
-	// Mock Postgres state with existing hub cluster test-cluster
+	// Mock Postgres state with existing hub cluster local-cluster
 	testutils.MockDatabaseState(mockPool)
 
 	// Mock a failed deletion of search.resources where it succeeds on second attempt
 	retry := 0
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq(
-		`DELETE FROM "search"."resources" WHERE ("cluster" = 'test-cluster')`),
+		`DELETE FROM "search"."resources" WHERE ("cluster" = 'local-cluster')`),
 		[]interface{}{}).Times(2).DoAndReturn(func(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
 		if retry == 0 {
 			retry++
@@ -125,7 +125,7 @@ func Test_HubClusterCleanupWithoutChangeWithRetry(t *testing.T) {
 
 	// Mock a failed deletion of search.edges where it succeeds on second attempt
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq(
-		`DELETE FROM "search"."edges" WHERE ("cluster" = 'test-cluster')`),
+		`DELETE FROM "search"."edges" WHERE ("cluster" = 'local-cluster')`),
 		[]interface{}{}).Times(2).DoAndReturn(func(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
 		if retry == 0 {
 			retry++
@@ -137,12 +137,12 @@ func Test_HubClusterCleanupWithoutChangeWithRetry(t *testing.T) {
 
 	// Mock selecting the distinct hub cluster names 4 times; once per attempt
 	cluster := []string{"cluster"}
-	clusterRows := pgxpoolmock.NewRows(cluster).AddRow("test-cluster").ToPgxRows()
+	clusterRows := pgxpoolmock.NewRows(cluster).AddRow("local-cluster").ToPgxRows()
 	mockPool.EXPECT().Query(gomock.Any(), gomock.Eq(
 		`SELECT DISTINCT "cluster" FROM "search"."resources" WHERE ("data"?'_hubClusterResource' AND "data"->>'kind' <> 'Cluster')`),
 		[]interface{}{}).Return(clusterRows, nil).Times(4)
 
-	// test-cluster should get cleaned up when we call this with the new hub cluster new-cluster
+	// local-cluster should get cleaned up when we call this with the new hub cluster new-cluster
 	dao.hubClusterCleanUpWithRetry(context.Background(), "new-cluster")
 
 }
