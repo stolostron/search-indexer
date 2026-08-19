@@ -146,7 +146,7 @@ func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 	// AND cluster=$4 scopes the delete to this cluster's rows only.
 	for _, edge := range existingEdgesMap {
 		query, params, err := useGoqu(
-			"DELETE from search.edges WHERE sourceId=$1 AND destId=$2 AND edgeType=$3 AND cluster=$4",
+			"DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4",
 			[]interface{}{edge.SourceUID, edge.DestUID, edge.EdgeType, clusterName})
 		if err == nil {
 			queueErr = batch.Queue(batchItem{

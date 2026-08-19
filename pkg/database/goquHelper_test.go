@@ -51,7 +51,7 @@ func Test_useGoqu_updateResource_wrongParamCount(t *testing.T) {
 // Test that DELETE edges now requires cluster ownership.
 func Test_useGoqu_deleteEdge_clusterScoped(t *testing.T) {
 	q, p, er := useGoqu(
-		"DELETE from search.edges WHERE sourceId=$1 AND destId=$2 AND edgeType=$3 AND cluster=$4",
+		"DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4",
 		[]interface{}{"my-cluster/src", "my-cluster/dst", "ownedBy", "my-cluster"})
 
 	assert.Nil(t, er)
@@ -64,7 +64,7 @@ func Test_useGoqu_deleteEdge_clusterScoped(t *testing.T) {
 
 func Test_useGoqu_deleteEdge_wrongParamCount(t *testing.T) {
 	q, p, er := useGoqu(
-		"DELETE from search.edges WHERE sourceId=$1 AND destId=$2 AND edgeType=$3 AND cluster=$4",
+		"DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4",
 		[]interface{}{"src", "dst"}) // missing edgeType and cluster
 
 	assert.Equal(t, "", q)
