@@ -196,9 +196,15 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 					return incomingUIDs, resource, fmt.Errorf("error decoding resource from request: %v", err)
 				}
 				uid := resource.UID
+				// Reject UIDs that don't belong to this cluster before they reach the DB.
+				if err := validateUIDPrefix(uid, clusterName); err != nil {
+					klog.Warningf("Rejecting resync resource from cluster [%s]: %v", clusterName, err)
+					syncResponse.AddErrors = append(syncResponse.AddErrors, model.SyncError{ResourceUID: uid, Message: err.Error()})
+					continue
+				}
 				data, _ := json.Marshal(resource.Properties)
 				query, params, err := useGoqu(
-					"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE data!=$3",
+					"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE r.cluster=$2 AND data!=$3",
 					[]interface{}{uid, clusterName, string(data)})
 				if err == nil {
 					queueErr := batch.Queue(batchItem{
