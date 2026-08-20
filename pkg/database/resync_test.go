@@ -34,7 +34,7 @@ func Test_ResyncData(t *testing.T) {
 
 	// Execute function test.
 	response := &model.SyncResponse{}
-	err := dao.ResyncData(context.Background(), syncEvent, "test-cluster", response)
+	err := dao.ResyncData(context.Background(), syncEvent, "local-cluster", response)
 
 	assert.Nil(t, err)
 }
@@ -59,7 +59,8 @@ func Test_ResyncData_errors(t *testing.T) {
 
 	// Execute function test.
 	response := &model.SyncResponse{}
-	err := dao.ResyncData(context.Background(), syncEvent, "test-cluster", response)
+	err := dao.ResyncData(context.Background(), syncEvent, "local-cluster", response)
 
 	assert.NotNil(t, err)
 }
+

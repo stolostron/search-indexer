@@ -13,6 +13,17 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// validateUIDPrefix rejects resource UIDs that don't begin with "<clusterName>/".
+// Collector-assigned UIDs always follow this convention. Enforcing it here prevents
+// a spoke from crafting a payload that targets another cluster's rows by uid.
+func validateUIDPrefix(uid, clusterName string) error {
+	prefix := clusterName + "/"
+	if !strings.HasPrefix(uid, prefix) {
+		return fmt.Errorf("uid %q does not start with expected prefix %q", uid, prefix)
+	}
+	return nil
+}
+
 func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	clusterName string, syncResponse *model.SyncResponse) error {
 
@@ -21,13 +32,20 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	var queueErr error
 
 	// ADD RESOURCES
-	// In case of conflict update only if data has changed
+	// In case of conflict update only if data has changed AND the row is owned by this cluster.
+	// The cluster guard on the conflict target prevents a spoke from overwriting another spoke's
+	// row by submitting a resource with a colliding UID.
 	for _, resource := range event.AddResources {
+		if err := validateUIDPrefix(resource.UID, clusterName); err != nil {
+			klog.Warningf("Rejecting addResource from cluster [%s]: %v", clusterName, err)
+			syncResponse.AddErrors = append(syncResponse.AddErrors, model.SyncError{ResourceUID: resource.UID, Message: err.Error()})
+			continue
+		}
 		data, _ := json.Marshal(resource.Properties)
 		queueErr = batch.Queue(batchItem{
 			action: "addResource",
 			query: `INSERT into search.resources as r values($1,$2,$3) ON CONFLICT (uid) 
-			DO UPDATE SET data=$3 WHERE r.uid=$1 and r.data IS DISTINCT FROM $3`,
+			DO UPDATE SET data=$3 WHERE r.uid=$1 AND r.cluster=$2 AND r.data IS DISTINCT FROM $3`,
 			uid:  resource.UID,
 			args: []interface{}{resource.UID, clusterName, string(data)},
 		})
@@ -36,39 +54,48 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	// UPDATE RESOURCES
 	// The collector enforces that a resource isn't added and updated in the same sync event.
 	// The uid and cluster fields will never get updated for a resource.
+	// AND cluster=$3 ensures a spoke can only update rows it owns.
 	for _, resource := range event.UpdateResources {
+		if err := validateUIDPrefix(resource.UID, clusterName); err != nil {
+			klog.Warningf("Rejecting updateResource from cluster [%s]: %v", clusterName, err)
+			syncResponse.UpdateErrors = append(syncResponse.UpdateErrors, model.SyncError{ResourceUID: resource.UID, Message: err.Error()})
+			continue
+		}
 		data, _ := json.Marshal(resource.Properties)
 		queueErr = batch.Queue(batchItem{
 			action: "updateResource",
-			query:  "UPDATE search.resources SET data=$2 WHERE uid=$1",
+			query:  "UPDATE search.resources SET data=$2 WHERE uid=$1 AND cluster=$3",
 			uid:    resource.UID,
-			args:   []interface{}{resource.UID, string(data)},
+			args:   []interface{}{resource.UID, string(data), clusterName},
 		})
 	}
 
 	// DELETE RESOURCES and all edges pointing to the resource.
+	// AND cluster=$N ensures a spoke can only delete its own rows.
 	if len(event.DeleteResources) > 0 {
+		// clusterName occupies $1; UIDs follow as $2, $3, …
 		params := make([]string, len(event.DeleteResources))
 		uids := make([]interface{}, len(event.DeleteResources))
 		for i, resource := range event.DeleteResources {
-			params[i] = fmt.Sprintf("$%d", i+1)
+			params[i] = fmt.Sprintf("$%d", i+2) // $2, $3, … (cluster is $1)
 			uids[i] = resource.UID
 		}
 		paramStr := strings.Join(params, ",")
+		args := append([]interface{}{clusterName}, uids...)
 
 		// TODO: Need better safety for delete errors.
 		// The current retry logic won't work well if there's an error here.
 		err := batch.Queue(batchItem{
 			action: "deleteResource",
-			query:  fmt.Sprintf("DELETE from search.resources WHERE uid IN (%s)", paramStr),
+			query:  fmt.Sprintf("DELETE from search.resources WHERE cluster=$1 AND uid IN (%s)", paramStr),
 			uid:    fmt.Sprintf("%s", uids),
-			args:   uids,
+			args:   args,
 		})
 		queueErr = batch.Queue(batchItem{
-			action: "deleteResource",
-			query:  fmt.Sprintf("DELETE from search.edges WHERE sourceId IN (%s) OR destId IN (%s)", paramStr, paramStr),
+			action: "deleteEdge",
+			query:  fmt.Sprintf("DELETE from search.edges WHERE cluster=$1 AND (sourceid IN (%s) OR destid IN (%s))", paramStr, paramStr),
 			uid:    fmt.Sprintf("%s", uids),
-			args:   uids,
+			args:   args,
 		})
 		if err != nil {
 			queueErr = err
@@ -86,15 +113,16 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	}
 
 	// UPDATE EDGES
-	// Edges are never updated. The collector only sends ADD and DELETE eveents for edges.
+	// Edges are never updated. The collector only sends ADD and DELETE events for edges.
 
 	// DELETE EDGES
+	// AND cluster=$4 ensures a spoke can only delete edges it owns.
 	for _, edge := range event.DeleteEdges {
 		queueErr = batch.Queue(batchItem{
 			action: "deleteEdge",
-			query:  "DELETE from search.edges WHERE sourceId=$1 AND destId=$2 AND edgeType=$3",
+			query:  "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4",
 			uid:    edge.SourceUID,
-			args:   []interface{}{edge.SourceUID, edge.DestUID, edge.EdgeType}})
+			args:   []interface{}{edge.SourceUID, edge.DestUID, edge.EdgeType, clusterName}})
 	}
 
 	// Flush remaining items in the batch.
