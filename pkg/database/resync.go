@@ -125,8 +125,8 @@ func (dao *DAO) resetResources(ctx context.Context, resources []model.Resource, 
 	for _, resource := range resourcesToUpdate {
 		data, _ := json.Marshal(resource.Properties)
 		query, params, err := useGoqu(
-			"UPDATE search.resources SET data=$2 WHERE uid=$1",
-			[]interface{}{resource.UID, string(data)})
+			"UPDATE search.resources SET data=$2 WHERE uid=$1 AND cluster=$3",
+			[]interface{}{resource.UID, string(data), clusterName})
 		if err == nil {
 			queueErr := batch.Queue(batchItem{
 				action: "updateResource",
@@ -252,10 +252,11 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 	}
 
 	// Delete existing edges that are not in the new sync event.
+	// AND cluster=$4 scopes the delete to this cluster's rows only.
 	for _, edge := range existingEdgesMap {
 		query, params, err := useGoqu(
-			"DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3",
-			[]interface{}{edge.SourceUID, edge.DestUID, edge.EdgeType})
+			"DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4",
+			[]interface{}{edge.SourceUID, edge.DestUID, edge.EdgeType, clusterName})
 		if err == nil {
 			queueErr = batch.Queue(batchItem{
 				action: "deleteEdge",
@@ -277,3 +278,4 @@ func (dao *DAO) resetEdges(ctx context.Context, edges []model.Edge, clusterName 
 		syncResponse.TotalEdgesAdded, syncResponse.TotalEdgesDeleted))
 	return batch.connError
 }
+
