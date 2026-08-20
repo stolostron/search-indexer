@@ -143,10 +143,11 @@ func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 	addErr := addEdges(resyncRequest, &existingEdgesMap, clusterName, syncResponse, &batch)
 
 	// Delete existing edges that are not in the resyncRequest.
+	// AND cluster=$4 scopes the delete to this cluster's rows only.
 	for _, edge := range existingEdgesMap {
 		query, params, err := useGoqu(
-			"DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3",
-			[]interface{}{edge.SourceUID, edge.DestUID, edge.EdgeType})
+			"DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4",
+			[]interface{}{edge.SourceUID, edge.DestUID, edge.EdgeType, clusterName})
 		if err == nil {
 			queueErr = batch.Queue(batchItem{
 				action: "deleteEdge",
@@ -195,9 +196,15 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 					return incomingUIDs, resource, fmt.Errorf("error decoding resource from request: %v", err)
 				}
 				uid := resource.UID
+				// Reject UIDs that don't belong to this cluster before they reach the DB.
+				if err := validateUIDPrefix(uid, clusterName); err != nil {
+					klog.Warningf("Rejecting resync resource from cluster [%s]: %v", clusterName, err)
+					syncResponse.AddErrors = append(syncResponse.AddErrors, model.SyncError{ResourceUID: uid, Message: err.Error()})
+					continue
+				}
 				data, _ := json.Marshal(resource.Properties)
 				query, params, err := useGoqu(
-					"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE data!=$3",
+					"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE r.cluster=$2 AND data!=$3",
 					[]interface{}{uid, clusterName, string(data)})
 				if err == nil {
 					queueErr := batch.Queue(batchItem{
