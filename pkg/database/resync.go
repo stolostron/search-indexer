@@ -3,7 +3,6 @@
 package database
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -19,21 +18,26 @@ import (
 )
 
 // Reset data for the cluster to the incoming state.
-func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse *model.SyncResponse, requestBody []byte) error {
+// body is consumed as a streaming JSON reader to avoid buffering the full (potentially large) payload in memory.
+func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse *model.SyncResponse, body io.Reader) error {
 
 	defer metrics.SlowLog(fmt.Sprintf("Slow resync from %12s.", clusterName), 0)()
 	klog.Infof(
 		"Starting resync from %12s. This is normal, but it could be a problem if it happens often.", clusterName)
 
+	// Create a single decoder that is shared across resetResources and resetEdges so the body
+	// is decoded in one sequential pass without ever being fully buffered in memory.
+	dec := json.NewDecoder(body)
+
 	// Reset resources
-	lastUpsertResource, err := dao.resetResources(ctx, clusterName, syncResponse, requestBody)
+	lastUpsertResource, err := dao.resetResources(ctx, clusterName, syncResponse, dec)
 	if err != nil {
 		klog.Warningf("Error resyncing resources for cluster %12s. Error: %+v", clusterName, err)
 		return err
 	}
 
-	// Reset edges
-	err = dao.resetEdges(ctx, clusterName, syncResponse, requestBody)
+	// Reset edges (continues reading from the same decoder, past the resources section)
+	err = dao.resetEdges(ctx, clusterName, syncResponse, dec)
 	if err != nil {
 		klog.Warningf("Error resyncing edges for cluster %12s. Error: %+v", clusterName, err)
 		return err
@@ -51,12 +55,12 @@ func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse
 // 1. Upsert each incoming resource. Keep the UID.
 // 2. Delete existing UIDs that don't match the incoming UIDs.
 func (dao *DAO) resetResources(ctx context.Context, clusterName string,
-	syncResponse *model.SyncResponse, resyncBody []byte) (model.Resource, error) {
+	syncResponse *model.SyncResponse, dec *json.Decoder) (model.Resource, error) {
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
 
 	// UPSERT resources in the database.
-	incomingUIDs, resource, upsertErr := dao.upsertResources(ctx, resyncBody, clusterName, syncResponse, &batch)
+	incomingUIDs, resource, upsertErr := dao.upsertResources(ctx, dec, clusterName, syncResponse, &batch)
 
 	// Add the uid of the Cluster pseudo node that is created by the indexer to exclude from deletion
 	incomingUIDs = append(incomingUIDs, fmt.Sprintf("cluster__%s", clusterName))
@@ -108,7 +112,7 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 //  2. For each incoming edge, INSERT if it doesn't exist.
 //  3. Delete any existing edges that aren't in the incoming resyncRequest.
 func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
-	syncResponse *model.SyncResponse, resyncRequest []byte) error {
+	syncResponse *model.SyncResponse, dec *json.Decoder) error {
 	timer := time.Now()
 
 	batch := NewBatchWithRetry(ctx, dao, syncResponse)
@@ -139,8 +143,8 @@ func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 	}
 	metrics.LogStepDuration(&timer, clusterName, "Resync QUERY existing edges")
 
-	// Now insert edges from the reqeust that don't already exist
-	addErr := addEdges(resyncRequest, &existingEdgesMap, clusterName, syncResponse, &batch)
+	// Now insert edges from the request that don't already exist
+	addErr := addEdges(dec, &existingEdgesMap, clusterName, syncResponse, &batch)
 
 	// Delete existing edges that are not in the resyncRequest.
 	// AND cluster=$4 scopes the delete to this cluster's rows only.
@@ -175,8 +179,7 @@ func (dao *DAO) resetEdges(ctx context.Context, clusterName string,
 	return batch.connError
 }
 
-func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) ([]interface{}, model.Resource, error) {
-	dec := json.NewDecoder(bytes.NewReader(resyncBody))
+func (dao *DAO) upsertResources(ctx context.Context, dec *json.Decoder, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) ([]interface{}, model.Resource, error) {
 	incomingUIDs := make([]interface{}, 0)
 	var resource model.Resource
 	for {
@@ -315,9 +318,7 @@ func (dao *DAO) deleteOldHubClusterFromDBTable(ctx context.Context, oldHubCluste
 	return nil
 }
 
-func addEdges(requestBody []byte, existingEdgesMap *map[string]model.Edge, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) error {
-	dec := json.NewDecoder(bytes.NewReader(requestBody))
-
+func addEdges(dec *json.Decoder, existingEdgesMap *map[string]model.Edge, clusterName string, syncResponse *model.SyncResponse, batch *batchWithRetry) error {
 	for {
 		// read tokens until we get to addEdges
 		field, err := dec.Token()
