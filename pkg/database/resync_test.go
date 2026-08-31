@@ -62,6 +62,28 @@ func Test_ResyncData_errors(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+// Test_ResyncData_EdgesFirst verifies that ResyncData correctly handles a payload where
+// addEdges appears before addResources in the JSON object — i.e. field order is irrelevant.
+func Test_ResyncData_EdgesFirst(t *testing.T) {
+	dao, mockPool := buildMockDAO(t)
+	testutils.MockDatabaseState(mockPool)
+
+	br := &testutils.MockBatchResults{}
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(4)
+
+	data, _ := os.Open("./mocks/edges-first.json")
+
+	defer testutils.SupressConsoleOutput()()
+
+	response := &model.SyncResponse{}
+	err := dao.ResyncData(context.Background(), "local-cluster", response, data)
+
+	assert.Nil(t, err)
+	// Both resources and the edge from the payload should have been processed.
+	assert.Equal(t, 2, response.TotalAdded)
+	assert.Equal(t, 1, response.TotalEdgesAdded)
+}
+
 func Test_CheckHubClusterRenameWithoutChange(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao, mockPool := buildMockDAO(t)

@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/stolostron/search-indexer/pkg/metrics"
@@ -24,11 +23,13 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	clusterName := params["id"]
 
+	// Only the exact literal "true" triggers a full resync (which deletes all absent resources/edges).
+	// strconv.ParseBool would also accept "1", "t", "T", "TRUE", "True" — too broad for a destructive operation.
 	overwriteStateHeader := r.Header.Get("X-Overwrite-State")
-	overwriteState, overwriteStateErr := strconv.ParseBool(overwriteStateHeader)
-	if overwriteStateErr != nil {
-		klog.V(1).Infof("Invalid X-Overwrite-State header value [%s] from cluster[%s]: %v", overwriteStateHeader, clusterName, overwriteStateErr)
-		overwriteState = false
+	overwriteState := overwriteStateHeader == "true"
+	if !overwriteState && overwriteStateHeader != "" && overwriteStateHeader != "false" {
+		klog.V(1).Infof("Unrecognised X-Overwrite-State header value [%s] from cluster [%s]; treating as delta sync",
+			overwriteStateHeader, clusterName)
 	}
 
 	// Initialize SyncResponse object.
