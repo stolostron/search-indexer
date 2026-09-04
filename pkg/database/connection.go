@@ -115,7 +115,7 @@ func initializePool() pgxpoolmock.PgxPool {
 func (dao *DAO) InitializeTables(ctx context.Context) {
 	if config.Cfg.DevelopmentMode {
 		klog.Warning("Dropping search schema for development only. We must not see this message in production.")
-		_, err := dao.pool.Exec(ctx, "DROP SCHEMAIF EXISTS search CASCADE")
+		_, err := dao.pool.Exec(ctx, "DROP SCHEMA IF EXISTS search CASCADE")
 		checkError(err, "Error dropping schema search.")
 	}
 
