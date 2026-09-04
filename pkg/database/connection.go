@@ -114,13 +114,9 @@ func initializePool() pgxpoolmock.PgxPool {
 
 func (dao *DAO) InitializeTables(ctx context.Context) {
 	if config.Cfg.DevelopmentMode {
-		// We can't drop the schema because it will drop the users.
-		// We don't want to replicate the operator's logic here.
-		klog.Warning("Dropping search tables for development only. We must not see this message in production.")
-		_, err := dao.pool.Exec(ctx, "DROP TABLE IF EXISTS search.resources CASCADE")
-		checkError(err, "Error dropping table search.resources.")
-		_, err = dao.pool.Exec(ctx, "DROP TABLE IF EXISTS search.edges CASCADE")
-		checkError(err, "Error dropping table search.edges.")
+		klog.Warning("Dropping search schema for development only. We must not see this message in production.")
+		_, err := dao.pool.Exec(ctx, "DROP SCHEMAIF EXISTS search CASCADE")
+		checkError(err, "Error dropping schema search.")
 	}
 
 	_, err := dao.pool.Exec(ctx, "CREATE SCHEMA IF NOT EXISTS search")
@@ -171,6 +167,24 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 	_, err = dao.pool.Exec(ctx,
 		"CREATE INDEX IF NOT EXISTS edges_cluster_idx ON search.edges USING btree (cluster)")
 	checkError(err, "Error creating index on search.edges key cluster.")
+
+	//GRANT USAGE ON SCHEMA search TO search_api_ro, search_mcp_ro;
+	_, err = dao.pool.Exec(ctx,
+		"GRANT USAGE ON SCHEMA search TO search_api_ro, search_mcp_ro")
+	checkError(err, "Error granting usage on schema search to search_api_ro, search_mcp_ro.")
+
+	// GRANT SELECT ON search.resources TO search_api_ro, search_mcp_ro;
+	_, err = dao.pool.Exec(ctx,
+		"GRANT SELECT ON search.resources TO search_api_ro, search_mcp_ro")
+	checkError(err, "Error granting select on search.resources to search_api_ro, search_mcp_ro.")
+	_, err = dao.pool.Exec(ctx,
+		"GRANT SELECT ON search.edges TO search_api_ro, search_mcp_ro")
+	checkError(err, "Error granting select on search.edges to search_api_ro, search_mcp_ro.")
+
+	// ALTER DEFAULT PRIVILEGES IN SCHEMA search GRANT SELECT ON TABLES TO search_api_ro, search_mcp_ro;
+	_, err = dao.pool.Exec(ctx,
+		"ALTER DEFAULT PRIVILEGES IN SCHEMA search GRANT SELECT ON TABLES TO search_api_ro, search_mcp_ro")
+	checkError(err, "Error granting select on tables to search_api_ro, search_mcp_ro.")
 }
 
 func checkError(err error, logMessage string) {
