@@ -4,4 +4,5 @@ sslcert/tls.crt
 sslcert/tls.key
 cover.html
 test/__pycache__/*
+test/k6/grafana-datasource.yml
 .DS_Store

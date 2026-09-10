@@ -1,0 +1,29 @@
+services:
+  influxdb:
+    image: influxdb:1.8
+    ports:
+      - "8086:8086"
+    environment:
+      - INFLUXDB_DB=k6
+      - INFLUXDB_HTTP_MAX_BODY_SIZE=0
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    user: "0"
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana-datasource.yml:/etc/grafana/provisioning/datasources/influxdb.yml:ro,z
+      - ./dashboards/provisioning.yml:/etc/grafana/provisioning/dashboards/default.yml:ro,z
+      - ./dashboards:/var/lib/grafana/dashboards:ro,z
+    depends_on:
+      - influxdb
+
+volumes:
+  influxdb-data:

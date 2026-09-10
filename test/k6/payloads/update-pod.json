@@ -1,0 +1,22 @@
+{
+  "addResources": [
+    {
+      "uid": "<<CLUSTER_NAME>>/<<UID>>",
+      "resourceString": "pods",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "",
+        "apiversion": "v1",
+        "created": "2021-07-14T10:20:37Z",
+        "kind": "Pod",
+        "label": {
+          "samples.operator.openshift.io/managed": "true"
+        },
+        "name": "pod-<<UID>>",
+        "namespace": "default"
+      }
+    }
+  ],
+  "clearAll": false
+}
