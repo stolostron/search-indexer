@@ -167,6 +167,24 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 	_, err = dao.pool.Exec(ctx,
 		"CREATE INDEX IF NOT EXISTS edges_cluster_idx ON search.edges USING btree (cluster)")
 	checkError(err, "Error creating index on search.edges key cluster.")
+
+	//GRANT USAGE ON SCHEMA search TO search_api_ro, search_mcp_ro;
+	_, err = dao.pool.Exec(ctx,
+		"GRANT USAGE ON SCHEMA search TO search_api_ro, search_mcp_ro")
+	checkError(err, "Error granting usage on schema search to search_api_ro, search_mcp_ro.")
+
+	// GRANT SELECT ON search.resources TO search_api_ro, search_mcp_ro;
+	_, err = dao.pool.Exec(ctx,
+		"GRANT SELECT ON search.resources TO search_api_ro, search_mcp_ro")
+	checkError(err, "Error granting select on search.resources to search_api_ro, search_mcp_ro.")
+	_, err = dao.pool.Exec(ctx,
+		"GRANT SELECT ON search.edges TO search_api_ro, search_mcp_ro")
+	checkError(err, "Error granting select on search.edges to search_api_ro, search_mcp_ro.")
+
+	// ALTER DEFAULT PRIVILEGES IN SCHEMA search GRANT SELECT ON TABLES TO search_api_ro, search_mcp_ro;
+	_, err = dao.pool.Exec(ctx,
+		"ALTER DEFAULT PRIVILEGES IN SCHEMA search GRANT SELECT ON TABLES TO search_api_ro, search_mcp_ro")
+	checkError(err, "Error granting select on tables to search_api_ro, search_mcp_ro.")
 }
 
 func checkError(err error, logMessage string) {

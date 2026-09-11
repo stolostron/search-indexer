@@ -19,6 +19,7 @@ class ClusterBehavior(TaskSet):
         f = io.StringIO(template_string)
         j = json.load(f)        
         self.client.payload = j
+        self.client.headers["X-Overwrite-State"] = "true"
         self.do_post()
 
     def send_update_payload(self):
@@ -29,6 +30,7 @@ class ClusterBehavior(TaskSet):
             resource["uid"] = "{}/{}".format(self.user.name, str(uuid.uuid4()) )
             resource["properties"]["name"] = "gen-name-{}".format(str(uuid.uuid4()) )
         self.client.payload = j
+        self.client.headers["X-Overwrite-State"] = "false"
         self.do_post()
 
     def do_post(self):

@@ -26,6 +26,10 @@ func Test_initializeTables(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS edges_sourceid_idx ON search.edges USING btree (sourceid)")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS edges_destid_idx ON search.edges USING btree (destid)")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS edges_cluster_idx ON search.edges USING btree (cluster)")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT USAGE ON SCHEMA search TO search_api_ro, search_mcp_ro")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.resources TO search_api_ro, search_mcp_ro")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.edges TO search_api_ro, search_mcp_ro")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("ALTER DEFAULT PRIVILEGES IN SCHEMA search GRANT SELECT ON TABLES TO search_api_ro, search_mcp_ro")).Return(nil, nil)
 
 	// Execute function test.
 	dao.InitializeTables(context.Background())

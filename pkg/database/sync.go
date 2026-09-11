@@ -18,7 +18,7 @@ import (
 // a spoke from crafting a payload that targets another cluster's rows by uid.
 func validateUIDPrefix(uid, clusterName string) error {
 	prefix := clusterName + "/"
-	if !strings.HasPrefix(uid, prefix) {
+	if !strings.HasPrefix(uid, prefix) && uid != "cluster__"+clusterName {
 		return fmt.Errorf("uid %q does not start with expected prefix %q", uid, prefix)
 	}
 	return nil
