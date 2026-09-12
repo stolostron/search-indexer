@@ -1,0 +1,214 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "title": "Overview",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "k6" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }] } }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Active VUs",
+      "type": "stat",
+      "targets": [{ "query": "SELECT last(\"value\") FROM \"vus\" WHERE $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" }]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "k6" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }] } }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["sum"] } },
+      "title": "Total Requests",
+      "type": "stat",
+      "targets": [{ "query": "SELECT sum(\"value\") FROM \"http_reqs\" WHERE $timeFilter", "rawQuery": true, "resultFormat": "time_series" }]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "k6" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "percentunit", "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 0.05 }] } }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Error Rate",
+      "type": "stat",
+      "targets": [{ "query": "SELECT last(\"value\") FROM \"http_req_failed\" WHERE $timeFilter", "rawQuery": true, "resultFormat": "time_series" }]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "k6" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "decbytes", "thresholds": { "steps": [{ "color": "blue", "value": null }] } }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["sum"] } },
+      "title": "Data Sent",
+      "type": "stat",
+      "targets": [{ "query": "SELECT sum(\"value\") FROM \"data_sent\" WHERE $timeFilter", "rawQuery": true, "resultFormat": "time_series" }]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "title": "Indexer Sync",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "k6" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "ms", "custom": { "drawStyle": "line", "fillOpacity": 10, "pointSize": 5, "lineWidth": 1 } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "title": "Sync Request Duration",
+      "type": "timeseries",
+      "targets": [
+        { "alias": "p95 full", "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE \"sync_type\" = 'full' AND $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "p95 delta", "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE \"sync_type\" = 'delta' AND $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "p50 full", "query": "SELECT percentile(\"value\", 50) FROM \"http_req_duration\" WHERE \"sync_type\" = 'full' AND $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "p50 delta", "query": "SELECT percentile(\"value\", 50) FROM \"http_req_duration\" WHERE \"sync_type\" = 'delta' AND $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" }
+      ]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "k6" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "bars", "fillOpacity": 80, "stacking": { "mode": "normal" } } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "title": "Sync Throughput (req/s)",
+      "type": "timeseries",
+      "targets": [
+        { "alias": "full syncs", "query": "SELECT count(\"value\") FROM \"http_reqs\" WHERE \"sync_type\" = 'full' AND $timeFilter GROUP BY time($__interval) fill(0)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "delta syncs", "query": "SELECT count(\"value\") FROM \"http_reqs\" WHERE \"sync_type\" = 'delta' AND $timeFilter GROUP BY time($__interval) fill(0)", "rawQuery": true, "resultFormat": "time_series" }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "title": "API Queries",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "k6" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "ms", "custom": { "drawStyle": "line", "fillOpacity": 10, "pointSize": 5, "lineWidth": 1 } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "title": "Query Duration by Type",
+      "type": "timeseries",
+      "targets": [
+        { "alias": "keyword p95", "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE \"query_type\" = 'keyword' AND $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "filter p95", "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE \"query_type\" = 'filter' AND $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "autocomplete p95", "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE \"query_type\" = 'autocomplete' AND $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "count p95", "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE \"query_type\" = 'count' AND $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "related p95", "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE \"query_type\" = 'related' AND $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" }
+      ]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "k6" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "bars", "fillOpacity": 80, "stacking": { "mode": "normal" } } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "title": "Query Throughput by Type",
+      "type": "timeseries",
+      "targets": [
+        { "alias": "keyword", "query": "SELECT count(\"value\") FROM \"http_reqs\" WHERE \"query_type\" = 'keyword' AND $timeFilter GROUP BY time($__interval) fill(0)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "filter", "query": "SELECT count(\"value\") FROM \"http_reqs\" WHERE \"query_type\" = 'filter' AND $timeFilter GROUP BY time($__interval) fill(0)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "autocomplete", "query": "SELECT count(\"value\") FROM \"http_reqs\" WHERE \"query_type\" = 'autocomplete' AND $timeFilter GROUP BY time($__interval) fill(0)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "count", "query": "SELECT count(\"value\") FROM \"http_reqs\" WHERE \"query_type\" = 'count' AND $timeFilter GROUP BY time($__interval) fill(0)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "related", "query": "SELECT count(\"value\") FROM \"http_reqs\" WHERE \"query_type\" = 'related' AND $timeFilter GROUP BY time($__interval) fill(0)", "rawQuery": true, "resultFormat": "time_series" }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "title": "WebSocket Subscriptions",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "k6" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }] } }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 24 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["sum"] } },
+      "title": "Messages Received",
+      "type": "stat",
+      "targets": [{ "query": "SELECT sum(\"value\") FROM \"ws_messages_received\" WHERE $timeFilter", "rawQuery": true, "resultFormat": "time_series" }]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "k6" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "ms", "custom": { "drawStyle": "line", "fillOpacity": 10, "pointSize": 5, "lineWidth": 1 } }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 24 },
+      "title": "Inter-Message Latency",
+      "type": "timeseries",
+      "targets": [
+        { "alias": "p95", "query": "SELECT percentile(\"value\", 95) FROM \"ws_inter_message_latency\" WHERE $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "p50", "query": "SELECT percentile(\"value\", 50) FROM \"ws_inter_message_latency\" WHERE $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" }
+      ]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "k6" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "ms", "custom": { "drawStyle": "line", "fillOpacity": 10, "pointSize": 5, "lineWidth": 1 } }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 24 },
+      "title": "WebSocket Connect Time",
+      "type": "timeseries",
+      "targets": [
+        { "alias": "p95", "query": "SELECT percentile(\"value\", 95) FROM \"ws_connect_time\" WHERE $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" },
+        { "alias": "p50", "query": "SELECT percentile(\"value\", 50) FROM \"ws_connect_time\" WHERE $timeFilter GROUP BY time($__interval) fill(null)", "rawQuery": true, "resultFormat": "time_series" }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 },
+      "title": "Pod Resources (CPU / Memory)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "cluster-prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 10, "pointSize": 5, "lineWidth": 1 } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 31 },
+      "title": "CPU Usage (cores)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(container_cpu_usage_seconds_total{namespace='open-cluster-management', container='search-indexer'}[2m])", "legendFormat": "indexer", "refId": "A" },
+        { "expr": "rate(container_cpu_usage_seconds_total{namespace='open-cluster-management', container='search-api'}[2m])", "legendFormat": "api", "refId": "B" },
+        { "expr": "rate(container_cpu_usage_seconds_total{namespace='open-cluster-management', container='search-postgres'}[2m])", "legendFormat": "postgres", "refId": "C" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "cluster-prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 10, "pointSize": 5, "lineWidth": 1 } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 31 },
+      "title": "Memory Usage (working set)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "container_memory_working_set_bytes{namespace='open-cluster-management', container='search-indexer'}", "legendFormat": "indexer", "refId": "A" },
+        { "expr": "container_memory_working_set_bytes{namespace='open-cluster-management', container='search-api'}", "legendFormat": "api", "refId": "B" },
+        { "expr": "container_memory_working_set_bytes{namespace='open-cluster-management', container='search-postgres'}", "legendFormat": "postgres", "refId": "C" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "refresh": "5s",
+  "title": "k6 Search Scale Test",
+  "uid": "k6-search-scale-test"
+}

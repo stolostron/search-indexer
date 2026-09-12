@@ -82,3 +82,47 @@ ifeq (,$(shell which locust))
 	exit 1
 endif
 
+# --- k6 scale testing ---
+# Note: env vars prefixed K6_ are reserved by k6 as CLI overrides.
+# Use TEST_ prefix for our variables to avoid collisions.
+TEST_VUS ?= 2
+TEST_DURATION ?= 60s
+INDEXER_HOST ?= $(shell oc get route search-indexer -n open-cluster-management -o jsonpath='{.spec.host}' 2>/dev/null || echo "localhost:3010")
+API_HOST ?= $(shell oc get route search-api -n open-cluster-management -o jsonpath='{.spec.host}' 2>/dev/null || echo "localhost:4010")
+API_TOKEN ?= $(shell oc whoami -t 2>/dev/null)
+THANOS_HOST ?= $(shell oc get route thanos-querier -n openshift-monitoring -o jsonpath='{.spec.host}' 2>/dev/null || echo "localhost:9091")
+K6_INFLUX ?= http://localhost:8086/k6
+COMPOSE ?= $(shell which podman-compose 2>/dev/null || which docker-compose 2>/dev/null || echo "podman compose")
+
+check-k6: ## Checks if k6 is installed in the system.
+ifeq (,$(shell which k6))
+	@echo k6 is required but not found.
+	@echo Install k6 to continue. For more info visit: https://grafana.com/docs/k6/latest/set-up/install-k6/
+	exit 1
+endif
+
+test-k6-setup: ## Start Grafana + InfluxDB monitoring stack for k6.
+	THANOS_HOST=$(THANOS_HOST) API_TOKEN=$(API_TOKEN) envsubst < test/k6/grafana-datasource.yml.tpl > test/k6/grafana-datasource.yml
+	cd test/k6 && $(COMPOSE) up -d
+	@echo "Grafana available at http://localhost:3000 (admin/admin)"
+
+test-k6-indexer: check-k6 ## Run k6 indexer sync load test.
+	TEST_VUS=$(TEST_VUS) TEST_DURATION=$(TEST_DURATION) INDEXER_HOST=$(INDEXER_HOST) \
+		k6 run --out influxdb=$(K6_INFLUX) test/k6/scripts/indexer-sync.js
+
+test-k6-api: check-k6 ## Run k6 API query load test.
+	TEST_VUS=$(TEST_VUS) TEST_DURATION=$(TEST_DURATION) API_HOST=$(API_HOST) API_TOKEN=$(API_TOKEN) \
+		k6 run --out influxdb=$(K6_INFLUX) test/k6/scripts/api-queries.js
+
+test-k6-subscriptions: check-k6 ## Run k6 WebSocket subscription load test.
+	TEST_VUS=$(TEST_VUS) TEST_DURATION=$(TEST_DURATION) API_HOST=$(API_HOST) API_TOKEN=$(API_TOKEN) \
+		k6 run --out influxdb=$(K6_INFLUX) test/k6/scripts/subscriptions.js
+
+test-k6-combined: check-k6 ## Run all k6 load tests simultaneously.
+	INDEXER_HOST=$(INDEXER_HOST) API_HOST=$(API_HOST) API_TOKEN=$(API_TOKEN) \
+	TEST_DURATION=$(TEST_DURATION) \
+		k6 run --out influxdb=$(K6_INFLUX) test/k6/scripts/combined.js
+
+test-k6-teardown: ## Stop and remove k6 monitoring stack.
+	cd test/k6 && $(COMPOSE) down -v
+

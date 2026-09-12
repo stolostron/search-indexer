@@ -1,0 +1,1217 @@
+{
+  "addResources": [
+    {
+      "uid": "cluster__<<CLUSTER_NAME>>",
+      "resourceString": "clusters",
+      "properties": {
+        "cpu": 8,
+        "kind": "Cluster",
+        "name": "<<CLUSTER_NAME>>",
+        "label": {
+          "env": "dev",
+          "name": "<<CLUSTER_NAME>>",
+          "cloud": "Amazon",
+          "vendor": "OpenShift",
+          "clusterID": "abcd7696-da2f-46f5-8dc6-0357c4aacf5e",
+          "openshiftVersion": "4.10.5",
+          "cluster.open-cluster-management.io/clusterset": "auto-gitops-cluster-set",
+          "feature.open-cluster-management.io/addon-work-manager": "available",
+          "feature.open-cluster-management.io/addon-search-collector": "available",
+          "feature.open-cluster-management.io/addon-application-manager": "available",
+          "feature.open-cluster-management.io/addon-iam-policy-controller": "available",
+          "feature.open-cluster-management.io/addon-cert-policy-controller": "available",
+          "feature.open-cluster-management.io/addon-config-policy-controller": "available",
+          "feature.open-cluster-management.io/addon-governance-policy-framework": "available"
+        },
+        "nodes": 1,
+        "memory": "32104404Ki",
+        "created": "2022-06-02T15:54:08Z",
+        "apigroup": "internal.open-cluster-management.io",
+        "consoleURL": "https://console-openshift-console.apps.<<CLUSTER_NAME>>.basedomain.com",
+        "kubernetesVersion": "v1.23.3+e419edf",
+        "ManagedClusterJoined": "True",
+        "HubAcceptedManagedCluster": "True",
+        "ManagedClusterImportSucceeded": "True",
+        "ManagedClusterConditionAvailable": "True"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/da81b263-a69c-47c3-a35a-89103f02d0d7",
+      "resourceString": "secrets",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:12:27Z",
+        "kind": "Secret",
+        "name": "samples-operator-tls",
+        "namespace": "openshift-cluster-samples-operator"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/0b7a270e-a67a-4eb0-a44a-43a029a762ab",
+      "resourceString": "replicasets",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apps",
+        "apiversion": "v1",
+        "created": "2022-07-06T11:08:48Z",
+        "current": 1,
+        "desired": 1,
+        "kind": "ReplicaSet",
+        "label": {
+          "k8s-app": "machine-config-operator",
+          "pod-template-hash": "7b5c44f84"
+        },
+        "name": "machine-config-operator-7b5c44f84",
+        "namespace": "openshift-machine-config-operator"
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/bbfbf4e0-6590-4d3c-a8ae-28f0d2edc8a7"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/abba26df-1305-4d59-8ced-519780fce8a3",
+      "resourceString": "configmaps",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-07T13:31:54Z",
+        "kind": "ConfigMap",
+        "name": "kube-apiserver-cert-syncer-kubeconfig-5",
+        "namespace": "openshift-kube-apiserver"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/31584a24-10d7-415e-b448-27cc1652059d",
+      "resourceString": "clusterroles",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "rbac.authorization.k8s.io",
+        "apiversion": "v1",
+        "created": "2022-07-06T15:44:22Z",
+        "kind": "ClusterRole",
+        "label": {
+          "olm.opgroup.permissions/aggregate-to-d15555ad75b310bc-edit": "true",
+          "rbac.authorization.k8s.io/aggregate-to-edit": "true"
+        },
+        "name": "submarinerdiagnoseconfigs.submarineraddon.open-cluster-management.io-v1alpha1-edit"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/56fab47b-121e-4b4c-a614-75ab22ab5e2a",
+      "resourceString": "serviceaccounts",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:12:28Z",
+        "kind": "ServiceAccount",
+        "name": "deployer",
+        "namespace": "openshift-host-network"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/c16f83db-7e18-4bce-b5e7-3fb118befc5f",
+      "resourceString": "clusterroles",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "rbac.authorization.k8s.io",
+        "apiversion": "v1",
+        "created": "2022-07-06T11:15:47Z",
+        "kind": "ClusterRole",
+        "name": "system:registry"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/ed58fd18-e1cd-4e44-b6a4-bf9eb82499dc",
+      "resourceString": "rolebindings",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "rbac.authorization.k8s.io",
+        "apiversion": "v1",
+        "created": "2022-07-06T11:09:48Z",
+        "kind": "RoleBinding",
+        "name": "system:openshift:leader-locking-kube-controller-manager",
+        "namespace": "kube-system"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/bb18c844-5323-490b-9309-5824f7f39969",
+      "resourceString": "configmaps",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:08:21Z",
+        "kind": "ConfigMap",
+        "name": "kube-root-ca.crt",
+        "namespace": "openshift-config-operator"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/40894b78-dabe-468e-a89b-1a9d1e7ad2dc",
+      "resourceString": "configmaps",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:18:49Z",
+        "kind": "ConfigMap",
+        "label": {
+          "app.kubernetes.io/component": "grafana",
+          "app.kubernetes.io/name": "grafana",
+          "app.kubernetes.io/part-of": "openshift-monitoring",
+          "app.kubernetes.io/version": "8.3.4"
+        },
+        "name": "grafana-dashboard-k8s-resources-namespace",
+        "namespace": "openshift-monitoring"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/679a1bf1-484d-4c28-99fa-addba5ba1752",
+      "resourceString": "clusterroles",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "rbac.authorization.k8s.io",
+        "apiversion": "v1",
+        "created": "2022-07-06T15:44:22Z",
+        "kind": "ClusterRole",
+        "label": {
+          "olm.opgroup.permissions/aggregate-to-759b9014e705e6e2-view": "true",
+          "rbac.authorization.k8s.io/aggregate-to-view": "true"
+        },
+        "name": "observatoria.core.observatorium.io-v1alpha1-view"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/0f8d8812-e9da-4ee0-a128-fd0639a86806",
+      "resourceString": "secrets",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:19:39Z",
+        "kind": "Secret",
+        "name": "etcd-client-4",
+        "namespace": "openshift-kube-apiserver"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/b763cc91-860b-49d3-b0bf-68c9094e681a",
+      "resourceString": "configmaps",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:10:39Z",
+        "kind": "ConfigMap",
+        "name": "operator-certs-ca-bundle",
+        "namespace": "openshift-monitoring"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/59d8472b-14fd-4ca8-8851-55330bda2330",
+      "resourceString": "secrets",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:12:38Z",
+        "kind": "Secret",
+        "name": "openshift-kube-scheduler-sa-dockercfg-sz9kl",
+        "namespace": "openshift-kube-scheduler"
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/bde833e8-0760-4780-a1fd-674d55a59b02"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/09579e8e-334e-418d-9cfd-6af51fddcf37",
+      "resourceString": "secrets",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:10:03Z",
+        "kind": "Secret",
+        "name": "cluster-autoscaler-operator-cert",
+        "namespace": "openshift-machine-api"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/467ed3a8-8003-44f4-a2ce-b3eb0d7c1c35",
+      "resourceString": "pods",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "container": [
+          "installer"
+        ],
+        "created": "2022-07-06T11:15:56Z",
+        "hostIP": "10.0.132.239",
+        "image": [
+          "quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:5ca849270c4ca182b2670e965bca0cea71004581ff128a76c232aac03d79649c"
+        ],
+        "kind": "Pod",
+        "label": {
+          "app": "installer"
+        },
+        "name": "installer-8-ip-10-0-132-239.us-east-2.compute.internal",
+        "namespace": "openshift-kube-scheduler",
+        "podIP": "10.128.0.73",
+        "restarts": 0,
+        "startedAt": "2022-07-06T11:15:56Z",
+        "status": "Completed"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/e7b5849e-59f8-4eed-8323-1814e1a9a2fa",
+      "resourceString": "secrets",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T20:25:07Z",
+        "kind": "Secret",
+        "name": "search-serviceaccount-token-wc2qr",
+        "namespace": "open-cluster-management"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/f834cb4f-6987-445d-bb95-6cc917109023",
+      "resourceString": "configmaps",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:09:48Z",
+        "kind": "ConfigMap",
+        "name": "kube-controller-cert-syncer-kubeconfig",
+        "namespace": "openshift-kube-controller-manager"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/5368c541-969b-4bc1-8b2f-71f83551e002",
+      "resourceString": "namespaces",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:08:32Z",
+        "kind": "Namespace",
+        "label": {
+          "kubernetes.io/metadata.name": "openshift-monitoring",
+          "name": "openshift-monitoring",
+          "network.openshift.io/policy-group": "monitoring",
+          "olm.operatorgroup.uid/37653439-61ff-4c28-b18f-c48f3a644764": "",
+          "openshift.io/cluster-monitoring": "true",
+          "pod-security.kubernetes.io/audit": "privileged",
+          "pod-security.kubernetes.io/enforce": "privileged",
+          "pod-security.kubernetes.io/warn": "privileged"
+        },
+        "name": "openshift-monitoring",
+        "status": "Active"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/4ebb781e-d02a-4b2f-9475-9dc1cd601323",
+      "resourceString": "deployments",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apps",
+        "apiversion": "v1",
+        "available": 1,
+        "created": "2022-07-06T11:09:02Z",
+        "current": 1,
+        "desired": 1,
+        "kind": "Deployment",
+        "label": {
+          "k8s-app": "cluster-baremetal-operator"
+        },
+        "name": "cluster-baremetal-operator",
+        "namespace": "openshift-machine-api",
+        "ready": 1
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/b7311c57-d3be-48ae-bac3-5cf488120c1a",
+      "resourceString": "pods",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "container": [
+          "registry-server"
+        ],
+        "created": "2022-07-13T15:42:14Z",
+        "hostIP": "10.0.132.239",
+        "image": [
+          "registry.redhat.io/redhat/redhat-marketplace-index:v4.10"
+        ],
+        "kind": "Pod",
+        "label": {
+          "catalogsource.operators.coreos.com/update": "",
+          "olm.catalogSource": "redhat-marketplace",
+          "olm.pod-spec-hash": "6d45844dbc"
+        },
+        "name": "redhat-marketplace-dwwt6",
+        "namespace": "openshift-marketplace",
+        "podIP": "10.128.0.58",
+        "restarts": 1,
+        "startedAt": "2022-07-13T15:42:14Z",
+        "status": "Running"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/b806d685-b02d-494f-9690-6dd05b783ae1",
+      "resourceString": "customresourcedefinitions",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apiextensions.k8s.io",
+        "apiversion": "v1",
+        "created": "2022-07-06T11:08:11Z",
+        "kind": "CustomResourceDefinition",
+        "name": "consoleexternalloglinks.console.openshift.io"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/0c59910b-1a1a-469a-ad4a-bac7dc4e957b",
+      "resourceString": "pods",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "_ownerUID": "<<CLUSTER_NAME>>/fcbf56b7-aa15-427a-857f-80fceae845e0",
+        "apiversion": "v1",
+        "container": [
+          "multiclusterhub-operator"
+        ],
+        "created": "2022-07-06T15:43:35Z",
+        "hostIP": "10.0.132.239",
+        "image": [
+          "registry.redhat.io/rhacm2/multiclusterhub-rhel8@sha256:2c4c921314c826ce46ebb78fee65af06fe921dbb4fdb50ca07acbe9bad7199a7"
+        ],
+        "kind": "Pod",
+        "label": {
+          "name": "multiclusterhub-operator",
+          "pod-template-hash": "55d9c9cdc9"
+        },
+        "name": "multiclusterhub-operator-55d9c9cdc9-gq8pg",
+        "namespace": "open-cluster-management",
+        "podIP": "10.128.0.53",
+        "restarts": 12,
+        "startedAt": "2022-07-06T15:43:35Z",
+        "status": "Running"
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/fcbf56b7-aa15-427a-857f-80fceae845e0"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/611513d6-714e-4e2f-8c9e-fa60fa86c461",
+      "resourceString": "serviceaccounts",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:08:21Z",
+        "kind": "ServiceAccount",
+        "name": "default",
+        "namespace": "openshift-kni-infra"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/375ebaf4-b664-4d92-86b0-0ed6200ff863",
+      "resourceString": "serviceaccounts",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:12:25Z",
+        "kind": "ServiceAccount",
+        "name": "deployer",
+        "namespace": "openshift-operator-lifecycle-manager"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/340135a4-6511-4b69-94a1-5dff2e053c00",
+      "resourceString": "replicasets",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apps",
+        "apiversion": "v1",
+        "created": "2022-07-06T11:08:34Z",
+        "current": 1,
+        "desired": 1,
+        "kind": "ReplicaSet",
+        "label": {
+          "app": "service-ca-operator",
+          "pod-template-hash": "65d6c9595"
+        },
+        "name": "service-ca-operator-65d6c9595",
+        "namespace": "openshift-service-ca-operator"
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/221c50fb-29be-4b0b-b482-46d124135ca4"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/3c4c2cbb-6e00-4aaa-8168-3ffdacd9309f",
+      "resourceString": "services",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "clusterIP": "172.30.239.182",
+        "created": "2022-07-06T11:08:31Z",
+        "kind": "Service",
+        "label": {
+          "name": "dns-operator"
+        },
+        "name": "metrics",
+        "namespace": "openshift-dns-operator",
+        "port": [
+          "9393/TCP"
+        ],
+        "type": "ClusterIP"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/1ba51f9f-1151-4855-bd0f-30d026fac8e4",
+      "resourceString": "deployments",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apps",
+        "apiversion": "v1",
+        "available": 1,
+        "created": "2022-07-06T11:19:26Z",
+        "current": 1,
+        "desired": 1,
+        "kind": "Deployment",
+        "label": {
+          "app": "oauth-openshift"
+        },
+        "name": "oauth-openshift",
+        "namespace": "openshift-authentication",
+        "ready": 1
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/cd138356-eeca-4bef-afc8-a5f4a68fb462",
+      "resourceString": "replicasets",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apps",
+        "apiversion": "v1",
+        "created": "2022-07-06T11:09:01Z",
+        "current": 1,
+        "desired": 1,
+        "kind": "ReplicaSet",
+        "label": {
+          "name": "cluster-image-registry-operator",
+          "pod-template-hash": "584d54c484"
+        },
+        "name": "cluster-image-registry-operator-584d54c484",
+        "namespace": "openshift-image-registry"
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/ddb5ab70-8df5-4410-9b20-2d6190c90057"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/77aaf052-e9b7-4165-8849-35307487830f",
+      "resourceString": "customresourcedefinitions",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apiextensions.k8s.io",
+        "apiversion": "v1",
+        "created": "2022-07-06T11:08:22Z",
+        "kind": "CustomResourceDefinition",
+        "name": "probes.monitoring.coreos.com"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/ec8a82c3-e4eb-4088-b61e-04cd2de62671",
+      "resourceString": "namespaces",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:08:15Z",
+        "kind": "Namespace",
+        "label": {
+          "kubernetes.io/metadata.name": "openshift-machine-config-operator",
+          "name": "openshift-machine-config-operator",
+          "olm.operatorgroup.uid/37653439-61ff-4c28-b18f-c48f3a644764": "",
+          "openshift.io/cluster-monitoring": "true",
+          "openshift.io/run-level": "",
+          "pod-security.kubernetes.io/audit": "privileged",
+          "pod-security.kubernetes.io/enforce": "privileged",
+          "pod-security.kubernetes.io/warn": "privileged"
+        },
+        "name": "openshift-machine-config-operator",
+        "status": "Active"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/20c01a66-4016-4972-a333-c47a36edf629",
+      "resourceString": "rolebindings",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "rbac.authorization.k8s.io",
+        "apiversion": "v1",
+        "created": "2022-07-06T11:12:30Z",
+        "kind": "RoleBinding",
+        "name": "system:image-pullers",
+        "namespace": "openshift-ingress"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/0a343105-6898-4539-a84e-a5adf036532d",
+      "resourceString": "customresourcedefinitions",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apiextensions.k8s.io",
+        "apiversion": "v1",
+        "created": "2022-07-06T16:04:59Z",
+        "kind": "CustomResourceDefinition",
+        "name": "agents.agent-install.openshift.io"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/3d2b5d98-391d-4e3a-b920-c4661f4f706b",
+      "resourceString": "replicasets",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apps",
+        "apiversion": "v1",
+        "created": "2022-07-06T11:15:54Z",
+        "current": 1,
+        "desired": 1,
+        "kind": "ReplicaSet",
+        "label": {
+          "apiserver": "true",
+          "app": "openshift-apiserver-a",
+          "openshift-apiserver-anti-affinity": "true",
+          "pod-template-hash": "66c5888b55",
+          "revision": "1"
+        },
+        "name": "apiserver-66c5888b55",
+        "namespace": "openshift-apiserver"
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/2b70aca8-742f-4c82-89a6-f52fc2c22da6"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/8c0f1c41-18b8-4b22-bd31-c9222f53d51e",
+      "resourceString": "deployments",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apps",
+        "apiversion": "v1",
+        "available": 1,
+        "created": "2022-07-06T11:08:18Z",
+        "current": 1,
+        "desired": 1,
+        "kind": "Deployment",
+        "name": "cluster-version-operator",
+        "namespace": "openshift-cluster-version",
+        "ready": 1
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/343b0fe3-4222-46a0-99c5-502296f83847",
+      "resourceString": "deployments",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apps",
+        "apiversion": "v1",
+        "available": 1,
+        "created": "2022-07-06T16:05:23Z",
+        "current": 1,
+        "desired": 1,
+        "kind": "Deployment",
+        "label": {
+          "backplaneconfig.name": "multiclusterengine"
+        },
+        "name": "clusterlifecycle-state-metrics-v2",
+        "namespace": "multicluster-engine",
+        "ready": 1
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/342f7840-1920-4ac0-b7ee-33e5666d628f"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/8970dc96-7b11-4fc4-8b79-e9c75ee855b9",
+      "resourceString": "deployments",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apps",
+        "apiversion": "v1",
+        "available": 1,
+        "created": "2022-07-06T15:43:35Z",
+        "current": 1,
+        "desired": 1,
+        "kind": "Deployment",
+        "label": {
+          "olm.deployment-spec-hash": "7979b76949",
+          "olm.owner": "advanced-cluster-management.v2.5.0",
+          "olm.owner.kind": "ClusterServiceVersion",
+          "olm.owner.namespace": "open-cluster-management",
+          "operators.coreos.com/advanced-cluster-management.open-cluster-management": ""
+        },
+        "name": "multicluster-operators-channel",
+        "namespace": "open-cluster-management",
+        "ready": 1
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/78a8a862-e229-4a62-b8f2-895808df9dd1",
+      "resourceString": "rolebindings",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "rbac.authorization.k8s.io",
+        "apiversion": "v1",
+        "created": "2022-07-06T11:12:33Z",
+        "kind": "RoleBinding",
+        "name": "system:deployers",
+        "namespace": "openshift-infra"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/54e6c0ec-9e88-40ea-92f6-19929f1a41f4",
+      "resourceString": "namespaces",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "created": "2022-07-06T11:10:13Z",
+        "kind": "Namespace",
+        "label": {
+          "kubernetes.io/metadata.name": "openshift-dns",
+          "olm.operatorgroup.uid/37653439-61ff-4c28-b18f-c48f3a644764": "",
+          "openshift.io/cluster-monitoring": "true",
+          "openshift.io/run-level": "0",
+          "pod-security.kubernetes.io/audit": "privileged",
+          "pod-security.kubernetes.io/enforce": "privileged",
+          "pod-security.kubernetes.io/warn": "privileged"
+        },
+        "name": "openshift-dns",
+        "status": "Active"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/29b59909-b00a-43be-9aec-7ee096353295",
+      "resourceString": "services",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "clusterIP": "172.30.69.224",
+        "created": "2022-07-06T11:08:26Z",
+        "kind": "Service",
+        "label": {
+          "app": "kube-controller-manager-operator"
+        },
+        "name": "metrics",
+        "namespace": "openshift-kube-controller-manager-operator",
+        "port": [
+          "443/TCP"
+        ],
+        "type": "ClusterIP"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/db7ba51d-4777-413e-80b9-83586dfcac64",
+      "resourceString": "replicasets",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apigroup": "apps",
+        "apiversion": "v1",
+        "created": "2022-07-06T11:18:57Z",
+        "current": 0,
+        "desired": 0,
+        "kind": "ReplicaSet",
+        "label": {
+          "app": "console",
+          "component": "ui",
+          "pod-template-hash": "65cf5b694c"
+        },
+        "name": "console-65cf5b694c",
+        "namespace": "openshift-console"
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/2cb165fc-dc9c-4fcf-b9f6-4b7beeeb0891"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/06da4c13-cd40-4599-b627-568725ff4df6",
+      "resourceString": "services",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "clusterIP": "",
+        "created": "2022-07-06T11:10:13Z",
+        "kind": "Service",
+        "name": "openshift",
+        "namespace": "default",
+        "type": "ExternalName"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/aa0dfbf8-1353-418d-b7b6-e4cac6e0c7bd",
+      "resourceString": "pods",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "_ownerUID": "<<CLUSTER_NAME>>/2e0dc238-bc43-45ae-8cff-8e1d1cf5c98b",
+        "apiversion": "v1",
+        "container": [
+          "status-sync",
+          "template-sync"
+        ],
+        "created": "2022-07-06T16:08:55Z",
+        "hostIP": "10.0.132.239",
+        "image": [
+          "registry.redhat.io/rhacm2/governance-policy-status-sync-rhel8@sha256:0755ea52d7d7f7ad33063ecbe64b4b6392891d91f4ded62eb31ab0eb0aab8cf9",
+          "registry.redhat.io/rhacm2/governance-policy-template-sync-rhel8@sha256:00283f5a8223879174389c8e621528ff5979f2ed41c8d3d5f2e62ded7558fa62"
+        ],
+        "kind": "Pod",
+        "label": {
+          "app": "governance-policy-framework",
+          "chart": "governance-policy-framework-2.2.0",
+          "heritage": "Helm",
+          "pod-template-hash": "6cfb6bf66d",
+          "release": "governance-policy-framework"
+        },
+        "name": "governance-policy-framework-6cfb6bf66d-g6ppn",
+        "namespace": "open-cluster-management-agent-addon",
+        "podIP": "10.128.0.66",
+        "restarts": 67,
+        "startedAt": "2022-07-06T16:08:55Z",
+        "status": "Running"
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/2e0dc238-bc43-45ae-8cff-8e1d1cf5c98b"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/987966f4-cca9-4e41-9fbf-769d47465ccc",
+      "resourceString": "services",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "clusterIP": "172.30.33.134",
+        "created": "2022-07-06T15:44:11Z",
+        "kind": "Service",
+        "name": "multicluster-operators-application-svc",
+        "namespace": "open-cluster-management",
+        "port": [
+          "443/TCP"
+        ],
+        "type": "ClusterIP"
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/45f898c9-0008-4a31-88f3-9d3a38f7d37d"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/6dffad55-e75b-492a-9c2f-f2a7f628cc60",
+      "resourceString": "pods",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "container": [
+          "pruner"
+        ],
+        "created": "2022-07-06T11:12:07Z",
+        "hostIP": "10.0.132.239",
+        "image": [
+          "quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:5ca849270c4ca182b2670e965bca0cea71004581ff128a76c232aac03d79649c"
+        ],
+        "kind": "Pod",
+        "label": {
+          "app": "pruner"
+        },
+        "name": "revision-pruner-7-ip-10-0-132-239.us-east-2.compute.internal",
+        "namespace": "openshift-kube-scheduler",
+        "podIP": "10.128.0.59",
+        "restarts": 0,
+        "startedAt": "2022-07-06T11:12:07Z",
+        "status": "Completed"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/61f300ad-2451-4555-a175-7325e6f8e7ee",
+      "resourceString": "services",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "apiversion": "v1",
+        "clusterIP": "None",
+        "created": "2022-07-06T11:18:54Z",
+        "kind": "Service",
+        "label": {
+          "operated-alertmanager": "true"
+        },
+        "name": "alertmanager-operated",
+        "namespace": "openshift-monitoring",
+        "port": [
+          "9093/TCP",
+          "9094/TCP",
+          "9094/UDP"
+        ],
+        "type": "ClusterIP"
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/b7b7a1c5-70fa-4063-92f0-c3fceccc8e91",
+      "resourceString": "pods",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "_ownerUID": "<<CLUSTER_NAME>>/69e12404-8be6-4b6f-a271-e3acfd8a6387",
+        "apiversion": "v1",
+        "container": [
+          "kube-rbac-proxy",
+          "cluster-autoscaler-operator"
+        ],
+        "created": "2022-07-06T11:09:02Z",
+        "hostIP": "10.0.132.239",
+        "image": [
+          "quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:3df935837634adb5df8080ac7263c7fb4c4f9d8fd45b36e32ca4fb802bdeaecc",
+          "quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:6f7e688be03637659483d9d8c0b827ac6f2e7a8b3367f22aeaf1f2fef58b1b26"
+        ],
+        "kind": "Pod",
+        "label": {
+          "k8s-app": "cluster-autoscaler-operator",
+          "pod-template-hash": "6859fb9676"
+        },
+        "name": "cluster-autoscaler-operator-6859fb9676-4swdk",
+        "namespace": "openshift-machine-api",
+        "podIP": "10.128.0.54",
+        "restarts": 22,
+        "startedAt": "2022-07-06T11:09:27Z",
+        "status": "Running"
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/69e12404-8be6-4b6f-a271-e3acfd8a6387"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/1c793ff1-2665-4a71-8008-76cc97759e68",
+      "resourceString": "pods",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "_ownerUID": "<<CLUSTER_NAME>>/c7d57ece-e69d-4816-b542-9e01dd945e3d",
+        "apiversion": "v1",
+        "container": [
+          "multiclusterhub-repo"
+        ],
+        "created": "2022-07-06T16:03:22Z",
+        "hostIP": "10.0.132.239",
+        "image": [
+          "registry.redhat.io/rhacm2/multiclusterhub-repo-rhel8@sha256:5e6479e8a540af7d95a652689d97c0d3300ff5193029cf0207af4ddd104590f1"
+        ],
+        "kind": "Pod",
+        "label": {
+          "app": "multiclusterhub-repo",
+          "ocm-antiaffinity-selector": "multiclusterhub-repo",
+          "pod-template-hash": "7cd6d9cdcd"
+        },
+        "name": "multiclusterhub-repo-7cd6d9cdcd-6q4q2",
+        "namespace": "open-cluster-management",
+        "podIP": "10.128.0.102",
+        "restarts": 10,
+        "startedAt": "2022-07-06T16:03:22Z",
+        "status": "Running"
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/c7d57ece-e69d-4816-b542-9e01dd945e3d"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/a3e45b0d-1b05-4f66-9e32-4d79c47d7520",
+      "resourceString": "pods",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "_ownerUID": "<<CLUSTER_NAME>>/ed4d9603-f4ff-4523-9bc8-14c7b80114ad",
+        "apiversion": "v1",
+        "container": [
+          "kube-rbac-proxy",
+          "governance-policy-propagator"
+        ],
+        "created": "2022-07-06T16:06:53Z",
+        "hostIP": "10.0.132.239",
+        "image": [
+          "registry.redhat.io/rhacm2/kube-rbac-proxy-rhel8@sha256:ae038213583d286c95bfcd92fa442997cd84f56d1d1297212f36c32af7ad737c",
+          "registry.redhat.io/rhacm2/governance-policy-propagator-rhel8@sha256:e141118f9f10404e3a7c7ae17fe42bb203fb2ef8f016fcc57d4e6a874d9523ac"
+        ],
+        "kind": "Pod",
+        "label": {
+          "app": "grc",
+          "app.kubernetes.io/instance": "grc-a58b0",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "grc",
+          "chart": "grc-2.5.0",
+          "component": "ocm-policy-propagator",
+          "helm.sh/chart": "grc-2.5.0",
+          "heritage": "Helm",
+          "name": "governance-policy-propagator",
+          "ocm-antiaffinity-selector": "grcpolicypropagator",
+          "pod-template-hash": "596784dd9f",
+          "release": "grc-a58b0"
+        },
+        "name": "grc-a58b0-policy-propagator-596784dd9f-9lk76",
+        "namespace": "open-cluster-management",
+        "podIP": "10.128.0.119",
+        "restarts": 23,
+        "startedAt": "2022-07-06T16:06:54Z",
+        "status": "Running"
+      },
+      "Metadata": {
+        "OwnerUID": "<<CLUSTER_NAME>>/ed4d9603-f4ff-4523-9bc8-14c7b80114ad"
+      }
+    },
+    {
+      "uid": "<<CLUSTER_NAME>>/688d316e-6333-43a4-b7c3-e4a4d585e737",
+      "resourceString": "nodes",
+      "properties": {
+        "_clusterNamespace": "<<CLUSTER_NAME>>-ns",
+        "_hubClusterResource": true,
+        "_systemUUID": "ec2236dd-0fde-d6bc-ddaa-7cea0c248e91",
+        "apiversion": "v1",
+        "architecture": "amd64",
+        "cpu": 8,
+        "created": "2022-07-06T11:08:47Z",
+        "kind": "Node",
+        "label": {
+          "beta.kubernetes.io/arch": "amd64",
+          "beta.kubernetes.io/instance-type": "m5.2xlarge",
+          "beta.kubernetes.io/os": "linux",
+          "failure-domain.beta.kubernetes.io/region": "us-east-2",
+          "failure-domain.beta.kubernetes.io/zone": "us-east-2a",
+          "kubernetes.io/arch": "amd64",
+          "kubernetes.io/hostname": "ip-10-0-132-239.us-east-2.compute.internal",
+          "kubernetes.io/os": "linux",
+          "node-role.kubernetes.io/master": "",
+          "node-role.kubernetes.io/worker": "",
+          "node.kubernetes.io/instance-type": "m5.2xlarge",
+          "node.openshift.io/os_id": "rhcos",
+          "topology.ebs.csi.aws.com/zone": "us-east-2a",
+          "topology.kubernetes.io/region": "us-east-2",
+          "topology.kubernetes.io/zone": "us-east-2a"
+        },
+        "name": "ip-10-0-132-239.us-east-2.compute.internal",
+        "osImage": "Red Hat Enterprise Linux CoreOS 410.84.202206010432-0 (Ootpa)",
+        "role": [
+          "master",
+          "worker"
+        ]
+      },
+      "Metadata": {
+        "OwnerUID": ""
+      }
+    }
+  ],
+  "addEdges": [
+    {
+      "EdgeType": "runsOn",
+      "SourceUID": "<<CLUSTER_NAME>>/6dffad55-e75b-492a-9c2f-f2a7f628cc60",
+      "DestUID": "<<CLUSTER_NAME>>/688d316e-6333-43a4-b7c3-e4a4d585e737",
+      "SourceKind": "Pod",
+      "DestKind": "Node"
+    },
+    {
+      "EdgeType": "runsOn",
+      "SourceUID": "<<CLUSTER_NAME>>/b7311c57-d3be-48ae-bac3-5cf488120c1a",
+      "DestUID": "<<CLUSTER_NAME>>/688d316e-6333-43a4-b7c3-e4a4d585e737",
+      "SourceKind": "Pod",
+      "DestKind": "Node"
+    },
+    {
+      "EdgeType": "runsOn",
+      "SourceUID": "<<CLUSTER_NAME>>/467ed3a8-8003-44f4-a2ce-b3eb0d7c1c35",
+      "DestUID": "<<CLUSTER_NAME>>/688d316e-6333-43a4-b7c3-e4a4d585e737",
+      "SourceKind": "Pod",
+      "DestKind": "Node"
+    },
+    {
+      "EdgeType": "runsOn",
+      "SourceUID": "<<CLUSTER_NAME>>/a3e45b0d-1b05-4f66-9e32-4d79c47d7520",
+      "DestUID": "<<CLUSTER_NAME>>/688d316e-6333-43a4-b7c3-e4a4d585e737",
+      "SourceKind": "Pod",
+      "DestKind": "Node"
+    },
+    {
+      "EdgeType": "runsOn",
+      "SourceUID": "<<CLUSTER_NAME>>/0c59910b-1a1a-469a-ad4a-bac7dc4e957b",
+      "DestUID": "<<CLUSTER_NAME>>/688d316e-6333-43a4-b7c3-e4a4d585e737",
+      "SourceKind": "Pod",
+      "DestKind": "Node"
+    },
+    {
+      "EdgeType": "attachedTo",
+      "SourceUID": "<<CLUSTER_NAME>>/b7b7a1c5-70fa-4063-92f0-c3fceccc8e91",
+      "DestUID": "<<CLUSTER_NAME>>/09579e8e-334e-418d-9cfd-6af51fddcf37",
+      "SourceKind": "Pod",
+      "DestKind": "Secret"
+    },
+    {
+      "EdgeType": "runsOn",
+      "SourceUID": "<<CLUSTER_NAME>>/b7b7a1c5-70fa-4063-92f0-c3fceccc8e91",
+      "DestUID": "<<CLUSTER_NAME>>/688d316e-6333-43a4-b7c3-e4a4d585e737",
+      "SourceKind": "Pod",
+      "DestKind": "Node"
+    },
+    {
+      "EdgeType": "runsOn",
+      "SourceUID": "<<CLUSTER_NAME>>/aa0dfbf8-1353-418d-b7b6-e4cac6e0c7bd",
+      "DestUID": "<<CLUSTER_NAME>>/688d316e-6333-43a4-b7c3-e4a4d585e737",
+      "SourceKind": "Pod",
+      "DestKind": "Node"
+    },
+    {
+      "EdgeType": "runsOn",
+      "SourceUID": "<<CLUSTER_NAME>>/1c793ff1-2665-4a71-8008-76cc97759e68",
+      "DestUID": "<<CLUSTER_NAME>>/688d316e-6333-43a4-b7c3-e4a4d585e737",
+      "SourceKind": "Pod",
+      "DestKind": "Node"
+    }
+  ],
+  "clearAll": true,
+  "requestId": 1
+}
