@@ -2,12 +2,6 @@
 
 The indexer exposes Prometheus metrics at `GET /metrics` (default port `:3010`, TLS).
 
-> **Registry note:** the indexer uses an isolated Prometheus registry (`prometheus.NewRegistry()`).
-> Standard Go runtime and process metrics are **not** included — only the five application metrics
-> described below are present in the scrape output.
-
----
-
 ## Endpoint
 
 | Detail | Value |
@@ -19,9 +13,32 @@ The indexer exposes Prometheus metrics at `GET /metrics` (default port `:3010`, 
 
 The server address can be overridden with the `AGGREGATOR_ADDRESS` environment variable.
 
----
 
 ## Metrics
+
+| Metric | Type | Labels | What it measures |
+|---|---|---|---|
+| `search_indexer_request_count` | CounterVec | `managed_cluster_name` | Sync requests received per managed cluster |
+| `search_indexer_request_duration` | HistogramVec | `code` | Sync request processing latency (seconds) |
+| `search_indexer_requests_in_flight` | Gauge | — | Concurrent sync requests currently being processed |
+| `search_indexer_request_size` | Histogram | — | Resource changes (add+update+delete) per **delta** sync |
+| `search_indexer_resources_processed_total` | CounterVec | `operation` (`add`/`update`/`delete`) | Resources successfully written to PostgreSQL |
+
+## PromQL
+
+Useful queries to visualize the health of this service.
+
+| Check | PromQL |
+|---|---|
+| Requests per minute | `rate(search_indexer_request_duration_count[2m])*60` |
+| Average request duration | `rate(search_indexer_request_duration_sum[5m])/rate(search_indexer_request_duration_count[5m])` |
+| Sync request rate (all clusters) | `sum(rate(search_indexer_request_count[5m]))` |
+| p99 sync latency | `histogram_quantile(0.99, sum(rate(search_indexer_request_duration_bucket[5m])) by (le))` |
+| Resources written per second | `sum(rate(search_indexer_resources_processed_total[5m]))` |
+
+---
+
+## Metrics Details
 
 ### `search_indexer_request_count` · CounterVec
 
