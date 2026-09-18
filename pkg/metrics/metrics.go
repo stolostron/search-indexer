@@ -32,6 +32,15 @@ var (
 		Buckets: []float64{50, 100, 200, 500, 5000, 10000, 25000, 50000, 100000, 200000},
 	})
 
+	// ResourcesProcessed counts the number of resource operations committed to the database,
+	// broken down by operation type ("add", "update", "delete").
+	// Use rate() or irate() in PromQL to obtain operations per minute/second.
+	// Example: rate(search_indexer_resources_processed_total[1m]) * 60
+	ResourcesProcessed = promauto.With(PromRegistry).NewCounterVec(prometheus.CounterOpts{
+		Name: "search_indexer_resources_processed_total",
+		Help: "Total number of resource operations (add, update, delete) successfully processed by the search indexer.",
+	}, []string{"operation"})
+
 	// FUTURE: The summary metric could combine RequestCount and RequestDuration into a single metric.
 	// RequestSummary = promauto.With(PromRegistry).NewSummaryVec(prometheus.SummaryOpts{
 	// 	Name: "search_indexer_requests_summary",
