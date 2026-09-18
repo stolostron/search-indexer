@@ -43,6 +43,13 @@ func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse
 		go dao.hubClusterCleanUpWithRetry(context.Background(), clusterName) // #nosec G118 -- Background cleanup goroutine intentionally uses independent context
 	}
 
+	// Record per-operation Prometheus counters so operators can alert on
+	// rate(search_indexer_resources_processed_total[1m]) by operation.
+	// Resync does not generate "update" operations — resources are upserted
+	// (counted as "add") and missing resources are pruned (counted as "delete").
+	metrics.ResourcesProcessed.WithLabelValues("add").Add(float64(syncResponse.TotalAdded))
+	metrics.ResourcesProcessed.WithLabelValues("delete").Add(float64(syncResponse.TotalDeleted))
+
 	klog.V(1).Infof("Completed resync of cluster %12s.", clusterName)
 	return nil
 }
@@ -62,6 +69,20 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 	incomingUIDs = append(incomingUIDs, fmt.Sprintf("cluster__%s", clusterName))
 
 	// DELETE resources that no longer exist.
+	// Count the resources that will be deleted for metrics. We do this by querying how many
+	// existing UIDs for this cluster are absent from the incoming set.
+	var deleteCount int
+	countQuery, countParams, countErr := useGoqu(
+		"SELECT count(*) FROM search.resources WHERE cluster=$1 AND uid NOT IN ($2)",
+		[]interface{}{clusterName, incomingUIDs})
+	if countErr == nil {
+		countRow := dao.pool.QueryRow(ctx, countQuery, countParams...)
+		if scanErr := countRow.Scan(&deleteCount); scanErr != nil {
+			klog.V(4).Infof("Could not count resources to delete for cluster %s: %v", clusterName, scanErr)
+		}
+	}
+	syncResponse.TotalDeleted += deleteCount
+
 	query, params, err := useGoqu(
 		"DELETE from search.resources WHERE cluster=$1 AND uid NOT IN ($2)",
 		[]interface{}{clusterName, incomingUIDs})
