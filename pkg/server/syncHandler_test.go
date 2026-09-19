@@ -237,6 +237,38 @@ func Test_resyncRequest_withErrorDeletingEdges(t *testing.T) {
 	assert.Equal(t, "Server error while processing the request.\n", bodyString)
 }
 
+// Test_resyncRequest_strictHeader verifies that only the exact literal "true" triggers a full
+// resync. Values that strconv.ParseBool would accept as true (e.g. "1", "TRUE") must be
+// routed to the delta-sync path instead, to avoid accidental destructive resets.
+func Test_resyncRequest_strictHeader(t *testing.T) {
+	for _, headerVal := range []string{"1", "t", "T", "TRUE", "True"} {
+		headerVal := headerVal
+		t.Run("header="+headerVal, func(t *testing.T) {
+			body, _ := os.Open("./mocks/simple.json")
+			responseRecorder := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/local-cluster/sync", body)
+			request.Header.Set("X-Overwrite-State", headerVal)
+			router := mux.NewRouter()
+
+			server, mockPool := buildMockServer(t)
+			// Delta-sync path is taken: SendBatch for the sync operations + ClusterTotals.
+			br := &testutils.MockBatchResults{
+				MockRows: testutils.MockRows{
+					MockData: []map[string]interface{}{{"count": 5}, {"count": 3}},
+				},
+			}
+			mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
+
+			router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
+			router.ServeHTTP(responseRecorder, request)
+
+			// Request should succeed (delta-sync path handles it fine).
+			assert.Equal(t, http.StatusOK, responseRecorder.Code,
+				"header value %q should route to delta sync, not resync", headerVal)
+		})
+	}
+}
+
 func Test_incorrectRequestBody(t *testing.T) {
 	body := strings.NewReader("This is an incorrect request body.")
 

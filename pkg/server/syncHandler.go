@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/stolostron/search-indexer/pkg/metrics"
@@ -24,23 +23,14 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	clusterName := params["id"]
 
-	var syncEvent model.SyncEvent
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		klog.Errorf("Error reading request body from cluster [%s]. Error: %+v\n", clusterName, err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
+	// Only the exact literal "true" triggers a full resync (which deletes all absent resources/edges).
+	// strconv.ParseBool would also accept "1", "t", "T", "TRUE", "True" — too broad for a destructive operation.
 	overwriteStateHeader := r.Header.Get("X-Overwrite-State")
-	overwriteState, overwriteStateErr := strconv.ParseBool(overwriteStateHeader)
-	if overwriteStateErr != nil {
-		klog.V(1).Infof("Invalid X-Overwrite-State header value [%s] from cluster[%s]: %v", overwriteStateHeader, clusterName, overwriteStateErr)
-		overwriteState = false
+	overwriteState := overwriteStateHeader == "true"
+	if !overwriteState && overwriteStateHeader != "" && overwriteStateHeader != "false" {
+		klog.V(1).Infof("Unrecognised X-Overwrite-State header value [%s] from cluster [%s]; treating as delta sync",
+			overwriteStateHeader, clusterName)
 	}
-
-	resourceTotal := len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)
-	metrics.RequestSize.Observe(float64(resourceTotal))
 
 	// Initialize SyncResponse object.
 	syncResponse := &model.SyncResponse{
@@ -53,19 +43,29 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// The collector sends 2 types of requests with the header:
-	// 1. ReSync [X-Overwrite-State=true]  - It has the complete current state. It must overwrite any previous state.
-	// 2. Sync   [X-Overwrite-State=false] - This is the delta changes from the previous state.
+	// 1. ReSync [X-Overwrite-State=true]  - Complete current state; decoded as a streaming JSON reader
+	//    to avoid buffering the full (potentially large) body in memory.
+	// 2. Sync   [X-Overwrite-State=false] - Delta changes; small enough to decode fully.
+	var err error
+	var syncEvent model.SyncEvent
 	if overwriteState {
-		err = s.Dao.ResyncData(r.Context(), clusterName, syncResponse, bodyBytes)
+		err = s.Dao.ResyncData(r.Context(), clusterName, syncResponse, r.Body)
 	} else {
-		// we can decode the entire request for non resync requests because they are significantly smaller
+		// Delta sync payloads are significantly smaller, so buffering is acceptable here.
+		bodyBytes, readErr := io.ReadAll(r.Body)
+		if readErr != nil {
+			klog.Errorf("Error reading request body from cluster [%s]. Error: %+v\n", clusterName, readErr)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		err = json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&syncEvent)
 		if err != nil {
 			klog.Errorf("Error decoding request body from cluster [%s]. Error: %+v\n", clusterName, err)
 			w.WriteHeader(http.StatusBadRequest)
-		} else {
-			err = s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
+			return
 		}
+		metrics.RequestSize.Observe(float64(len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)))
+		err = s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
 	}
 	if err != nil {
 		klog.Warningf("Responding with error to request from %12s. Error: %s",
