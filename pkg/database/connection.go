@@ -142,6 +142,10 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 	checkError(err, "Error creating index on search.resources data key name.")
 
 	_, err = dao.pool.Exec(ctx,
+		"CREATE INDEX IF NOT EXISTS data_users_idx ON search.resources USING GIN ((data -> 'users'))")
+	checkError(err, "Error creating index on search.resources data key users.")
+
+	_, err = dao.pool.Exec(ctx,
 		"CREATE INDEX IF NOT EXISTS data_cluster_idx ON search.resources USING btree (cluster)")
 	checkError(err, "Error creating index on search.resources cluster.")
 
