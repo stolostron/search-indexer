@@ -49,6 +49,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			uid:  resource.UID,
 			args: []interface{}{resource.UID, clusterName, string(data)},
 		})
+		metrics.ResourcesProcessed.WithLabelValues("add", resource.Kind, clusterName).Inc()
 	}
 
 	// UPDATE RESOURCES
@@ -68,6 +69,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			uid:    resource.UID,
 			args:   []interface{}{resource.UID, string(data), clusterName},
 		})
+		metrics.ResourcesProcessed.WithLabelValues("update", resource.Kind, clusterName).Inc()
 	}
 
 	// DELETE RESOURCES and all edges pointing to the resource.
@@ -142,11 +144,10 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	syncResponse.TotalEdgesAdded = len(event.AddEdges) - len(syncResponse.AddEdgeErrors)
 	syncResponse.TotalEdgesDeleted = len(event.DeleteEdges) - len(syncResponse.DeleteEdgeErrors)
 
-	// Record per-operation Prometheus counters so operators can alert on
-	// rate(search_indexer_resources_processed_total[1m]) by operation.
-	metrics.ResourcesProcessed.WithLabelValues("add").Add(float64(syncResponse.TotalAdded))
-	metrics.ResourcesProcessed.WithLabelValues("update").Add(float64(syncResponse.TotalUpdated))
-	metrics.ResourcesProcessed.WithLabelValues("delete").Add(float64(syncResponse.TotalDeleted))
+	// Record delete counter. Add and update are already recorded per-resource inside the loops above
+	// (where the kind label is available). Deletes use kind="" because DeleteResourceEvent only
+	// carries a UID, not the resource kind.
+	metrics.ResourcesProcessed.WithLabelValues("delete", "", clusterName).Add(float64(syncResponse.TotalDeleted))
 
 	klog.V(1).Infof("Completed sync of cluster %12s", clusterName)
 	return batch.connError

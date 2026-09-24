@@ -33,13 +33,17 @@ var (
 	})
 
 	// ResourcesProcessed counts the number of resource operations committed to the database,
-	// broken down by operation type ("add", "update", "delete").
+	// broken down by operation type, resource kind, and managed cluster name.
 	// Use rate() or irate() in PromQL to obtain operations per minute/second.
 	// Example: rate(search_indexer_resources_processed_total[1m]) * 60
+	// Labels:
+	//   operation        - "add", "update", or "delete"
+	//   kind             - Kubernetes resource kind (e.g. "Pod", "Deployment"); empty for bulk resync deletes
+	//   managed_cluster  - name of the managed cluster that sent the sync event
 	ResourcesProcessed = promauto.With(PromRegistry).NewCounterVec(prometheus.CounterOpts{
 		Name: "search_indexer_resources_processed_total",
 		Help: "Total number of resource operations (add, update, delete) successfully processed by the search indexer.",
-	}, []string{"operation"})
+	}, []string{"operation", "kind", "managed_cluster"})
 
 	// FUTURE: The summary metric could combine RequestCount and RequestDuration into a single metric.
 	// RequestSummary = promauto.With(PromRegistry).NewSummaryVec(prometheus.SummaryOpts{
