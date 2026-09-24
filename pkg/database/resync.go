@@ -43,7 +43,7 @@ func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse
 		go dao.hubClusterCleanUpWithRetry(context.Background(), clusterName) // #nosec G118 -- Background cleanup goroutine intentionally uses independent context
 	}
 
-	// Record delete counter. Add operations are already counted per-resource inside upsertResources
+	// Record delete counter. Insert operations are already counted per-resource inside upsertResources
 	// (where the kind label is available). Resync does not generate "update" operations.
 	// Bulk deletes use kind="" because the pruning query targets stale UIDs without fetching their kind.
 	metrics.ResourcesProcessed.WithLabelValues("delete", "", clusterName).Add(float64(syncResponse.TotalDeleted))
@@ -224,7 +224,7 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 						return incomingUIDs, resource, queueErr
 					}
 					syncResponse.TotalAdded++
-					metrics.ResourcesProcessed.WithLabelValues("add", resource.Kind, clusterName).Inc()
+					metrics.ResourcesProcessed.WithLabelValues("insert", resource.Kind, clusterName).Inc()
 				}
 				incomingUIDs = append(incomingUIDs, uid)
 			}

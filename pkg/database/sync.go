@@ -49,7 +49,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			uid:  resource.UID,
 			args: []interface{}{resource.UID, clusterName, string(data)},
 		})
-		metrics.ResourcesProcessed.WithLabelValues("add", resource.Kind, clusterName).Inc()
+		metrics.ResourcesProcessed.WithLabelValues("insert", resource.Kind, clusterName).Inc()
 	}
 
 	// UPDATE RESOURCES
@@ -144,7 +144,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	syncResponse.TotalEdgesAdded = len(event.AddEdges) - len(syncResponse.AddEdgeErrors)
 	syncResponse.TotalEdgesDeleted = len(event.DeleteEdges) - len(syncResponse.DeleteEdgeErrors)
 
-	// Record delete counter. Add and update are already recorded per-resource inside the loops above
+	// Record delete counter. Insert and update are already recorded per-resource inside the loops above
 	// (where the kind label is available). Deletes use kind="" because DeleteResourceEvent only
 	// carries a UID, not the resource kind.
 	metrics.ResourcesProcessed.WithLabelValues("delete", "", clusterName).Add(float64(syncResponse.TotalDeleted))
