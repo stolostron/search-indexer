@@ -89,21 +89,19 @@ func Test_Sync_With_Exec_Errors(t *testing.T) {
 }
 
 func Test_Sync_With_OnClose_Errors(t *testing.T) {
-	// Prepare a mock DAO instance
+	// Prepare a mock DAO instance.
+	// Use a batch size large enough to hold all three resource operations (2 adds + 1 update)
+	// so they are queued before any batch is sent. The single flush() call then sends them
+	// together in one SendBatch, which triggers connError via the "unexpected EOF" close error.
+	// Subsequent Queue() calls see connError and return immediately — no further SendBatch calls.
+	// The resource DELETE runs as a direct pool.Exec (outside the batch) and is unaffected.
 	dao, mockPool := buildMockDAO(t)
-	dao.batchSize = 1
+	dao.batchSize = 4
 
-	// Mock PosgreSQL calls.
-	// The first SendBatch sets connError ("unexpected EOF"). Subsequent Queue() calls return
-	// connError immediately (no more batches sent). The resource DELETE is now a direct
-	// pool.Exec call — it still runs because sync.go does not check connError before the Exec.
 	br := &testutils.MockBatchResults{
 		MockErrorOnClose: errors.New("unexpected EOF"),
 	}
-	// With batchSize=1, each queued item triggers a concurrent sendBatch goroutine before
-	// connError is visible to subsequent Queue() calls. The 2 adds and 1 update fire 3
-	// goroutines before connError stops further queuing. Resource DELETE is now pool.Exec.
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(1)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(pgxmock.NewResult("DELETE", 0), nil)
 
