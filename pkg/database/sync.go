@@ -49,7 +49,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			uid:  resource.UID,
 			args: []interface{}{resource.UID, clusterName, string(data)},
 		})
-		metrics.ResourcesProcessed.WithLabelValues("insert", resource.Kind, clusterName).Inc()
+		metrics.ResourcesProcessed.WithLabelValues("insert", resource.Properties["kind"].(string), clusterName).Inc()
 	}
 
 	// UPDATE RESOURCES
@@ -69,7 +69,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			uid:    resource.UID,
 			args:   []interface{}{resource.UID, string(data), clusterName},
 		})
-		metrics.ResourcesProcessed.WithLabelValues("update", resource.Kind, clusterName).Inc()
+		metrics.ResourcesProcessed.WithLabelValues("update", resource.Properties["kind"].(string), clusterName).Inc()
 	}
 
 	// DELETE RESOURCES and all edges pointing to the resource.

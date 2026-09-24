@@ -68,7 +68,7 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 		"DELETE from search.resources WHERE cluster=$1 AND uid NOT IN ($2)",
 		[]interface{}{clusterName, incomingUIDs})
 	if err == nil {
-		batch.flush()  // flush pending upserts before the delete so the uid list is current
+		batch.flush() // flush pending upserts before the delete so the uid list is current
 		batch.wg.Wait()
 		// Skip the delete if the upsert batch lost its DB connection — pruning stale rows
 		// when inserts did not complete would corrupt the cluster's resource state.
@@ -229,7 +229,7 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 						return incomingUIDs, resource, queueErr
 					}
 					syncResponse.TotalAdded++
-					metrics.ResourcesProcessed.WithLabelValues("insert", resource.Kind, clusterName).Inc()
+					metrics.ResourcesProcessed.WithLabelValues("insert", resource.Properties["kind"].(string), clusterName).Inc()
 				}
 				incomingUIDs = append(incomingUIDs, uid)
 			}
