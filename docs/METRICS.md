@@ -22,7 +22,7 @@ The server address can be overridden with the `AGGREGATOR_ADDRESS` environment v
 | `search_indexer_request_duration` | HistogramVec | `code` | Sync request processing latency (seconds) |
 | `search_indexer_requests_in_flight` | Gauge | — | Concurrent sync requests currently being processed |
 | `search_indexer_request_size` | Histogram | — | Resource changes (add+update+delete) per **delta** sync |
-| `search_indexer_resources_processed_total` | CounterVec | `operation` (`add`/`update`/`delete`) | Resources successfully written to PostgreSQL |
+| `search_indexer_resource_db_event_count` | CounterVec | `operation` (`insert`/`update`/`delete`), `kind`, `managed_cluster` | Resources successfully written to PostgreSQL |
 
 ## PromQL
 
@@ -34,7 +34,7 @@ Useful queries to visualize the health of this service.
 | Average request duration | `rate(search_indexer_request_duration_sum[5m])/rate(search_indexer_request_duration_count[5m])` |
 | Sync request rate (all clusters) | `sum(rate(search_indexer_request_count[5m]))` |
 | p99 sync latency | `histogram_quantile(0.99, sum(rate(search_indexer_request_duration_bucket[5m])) by (le))` |
-| Resources written per second | `sum(rate(search_indexer_resources_processed_total[5m]))` |
+| Resources written per second | `sum(rate(search_indexer_resource_db_event_count[5m]))` |
 
 ---
 
@@ -198,71 +198,85 @@ histogram_quantile(0.99,
 
 ---
 
-### `search_indexer_resources_processed_total` · CounterVec
+### `search_indexer_resource_db_event_count` · CounterVec
 
-Number of individual resource operations successfully committed to PostgreSQL, broken down by operation type. This is the primary signal for understanding the write throughput of the indexer.
+Number of individual resource DB events successfully committed to PostgreSQL, broken down by operation type, resource kind, and managed cluster. This is the primary signal for understanding the write throughput of the indexer and which clusters or resource kinds are driving load.
 
 | Attribute | Value |
 |---|---|
 | Type | `counter` |
-| Labels | `operation` — `"add"`, `"update"`, `"delete"` |
+| Labels | `operation` — `"insert"`, `"update"`, `"delete"` |
+| | `kind` — Kubernetes resource kind (e.g. `"Pod"`, `"Deployment"`); `""` for bulk resync deletes |
+| | `managed_cluster` — name of the managed cluster that sent the sync event |
 | Populated by | `pkg/database/sync.go` (delta sync) and `pkg/database/resync.go` (full resync) |
 
 **When is it recorded?**
 
-| Path | `"add"` | `"update"` | `"delete"` |
+| Path | `"insert"` | `"update"` | `"delete"` |
 |---|---|---|---|
-| **Delta sync** (`X-Overwrite-State: false`) | Resources in `addResources[]` that were processed without error | Resources in `updateResources[]` that were processed without error | Resources in `deleteResources[]` that were processed without error |
-| **Full resync** (`X-Overwrite-State: true`) | All incoming resources (upserted with `ON CONFLICT DO UPDATE`) | _(never incremented; resyncs use upsert semantics)_ | Resources found in the DB for the cluster that are absent from the incoming set |
+| **Delta sync** (`X-Overwrite-State: false`) | Per resource in `addResources[]` processed without error | Per resource in `updateResources[]` processed without error | Aggregate count of `deleteResources[]` processed without error (`kind=""`) |
+| **Full resync** (`X-Overwrite-State: true`) | Per incoming resource upserted with `ON CONFLICT DO UPDATE` | _(never incremented; resyncs use upsert semantics)_ | Aggregate count of rows pruned from the DB for the cluster (`kind=""`) |
 
 **PromQL examples**
 
 ```promql
 # --- Operations per minute ---
 
-# All operations per minute (combined)
-sum(rate(search_indexer_resources_processed_total[1m])) * 60
+# All DB events per minute (combined)
+sum(rate(search_indexer_resource_db_event_count[1m])) * 60
 
-# Operations per minute, split by type
-sum by (operation) (rate(search_indexer_resources_processed_total[1m])) * 60
+# DB events per minute, split by operation type
+sum by (operation) (rate(search_indexer_resource_db_event_count[1m])) * 60
 
-# Adds per minute
-rate(search_indexer_resources_processed_total{operation="add"}[1m]) * 60
+# Inserts per minute
+rate(search_indexer_resource_db_event_count{operation="insert"}[1m]) * 60
 
 # Updates per minute
-rate(search_indexer_resources_processed_total{operation="update"}[1m]) * 60
+rate(search_indexer_resource_db_event_count{operation="update"}[1m]) * 60
 
 # Deletes per minute
-rate(search_indexer_resources_processed_total{operation="delete"}[1m]) * 60
+rate(search_indexer_resource_db_event_count{operation="delete"}[1m]) * 60
+
+
+# --- Break down by kind or cluster ---
+
+# Top 5 resource kinds by insert rate
+topk(5, sum by (kind) (rate(search_indexer_resource_db_event_count{operation="insert"}[5m])))
+
+# DB event rate per managed cluster
+sum by (managed_cluster) (rate(search_indexer_resource_db_event_count[5m]))
+
+# Insert rate for a specific cluster
+rate(search_indexer_resource_db_event_count{operation="insert", managed_cluster="my-cluster"}[5m]) * 60
 
 
 # --- Throughput over longer windows ---
 
-# Total resources processed in the last hour
-sum(increase(search_indexer_resources_processed_total[1h]))
+# Total DB events in the last hour
+sum(increase(search_indexer_resource_db_event_count[1h]))
 
 # Breakdown by operation in the last 24 hours
-sum by (operation) (increase(search_indexer_resources_processed_total[24h]))
+sum by (operation) (increase(search_indexer_resource_db_event_count[24h]))
 
 # Ratio of deletes to total operations (churn indicator)
-sum(rate(search_indexer_resources_processed_total{operation="delete"}[5m]))
-  / sum(rate(search_indexer_resources_processed_total[5m]))
+sum(rate(search_indexer_resource_db_event_count{operation="delete"}[5m]))
+  / sum(rate(search_indexer_resource_db_event_count[5m]))
 
 
 # --- Alerting ---
 
 # Alert: no resources processed in 10 minutes (collector may be down)
-sum(increase(search_indexer_resources_processed_total[10m])) == 0
+sum(increase(search_indexer_resource_db_event_count[10m])) == 0
 
 # Alert: delete rate spikes above 500/min (unexpected mass deletion)
-sum(rate(search_indexer_resources_processed_total{operation="delete"}[2m])) * 60 > 500
+sum(rate(search_indexer_resource_db_event_count{operation="delete"}[2m])) * 60 > 500
 
-# Alert: add rate drops to zero while the indexer is still receiving requests
+# Alert: insert rate drops to zero while the indexer is still receiving requests
 #   (requests coming in but nothing being inserted — possible DB issue)
 (
   sum(rate(search_indexer_request_count[5m])) > 0
 ) and (
-  sum(rate(search_indexer_resources_processed_total{operation="add"}[5m])) == 0
+  sum(rate(search_indexer_resource_db_event_count{operation="insert"}[5m])) == 0
 )
 ```
 
@@ -275,11 +289,11 @@ These queries compose multiple metrics for holistic views of indexer health.
 ```promql
 # ── Throughput summary ──────────────────────────────────────────────────────
 
-# Resources processed per second (all ops)
-sum(rate(search_indexer_resources_processed_total[5m]))
+# DB events per second (all ops)
+sum(rate(search_indexer_resource_db_event_count[5m]))
 
-# Resources processed per request (average batch size per sync)
-sum(rate(search_indexer_resources_processed_total[5m]))
+# DB events per request (average batch size per sync)
+sum(rate(search_indexer_resource_db_event_count[5m]))
   / sum(rate(search_indexer_request_count[5m]))
 
 
