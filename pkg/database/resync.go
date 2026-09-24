@@ -43,11 +43,6 @@ func (dao *DAO) ResyncData(ctx context.Context, clusterName string, syncResponse
 		go dao.hubClusterCleanUpWithRetry(context.Background(), clusterName) // #nosec G118 -- Background cleanup goroutine intentionally uses independent context
 	}
 
-	// Record delete counter. Insert operations are already counted per-resource inside upsertResources
-	// (where the kind label is available). Resync does not generate "update" operations.
-	// Bulk deletes use kind="" because the pruning query targets stale UIDs without fetching their kind.
-	metrics.ResourcesProcessed.WithLabelValues("delete", "", clusterName).Add(float64(syncResponse.TotalDeleted))
-
 	klog.V(1).Infof("Completed resync of cluster %12s.", clusterName)
 	return nil
 }
@@ -75,11 +70,21 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 	if err == nil {
 		batch.flush()  // flush pending upserts before the delete so the uid list is current
 		batch.wg.Wait()
-		tag, execErr := dao.pool.Exec(ctx, query, params...)
-		if execErr != nil {
-			klog.Warningf("Error deleting stale resources for cluster %s: %+v", clusterName, execErr)
+		// Skip the delete if the upsert batch lost its DB connection — pruning stale rows
+		// when inserts did not complete would corrupt the cluster's resource state.
+		if batch.connError != nil {
+			klog.Warningf("Skipping stale-resource delete for cluster %s due to upsert connection error: %v", clusterName, batch.connError)
 		} else {
-			syncResponse.TotalDeleted += int(tag.RowsAffected())
+			tag, execErr := dao.pool.Exec(ctx, query, params...)
+			if execErr != nil {
+				klog.Warningf("Error deleting stale resources for cluster %s: %+v", clusterName, execErr)
+			} else {
+				deleted := int(tag.RowsAffected())
+				syncResponse.TotalDeleted += deleted
+				// Record here, immediately after the successful DELETE, so that a later
+				// resetEdges failure in ResyncData cannot cause this count to be skipped.
+				metrics.ResourcesProcessed.WithLabelValues("delete", "", clusterName).Add(float64(deleted))
+			}
 		}
 	}
 

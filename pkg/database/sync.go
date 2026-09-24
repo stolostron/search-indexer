@@ -74,6 +74,8 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 
 	// DELETE RESOURCES and all edges pointing to the resource.
 	// AND cluster=$N ensures a spoke can only delete its own rows.
+	// The resource DELETE runs via pool.Exec (outside the batch) so we can read
+	// RowsAffected() and use the actual DB count for the metric.
 	if len(event.DeleteResources) > 0 {
 		// clusterName occupies $1; UIDs follow as $2, $3, …
 		params := make([]string, len(event.DeleteResources))
@@ -85,23 +87,29 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 		paramStr := strings.Join(params, ",")
 		args := append([]interface{}{clusterName}, uids...)
 
-		// TODO: Need better safety for delete errors.
-		// The current retry logic won't work well if there's an error here.
-		err := batch.Queue(batchItem{
-			action: "deleteResource",
-			query:  fmt.Sprintf("DELETE from search.resources WHERE cluster=$1 AND uid IN (%s)", paramStr),
-			uid:    fmt.Sprintf("%s", uids),
-			args:   args,
-		})
+		// Flush queued upserts before the DELETE so the resource rows are up to date.
+		batch.flush()
+		batch.wg.Wait()
+
+		tag, execErr := dao.pool.Exec(ctx,
+			fmt.Sprintf("DELETE from search.resources WHERE cluster=$1 AND uid IN (%s)", paramStr),
+			args...)
+		if execErr != nil {
+			klog.Warningf("Error deleting resources for cluster %s: %+v", clusterName, execErr)
+			syncResponse.DeleteErrors = append(syncResponse.DeleteErrors,
+				model.SyncError{ResourceUID: fmt.Sprintf("%s", uids), Message: execErr.Error()})
+		} else {
+			syncResponse.TotalDeleted = int(tag.RowsAffected())
+			metrics.ResourcesProcessed.WithLabelValues("delete", "", clusterName).Add(float64(syncResponse.TotalDeleted))
+		}
+
+		// Delete edges for the removed resources (still batched — no count needed).
 		queueErr = batch.Queue(batchItem{
 			action: "deleteEdge",
 			query:  fmt.Sprintf("DELETE from search.edges WHERE cluster=$1 AND (sourceid IN (%s) OR destid IN (%s))", paramStr, paramStr),
 			uid:    fmt.Sprintf("%s", uids),
 			args:   args,
 		})
-		if err != nil {
-			queueErr = err
-		}
 	}
 
 	// ADD EDGES
@@ -140,14 +148,9 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	// The response fields below are redundant, these are more interesting for resync.
 	syncResponse.TotalAdded = len(event.AddResources) - len(syncResponse.AddErrors)
 	syncResponse.TotalUpdated = len(event.UpdateResources) - len(syncResponse.UpdateErrors)
-	syncResponse.TotalDeleted = len(event.DeleteResources) - len(syncResponse.DeleteErrors)
+	// TotalDeleted and the delete metric are set from RowsAffected() in the DELETE block above.
 	syncResponse.TotalEdgesAdded = len(event.AddEdges) - len(syncResponse.AddEdgeErrors)
 	syncResponse.TotalEdgesDeleted = len(event.DeleteEdges) - len(syncResponse.DeleteEdgeErrors)
-
-	// Record delete counter. Insert and update are already recorded per-resource inside the loops above
-	// (where the kind label is available). Deletes use kind="" because DeleteResourceEvent only
-	// carries a UID, not the resource kind.
-	metrics.ResourcesProcessed.WithLabelValues("delete", "", clusterName).Add(float64(syncResponse.TotalDeleted))
 
 	klog.V(1).Infof("Completed sync of cluster %12s", clusterName)
 	return batch.connError

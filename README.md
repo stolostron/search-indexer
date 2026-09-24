@@ -3,7 +3,7 @@ Index resources for search.
 
 ## Metrics
 
-Metrics information at ./docs/METRICS.md
+See [Metrics reference](docs/METRICS.md).
 
 
 ## Development

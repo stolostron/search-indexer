@@ -22,7 +22,7 @@ The server address can be overridden with the `AGGREGATOR_ADDRESS` environment v
 | `search_indexer_request_duration` | HistogramVec | `code` | Sync request processing latency (seconds) |
 | `search_indexer_requests_in_flight` | Gauge | — | Concurrent sync requests currently being processed |
 | `search_indexer_request_size` | Histogram | — | Resource changes (add+update+delete) per **delta** sync |
-| `search_indexer_resource_db_event_count` | CounterVec | `operation` (`insert`/`update`/`delete`), `kind`, `managed_cluster` | Resources successfully written to PostgreSQL |
+| `search_indexer_resource_db_event_count` | CounterVec | `operation` (`insert`/`update`/`delete`), `kind`, `cluster` | Resources successfully written to PostgreSQL |
 
 ## PromQL
 
@@ -72,9 +72,7 @@ count by (managed_cluster_name) (
 
 # Alert: a cluster has not checked in for more than 20 minutes
 # (useful to detect a lost collector)
-(time() - max by (managed_cluster_name) (
-  last_over_time(search_indexer_request_count[20m])
-)) > 1200
+increase(search_indexer_request_count[20m]) == 0
 ```
 
 ---
@@ -114,8 +112,10 @@ rate(search_indexer_request_duration_sum[5m])
   / rate(search_indexer_request_duration_count[5m])
 
 # Fraction of requests taking longer than 3 seconds
-sum(rate(search_indexer_request_duration_bucket{le="3"}[5m]))
-  / sum(rate(search_indexer_request_duration_count[5m]))
+1 - (
+  sum(rate(search_indexer_request_duration_bucket{le="3"}[5m]))
+    / sum(rate(search_indexer_request_duration_count[5m]))
+)
 
 # Alert: p99 latency above 5 s for 2 consecutive minutes
 histogram_quantile(0.99,
@@ -207,7 +207,7 @@ Number of individual resource DB events successfully committed to PostgreSQL, br
 | Type | `counter` |
 | Labels | `operation` — `"insert"`, `"update"`, `"delete"` |
 | | `kind` — Kubernetes resource kind (e.g. `"Pod"`, `"Deployment"`); `""` for bulk resync deletes |
-| | `managed_cluster` — name of the managed cluster that sent the sync event |
+| | `cluster` — name of the cluster that sent the sync event |
 | Populated by | `pkg/database/sync.go` (delta sync) and `pkg/database/resync.go` (full resync) |
 
 **When is it recorded?**
@@ -244,10 +244,10 @@ rate(search_indexer_resource_db_event_count{operation="delete"}[1m]) * 60
 topk(5, sum by (kind) (rate(search_indexer_resource_db_event_count{operation="insert"}[5m])))
 
 # DB event rate per managed cluster
-sum by (managed_cluster) (rate(search_indexer_resource_db_event_count[5m]))
+sum by (cluster) (rate(search_indexer_resource_db_event_count[5m]))
 
 # Insert rate for a specific cluster
-rate(search_indexer_resource_db_event_count{operation="insert", managed_cluster="my-cluster"}[5m]) * 60
+rate(search_indexer_resource_db_event_count{operation="insert", cluster="my-cluster"}[5m]) * 60
 
 
 # --- Throughput over longer windows ---
@@ -310,8 +310,10 @@ search_indexer_requests_in_flight
 # ── Error rate ──────────────────────────────────────────────────────────────
 
 # Fraction of requests that returned a non-200 status
-sum(rate(search_indexer_request_count{code!="200"}[5m]))
-  / sum(rate(search_indexer_request_count[5m]))
+# search_indexer_request_count only has the managed_cluster_name label (no code label),
+# so use the duration histogram which is keyed by code.
+sum(rate(search_indexer_request_duration_count{code!="200"}[5m]))
+  / sum(rate(search_indexer_request_duration_count[5m]))
 
 # Absolute 5xx error rate per second
 sum(rate(search_indexer_request_duration_count{code=~"5.."}[5m]))
@@ -328,7 +330,7 @@ count(count by (managed_cluster_name) (
 # (newly appearing collectors)
 count by (managed_cluster_name) (increase(search_indexer_request_count[5m]) > 0)
   unless
-count by (managed_cluster_name) (increase(search_indexer_request_count[10m:5m]) > 0)
+count by (managed_cluster_name) (increase(search_indexer_request_count[5m] offset 5m) > 0)
 ```
 
 ---
