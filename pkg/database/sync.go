@@ -41,13 +41,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			syncResponse.AddErrors = append(syncResponse.AddErrors, model.SyncError{ResourceUID: resource.UID, Message: err.Error()})
 			continue
 		}
-		// Validate kind before queuing — a missing or non-string kind would panic on the label assertion.
-		kind, ok := resource.Properties["kind"].(string)
-		if !ok {
-			klog.Warningf("Rejecting addResource from cluster [%s]: missing or non-string 'kind' (uid=%s)", clusterName, resource.UID)
-			syncResponse.AddErrors = append(syncResponse.AddErrors, model.SyncError{ResourceUID: resource.UID, Message: "missing or non-string 'kind' in resource properties"})
-			continue
-		}
+
 		data, _ := json.Marshal(resource.Properties)
 		queueErr = batch.Queue(batchItem{
 			action: "addResource",
@@ -72,13 +66,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			syncResponse.UpdateErrors = append(syncResponse.UpdateErrors, model.SyncError{ResourceUID: resource.UID, Message: err.Error()})
 			continue
 		}
-		// Validate kind before queuing — a missing or non-string kind would panic on the label assertion.
-		kind, ok := resource.Properties["kind"].(string)
-		if !ok {
-			klog.Warningf("Rejecting updateResource from cluster [%s]: missing or non-string 'kind' (uid=%s)", clusterName, resource.UID)
-			syncResponse.UpdateErrors = append(syncResponse.UpdateErrors, model.SyncError{ResourceUID: resource.UID, Message: "missing or non-string 'kind' in resource properties"})
-			continue
-		}
+
 		data, _ := json.Marshal(resource.Properties)
 		queueErr = batch.Queue(batchItem{
 			action: "updateResource",
