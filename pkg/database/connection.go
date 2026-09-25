@@ -141,6 +141,13 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 		"CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")
 	checkError(err, "Error creating index on search.resources data key name.")
 
+	// Scope the index to OpenShift Groups. Use the same `?` predicate emitted by
+	// search-v2-api so PostgreSQL can match queries to this partial index.	
+	_, err = dao.pool.Exec(ctx,
+		"CREATE INDEX IF NOT EXISTS data_users_idx ON search.resources USING GIN ((data -> 'users')) "+
+			"WHERE (data -> 'kind') ? 'Group' AND (data -> 'apigroup') ? 'user.openshift.io'")
+	checkError(err, "Error creating index on search.resources data key users.")
+
 	_, err = dao.pool.Exec(ctx,
 		"CREATE INDEX IF NOT EXISTS data_cluster_idx ON search.resources USING btree (cluster)")
 	checkError(err, "Error creating index on search.resources cluster.")
