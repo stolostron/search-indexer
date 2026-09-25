@@ -22,7 +22,7 @@ The server address can be overridden with the `AGGREGATOR_ADDRESS` environment v
 | `search_indexer_request_duration` | HistogramVec | `code` | Sync request processing latency (seconds) |
 | `search_indexer_requests_in_flight` | Gauge | — | Concurrent sync requests currently being processed |
 | `search_indexer_request_size` | Histogram | — | Resource changes (add+update+delete) per **delta** sync |
-| `search_indexer_db_resource_event_count` | CounterVec | `operation` (`insert`/`update`/`delete`), `kind`, `cluster` | Resources successfully written to PostgreSQL |
+| `search_indexer_db_resource_event_count` | CounterVec | `operation` (`insert`/`update`/`delete`), `kind`, `cluster` | Resource DB events sent to PostgreSQL (deletes counted by rows affected) |
 
 ## PromQL
 
@@ -201,6 +201,7 @@ histogram_quantile(0.99,
 ### `search_indexer_db_resource_event_count` · CounterVec
 
 Number of individual resource events sent to PostgreSQL, broken down by operation type, resource kind, and managed cluster. This is the primary signal for understanding the write throughput of the indexer and which clusters or resource kinds are driving load.
+For delete operations, the count reflects rows actually deleted by PostgreSQL (`RowsAffected()`), not the number of UIDs requested for deletion.
 
 **IMPORTANT:** You must set ENABLE_DETAILED_METRICS=true to get the kind and cluster labels. Otherwise, only the operation label will be used. This is because high cardinality labels can impact the performance of the Prometheus server.
 
@@ -216,8 +217,8 @@ Number of individual resource events sent to PostgreSQL, broken down by operatio
 
 | Path | `"insert"` | `"update"` | `"delete"` |
 |---|---|---|---|
-| **Delta sync** (`X-Overwrite-State: false`) | Per resource in `addResources[]` processed without error | Per resource in `updateResources[]` processed without error | Aggregate count of `deleteResources[]` processed without error (`kind=""`) |
-| **Full resync** (`X-Overwrite-State: true`) | Per incoming resource upserted with `ON CONFLICT DO UPDATE` | _(never incremented; resyncs use upsert semantics)_ | Aggregate count of rows pruned from the DB for the cluster (`kind=""`) |
+| **Delta sync** (`X-Overwrite-State: false`) | Per resource in `addResources[]` accepted into the batch queue (kind validated, UID prefix valid) | Per resource in `updateResources[]` accepted into the batch queue (kind validated, UID prefix valid) | Rows actually deleted by PostgreSQL (`RowsAffected()`), not the number of UIDs requested (`kind=""`) |
+| **Full resync** (`X-Overwrite-State: true`) | Per incoming resource accepted into the upsert batch queue | _(never incremented; resyncs use upsert semantics)_ | Rows actually deleted by PostgreSQL (`RowsAffected()`) when pruning stale resources (`kind=""`) |
 
 **PromQL examples**
 

@@ -41,6 +41,13 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			syncResponse.AddErrors = append(syncResponse.AddErrors, model.SyncError{ResourceUID: resource.UID, Message: err.Error()})
 			continue
 		}
+		// Validate kind before queuing — a missing or non-string kind would panic on the label assertion.
+		kind, ok := resource.Properties["kind"].(string)
+		if !ok {
+			klog.Warningf("Rejecting addResource from cluster [%s]: missing or non-string 'kind' (uid=%s)", clusterName, resource.UID)
+			syncResponse.AddErrors = append(syncResponse.AddErrors, model.SyncError{ResourceUID: resource.UID, Message: "missing or non-string 'kind' in resource properties"})
+			continue
+		}
 		data, _ := json.Marshal(resource.Properties)
 		queueErr = batch.Queue(batchItem{
 			action: "addResource",
@@ -49,8 +56,10 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			uid:  resource.UID,
 			args: []interface{}{resource.UID, clusterName, string(data)},
 		})
-		kind := resource.Properties["kind"].(string)
-		metrics.IncrementDBResourceEventSent("insert", kind, clusterName)
+		// Only count the event when the item was accepted into the batch queue.
+		if queueErr == nil {
+			metrics.IncrementDBResourceEventSent("insert", kind, clusterName)
+		}
 	}
 
 	// UPDATE RESOURCES
@@ -63,6 +72,13 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			syncResponse.UpdateErrors = append(syncResponse.UpdateErrors, model.SyncError{ResourceUID: resource.UID, Message: err.Error()})
 			continue
 		}
+		// Validate kind before queuing — a missing or non-string kind would panic on the label assertion.
+		kind, ok := resource.Properties["kind"].(string)
+		if !ok {
+			klog.Warningf("Rejecting updateResource from cluster [%s]: missing or non-string 'kind' (uid=%s)", clusterName, resource.UID)
+			syncResponse.UpdateErrors = append(syncResponse.UpdateErrors, model.SyncError{ResourceUID: resource.UID, Message: "missing or non-string 'kind' in resource properties"})
+			continue
+		}
 		data, _ := json.Marshal(resource.Properties)
 		queueErr = batch.Queue(batchItem{
 			action: "updateResource",
@@ -70,8 +86,10 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			uid:    resource.UID,
 			args:   []interface{}{resource.UID, string(data), clusterName},
 		})
-		kind := resource.Properties["kind"].(string)
-		metrics.IncrementDBResourceEventSent("update", kind, clusterName)
+		// Only count the event when the item was accepted into the batch queue.
+		if queueErr == nil {
+			metrics.IncrementDBResourceEventSent("update", kind, clusterName)
+		}
 	}
 
 	// DELETE RESOURCES and all edges pointing to the resource.
@@ -92,6 +110,13 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 		// Flush queued upserts before the DELETE so the resource rows are up to date.
 		batch.flush()
 		batch.wg.Wait()
+
+		// Skip the DELETE if the upsert batch lost its DB connection. Running the DELETE
+		// on a recovered connection would prune rows whose upserts never committed.
+		if batch.connError != nil {
+			klog.Warningf("Skipping resource DELETE for cluster %s due to upsert connection error: %v", clusterName, batch.connError)
+			return batch.connError
+		}
 
 		tag, execErr := dao.pool.Exec(ctx,
 			fmt.Sprintf("DELETE from search.resources WHERE cluster=$1 AND uid IN (%s)", paramStr),
