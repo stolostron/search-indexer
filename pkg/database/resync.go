@@ -83,7 +83,7 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 				syncResponse.TotalDeleted += deleted
 				// Record here, immediately after the successful DELETE, so that a later
 				// resetEdges failure in ResyncData cannot cause this count to be skipped.
-				metrics.DBResourceEventSent.WithLabelValues("delete", "", clusterName).Add(float64(deleted))
+				metrics.IncrementDBResourceEventSentBy("delete", "", clusterName, deleted)
 			}
 		}
 	}
@@ -229,7 +229,8 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 						return incomingUIDs, resource, queueErr
 					}
 					syncResponse.TotalAdded++
-					metrics.DBResourceEventSent.WithLabelValues("insert", resource.Properties["kind"].(string), clusterName).Inc()
+					kind := resource.Properties["kind"].(string)
+					metrics.IncrementDBResourceEventSent("insert", kind, clusterName)
 				}
 				incomingUIDs = append(incomingUIDs, uid)
 			}

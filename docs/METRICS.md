@@ -202,6 +202,8 @@ histogram_quantile(0.99,
 
 Number of individual resource events sent to PostgreSQL, broken down by operation type, resource kind, and managed cluster. This is the primary signal for understanding the write throughput of the indexer and which clusters or resource kinds are driving load.
 
+**IMPORTANT:** You must set ENABLE_DETAILED_METRICS=true to get the kind and cluster labels. Otherwise, only the operation label will be used. This is because high cardinality labels can impact the performance of the Prometheus server.
+
 | Attribute | Value |
 |---|---|
 | Type | `counter` |

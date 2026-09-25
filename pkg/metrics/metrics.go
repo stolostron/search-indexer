@@ -5,6 +5,7 @@ package metrics
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/stolostron/search-indexer/pkg/config"
 )
 
 var (
@@ -40,8 +41,32 @@ var (
 	//   operation  - "insert", "update", or "delete" (matches the DB operation name)
 	//   kind       - Kubernetes resource kind (e.g. "Pod", "Deployment"); empty for bulk resync deletes
 	//   cluster    - name of the cluster that originated the sync event
+	//
+	// IMPORTANT: You must set ENABLE_DETAILED_METRICS=true to get the kind and cluster labels.
+	//     Otherwise, only the operation label will be used. This is because high cardinality
+	//     labels can impact the performance of the Prometheus server.
 	DBResourceEventSent = promauto.With(PromRegistry).NewCounterVec(prometheus.CounterOpts{
 		Name: "search_indexer_db_resource_event_count",
 		Help: "Number of resource DB events (insert, update, delete) sent to the database, by operation, kind, and cluster.",
 	}, []string{"operation", "kind", "cluster"})
 )
+
+// IncrementDBResourceEventSent increments the DBResourceEventSent metric by 1.
+// If dENABLE_DETAILED_METRICS=true, adds labels kind and cluster.
+func IncrementDBResourceEventSent(operation string, kind string, cluster string) {
+	if config.Cfg.DetailedMetrics {
+		DBResourceEventSent.WithLabelValues(operation, kind, cluster).Inc()
+	} else {
+		DBResourceEventSent.WithLabelValues(operation, "", "").Inc()
+	}
+}
+
+// IncrementDBResourceEventSentBy increments the DBResourceEventSent metric by the given count.
+// If ENABLE_DETAILED_METRICS=true, adds labels kind and cluster.
+func IncrementDBResourceEventSentBy(operation string, kind string, cluster string, count int) {
+	if config.Cfg.DetailedMetrics {
+		DBResourceEventSent.WithLabelValues(operation, kind, cluster).Add(float64(count))
+	} else {
+		DBResourceEventSent.WithLabelValues(operation, "", "").Add(float64(count))
+	}
+}
