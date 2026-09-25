@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/pashagolub/pgxmock"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"github.com/stolostron/search-indexer/pkg/testutils"
 	"github.com/stretchr/testify/assert"
@@ -35,9 +36,13 @@ func Test_SyncData(t *testing.T) {
 	dao, mockPool := buildMockDAO(t)
 	dao.batchSize = 1
 
-	// Mock PosgreSQL calls
+	// Mock PosgreSQL calls.
+	// SendBatch count: 2 (add) + 1 (update) + 1 (edge-delete for resource) + 1 (addEdge) + 1 (deleteEdge) = 6.
+	// Resource DELETE is now a direct pool.Exec call returning RowsAffected().
 	br := &testutils.MockBatchResults{}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(7)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(6)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(pgxmock.NewResult("DELETE", 1), nil)
 
 	// UIDs in simple.json are "local-cluster/…", so clusterName must match.
 	response := &model.SyncResponse{}
@@ -57,11 +62,15 @@ func Test_Sync_With_Exec_Errors(t *testing.T) {
 	dao, mockPool := buildMockDAO(t)
 	dao.batchSize = 1
 
-	// Mock PosgreSQL calls
+	// Mock PosgreSQL calls.
+	// Batch exec errors cover: 2 add, 1 update, 1 edge-delete (for resource), 1 addEdge, 1 deleteEdge = 6 batches.
+	// Resource DELETE is now a direct pool.Exec call; mock it as an error → appended to DeleteErrors.
 	br := &testutils.MockBatchResults{
 		MockErrorOnExec: errors.New("mocking error on exec"),
 	}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(7)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(6)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil, errors.New("mocking exec error"))
 
 	// Supress console output to prevent log messages from polluting test output.
 	defer testutils.SupressConsoleOutput()()
@@ -72,24 +81,29 @@ func Test_Sync_With_Exec_Errors(t *testing.T) {
 	assert.Nil(t, err)
 	AssertEqual(t, len(response.AddErrors), 2, "Incorrect number of AddErrors.")
 	AssertEqual(t, len(response.UpdateErrors), 1, "Incorrect number of UpdateErrors.")
-	// The resource DELETE (cluster-scoped) is 1 statement → 1 DeleteError.
-	// The accompanying edge DELETE (cluster-scoped) is now categorised as deleteEdge
-	// → counted in DeleteEdgeErrors together with the explicit edge delete below.
+	// Resource DELETE is now a direct Exec → 1 DeleteError on Exec failure.
 	AssertEqual(t, len(response.DeleteErrors), 1, "Incorrect number of DeleteErrors.")
 	AssertEqual(t, len(response.AddEdgeErrors), 1, "Incorrect number of AddEdgeErrors.")
+	// Edge DELETE for the removed resource + explicit deleteEdge = 2 DeleteEdgeErrors.
 	AssertEqual(t, len(response.DeleteEdgeErrors), 2, "Incorrect number of DeleteEdgeErrors.")
 }
 
 func Test_Sync_With_OnClose_Errors(t *testing.T) {
-	// Prepare a mock DAO instance
+	// Prepare a mock DAO instance.
+	// Use a batch size large enough to hold all three resource operations (2 adds + 1 update)
+	// so they are queued before any batch is sent. The single flush() call then sends them
+	// together in one SendBatch, which triggers connError via the "unexpected EOF" close error.
+	// Subsequent Queue() calls see connError and return immediately — no further SendBatch calls.
+	// The resource DELETE runs as a direct pool.Exec (outside the batch) and is unaffected.
 	dao, mockPool := buildMockDAO(t)
-	dao.batchSize = 1
+	dao.batchSize = 4
 
-	// Mock PosgreSQL calls
 	br := &testutils.MockBatchResults{
 		MockErrorOnClose: errors.New("unexpected EOF"),
 	}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(7)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(1)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(pgxmock.NewResult("DELETE", 0), nil)
 
 	// Supress console output to prevent log messages from polluting test output.
 	defer testutils.SupressConsoleOutput()()
@@ -113,10 +127,13 @@ func Test_SyncData_RejectsWrongClusterUID(t *testing.T) {
 
 	// The payload has 2 adds + 1 update with "local-cluster/" UIDs, but we're
 	// sending as "evil-cluster". All three should be rejected before any DB call.
-	// The 1 delete and 1 addEdge / 1 deleteEdge have no UID prefix check (they go
-	// through the bulk SQL path), so 3 batches are still expected.
+	// The delete, addEdge, and deleteEdge have no UID prefix check and still execute:
+	// - Resource DELETE runs via pool.Exec (1 Exec call).
+	// - Edge-delete-for-resource + addEdge + deleteEdge flush together into 1 SendBatch.
 	br := &testutils.MockBatchResults{}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(1)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(pgxmock.NewResult("DELETE", 0), nil)
 
 	response := &model.SyncResponse{}
 	err := dao.SyncData(context.Background(), loadSimpleSyncEvent(t), "evil-cluster", response)
