@@ -41,7 +41,6 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			syncResponse.AddErrors = append(syncResponse.AddErrors, model.SyncError{ResourceUID: resource.UID, Message: err.Error()})
 			continue
 		}
-
 		data, _ := json.Marshal(resource.Properties)
 		queueErr = batch.Queue(batchItem{
 			action: "addResource",
@@ -66,7 +65,6 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			syncResponse.UpdateErrors = append(syncResponse.UpdateErrors, model.SyncError{ResourceUID: resource.UID, Message: err.Error()})
 			continue
 		}
-
 		data, _ := json.Marshal(resource.Properties)
 		queueErr = batch.Queue(batchItem{
 			action: "updateResource",
