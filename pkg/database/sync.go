@@ -51,6 +51,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 		})
 		// Only count the event when the item was accepted into the batch queue.
 		if queueErr == nil {
+			kind := resource.Properties["kind"].(string)
 			metrics.IncrementDBResourceEventSent("insert", kind, clusterName)
 		}
 	}
@@ -74,6 +75,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 		})
 		// Only count the event when the item was accepted into the batch queue.
 		if queueErr == nil {
+			kind := resource.Properties["kind"].(string)
 			metrics.IncrementDBResourceEventSent("update", kind, clusterName)
 		}
 	}
