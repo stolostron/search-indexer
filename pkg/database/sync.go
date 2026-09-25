@@ -49,7 +49,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			uid:  resource.UID,
 			args: []interface{}{resource.UID, clusterName, string(data)},
 		})
-		metrics.ResourcesProcessed.WithLabelValues("insert", resource.Properties["kind"].(string), clusterName).Inc()
+		metrics.DBResourceEventSent.WithLabelValues("insert", resource.Properties["kind"].(string), clusterName).Inc()
 	}
 
 	// UPDATE RESOURCES
@@ -69,7 +69,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			uid:    resource.UID,
 			args:   []interface{}{resource.UID, string(data), clusterName},
 		})
-		metrics.ResourcesProcessed.WithLabelValues("update", resource.Properties["kind"].(string), clusterName).Inc()
+		metrics.DBResourceEventSent.WithLabelValues("update", resource.Properties["kind"].(string), clusterName).Inc()
 	}
 
 	// DELETE RESOURCES and all edges pointing to the resource.
@@ -100,7 +100,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 				model.SyncError{ResourceUID: fmt.Sprintf("%s", uids), Message: execErr.Error()})
 		} else {
 			syncResponse.TotalDeleted = int(tag.RowsAffected())
-			metrics.ResourcesProcessed.WithLabelValues("delete", "", clusterName).Add(float64(syncResponse.TotalDeleted))
+			metrics.DBResourceEventSent.WithLabelValues("delete", "", clusterName).Add(float64(syncResponse.TotalDeleted))
 		}
 
 		// Delete edges for the removed resources (still batched — no count needed).

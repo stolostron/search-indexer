@@ -32,22 +32,16 @@ var (
 		Buckets: []float64{50, 100, 200, 500, 5000, 10000, 25000, 50000, 100000, 200000},
 	})
 
-	// ResourcesProcessed counts the number of resource operations committed to the database,
+	// DBResourceEventSent counts the number of resource operations sent to the database,
 	// broken down by operation type, resource kind, and managed cluster name.
 	// Use rate() or irate() in PromQL to obtain operations per minute/second.
-	// Example: rate(search_indexer_resource_db_event_count[1m]) * 60
+	// Example: rate(search_indexer_db_resource_event_count[1m]) * 60
 	// Labels:
 	//   operation  - "insert", "update", or "delete" (matches the DB operation name)
 	//   kind       - Kubernetes resource kind (e.g. "Pod", "Deployment"); empty for bulk resync deletes
-	//   cluster    - name of the cluster that sent the sync event
-	ResourcesProcessed = promauto.With(PromRegistry).NewCounterVec(prometheus.CounterOpts{
-		Name: "search_indexer_resource_db_event_count",
-		Help: "Number of resource DB events (insert, update, delete) committed to the database, by operation, kind, and cluster.",
+	//   cluster    - name of the cluster that originated the sync event
+	DBResourceEventSent = promauto.With(PromRegistry).NewCounterVec(prometheus.CounterOpts{
+		Name: "search_indexer_db_resource_event_count",
+		Help: "Number of resource DB events (insert, update, delete) sent to the database, by operation, kind, and cluster.",
 	}, []string{"operation", "kind", "cluster"})
-
-	// FUTURE: The summary metric could combine RequestCount and RequestDuration into a single metric.
-	// RequestSummary = promauto.With(PromRegistry).NewSummaryVec(prometheus.SummaryOpts{
-	// 	Name: "search_indexer_requests_summary",
-	// 	Help: "Summarize (count and duration) of requests from managed clusters.",
-	// }, []string{"managed_cluster_name"})
 )
