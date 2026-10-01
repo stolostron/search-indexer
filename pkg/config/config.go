@@ -32,6 +32,7 @@ type Config struct {
 	DBPass              string
 	DBPort              int
 	DBUser              string
+	DetailedMetrics     bool // Enable detailed metrics. Default: false
 	DevelopmentMode     bool
 	HTTPTimeout         int // Timeout for http server connections. Default: 5 min
 	KubeClient          *kubernetes.Clientset
@@ -64,6 +65,7 @@ func new() *Config {
 		DBPass:              getEnv("DB_PASS", ""),
 		DBPort:              getEnvAsInt("DB_PORT", 5432),
 		DBUser:              getEnv("DB_USER", ""),
+		DetailedMetrics:     getEnvAsBool("ENABLE_DETAILED_METRICS", false),
 		DevelopmentMode:     DEVELOPMENT_MODE,                       // Don't read ENV. See config_development.go to enable.
 		HTTPTimeout:         getEnvAsInt("HTTP_TIMEOUT", 5*60*1000), // 5 min
 		KubeConfigPath:      getKubeConfigPath(),
@@ -105,7 +107,7 @@ func (cfg *Config) PrintConfig() {
 	klog.Infof("Using configuration:\n%s\n", string(cfgJSON))
 }
 
-// Simple helper function to read an environment or return a default value
+// Helper function to read an environment or return a default value
 func getEnv(key string, defaultVal string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
@@ -113,7 +115,16 @@ func getEnv(key string, defaultVal string) string {
 	return defaultVal
 }
 
-// Simple helper function to read an environment variable into integer or return a default value
+// Helper function to read an environment variable into boolean or return a default value
+func getEnvAsBool(name string, defaultVal bool) bool {
+	valueStr := getEnv(name, "")
+	if value, err := strconv.ParseBool(valueStr); err == nil {
+		return value
+	}
+	return defaultVal
+}
+
+// Helper function to read an environment variable into integer or return a default value
 func getEnvAsInt(name string, defaultVal int) int {
 	valueStr := getEnv(name, "")
 	if value, err := strconv.Atoi(valueStr); err == nil {

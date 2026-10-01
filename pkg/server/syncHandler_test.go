@@ -13,6 +13,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+	"github.com/pashagolub/pgxmock"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"github.com/stolostron/search-indexer/pkg/testutils"
@@ -146,7 +147,11 @@ func Test_resyncRequest(t *testing.T) {
 		},
 	}
 
+	// SendBatch count: 1 (upserts) + 1 (edge delete in resetResources) + 1 (resetEdges) + 1 (ClusterTotals) = 4.
+	// Resource DELETE is now a direct pool.Exec call returning RowsAffected().
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(4)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(pgxmock.NewResult("DELETE", 0), nil)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)

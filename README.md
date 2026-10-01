@@ -1,6 +1,10 @@
 # search-indexer
 Index resources for search.
 
+## Metrics
+
+See [Metrics reference](docs/METRICS.md).
+
 
 ## Development
 

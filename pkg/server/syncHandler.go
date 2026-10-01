@@ -39,9 +39,6 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		overwriteState = false
 	}
 
-	resourceTotal := len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)
-	metrics.RequestSize.Observe(float64(resourceTotal))
-
 	// Initialize SyncResponse object.
 	syncResponse := &model.SyncResponse{
 		Version:          config.COMPONENT_VERSION,
@@ -64,6 +61,9 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 			klog.Errorf("Error decoding request body from cluster [%s]. Error: %+v\n", clusterName, err)
 			w.WriteHeader(http.StatusBadRequest)
 		} else {
+			// Observe the request size after decoding so the count reflects actual resources.
+			resourceTotal := len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)
+			metrics.RequestSize.Observe(float64(resourceTotal))
 			err = s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
 		}
 	}

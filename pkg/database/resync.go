@@ -62,18 +62,29 @@ func (dao *DAO) resetResources(ctx context.Context, clusterName string,
 	incomingUIDs = append(incomingUIDs, fmt.Sprintf("cluster__%s", clusterName))
 
 	// DELETE resources that no longer exist.
+	// Execute directly (outside the batch) so we can read RowsAffected() from the
+	// CommandTag without an extra SELECT count(*) round-trip.
 	query, params, err := useGoqu(
 		"DELETE from search.resources WHERE cluster=$1 AND uid NOT IN ($2)",
 		[]interface{}{clusterName, incomingUIDs})
 	if err == nil {
-		queueErr := batch.Queue(batchItem{
-			action: "deleteResource",
-			query:  query,
-			uid:    fmt.Sprintf("%s", incomingUIDs),
-			args:   params,
-		})
-		if queueErr != nil {
-			klog.Warningf("Error queuing resources for deletion. Error: %+v", queueErr)
+		batch.flush() // flush pending upserts before the delete so the uid list is current
+		batch.wg.Wait()
+		// Skip the delete if the upsert batch lost its DB connection — pruning stale rows
+		// when inserts did not complete would corrupt the cluster's resource state.
+		if batch.connError != nil {
+			klog.Warningf("Skipping stale-resource delete for cluster %s due to upsert connection error: %v", clusterName, batch.connError)
+		} else {
+			tag, execErr := dao.pool.Exec(ctx, query, params...)
+			if execErr != nil {
+				klog.Warningf("Error deleting stale resources for cluster %s: %+v", clusterName, execErr)
+			} else {
+				deleted := int(tag.RowsAffected())
+				syncResponse.TotalDeleted += deleted
+				// Record here, immediately after the successful DELETE, so that a later
+				// resetEdges failure in ResyncData cannot cause this count to be skipped.
+				metrics.IncrementDBResourceEventSentBy("delete", "", clusterName, deleted)
+			}
 		}
 	}
 
@@ -218,6 +229,8 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 						return incomingUIDs, resource, queueErr
 					}
 					syncResponse.TotalAdded++
+					kind := resource.Properties["kind"].(string)
+					metrics.IncrementDBResourceEventSent("insert", kind, clusterName)
 				}
 				incomingUIDs = append(incomingUIDs, uid)
 			}

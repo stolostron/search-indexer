@@ -25,7 +25,11 @@ func Test_ResyncData(t *testing.T) {
 	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
 
 	br := &testutils.MockBatchResults{}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(4)
+	// SendBatch count: 1 (upserts) + 1 (edge delete in resetResources) + 1 (resetEdges) = 3.
+	// The resource DELETE is now a direct pool.Exec call (no longer batched).
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(pgxmock.NewResult("DELETE", 0), nil)
 
 	// Prepare Request data.
 	data, _ := os.Open("./mocks/simple.json")
@@ -47,9 +51,13 @@ func Test_ResyncData_errors(t *testing.T) {
 	// Mock Postgres state and SELECT queries.
 	testutils.MockDatabaseState(mockPool)
 
-	// Mock error on INSERT.
+	// Mock error on INSERT (upsert batch).
+	// The batch error sets connError; the resource DELETE is still executed directly via Exec.
+	// Edge delete Queue() returns early (connError set), so no second SendBatch occurs.
 	br := &testutils.MockBatchResults{MockErrorOnClose: errors.New("unexpected EOF")}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(1)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(pgxmock.NewResult("DELETE", 0), nil)
 
 	// Prepare Request data.
 	data, _ := os.Open("./mocks/simple.json")

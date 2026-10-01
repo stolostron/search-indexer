@@ -49,6 +49,48 @@ func Test_getEnvAsInt(t *testing.T) {
 	}
 }
 
+// Should use default value when environment variable does not exist.
+func Test_getEnvAsBool_default(t *testing.T) {
+	_ = os.Unsetenv("ENV_VARIABLE_NOT_DEFINED")
+	res := getEnvAsBool("ENV_VARIABLE_NOT_DEFINED", true)
+
+	if res != true {
+		t.Errorf("Failed testing getEnvAsBool() Expected: %t  Got: %t", true, res)
+	}
+}
+
+// Should load bool value from environment.
+func Test_getEnvAsBool(t *testing.T) {
+	tests := []struct {
+		name       string
+		envValue   string
+		defaultVal bool
+		want       bool
+	}{
+		{name: "true", envValue: "true", defaultVal: false, want: true},
+		{name: "TRUE", envValue: "TRUE", defaultVal: false, want: true},
+		{name: "1", envValue: "1", defaultVal: false, want: true},
+		{name: "false", envValue: "false", defaultVal: true, want: false},
+		{name: "FALSE", envValue: "FALSE", defaultVal: true, want: false},
+		{name: "0", envValue: "0", defaultVal: true, want: false},
+		{name: "invalid falls back to default true", envValue: "not-a-bool", defaultVal: true, want: true},
+		{name: "invalid falls back to default false", envValue: "not-a-bool", defaultVal: false, want: false},
+		{name: "empty falls back to default", envValue: "", defaultVal: true, want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_ = os.Setenv("TEST_BOOL_VARIABLE", tt.envValue)
+			t.Cleanup(func() { _ = os.Unsetenv("TEST_BOOL_VARIABLE") })
+
+			res := getEnvAsBool("TEST_BOOL_VARIABLE", tt.defaultVal)
+			if res != tt.want {
+				t.Errorf("Failed testing getEnvAsBool() Expected: %t  Got: %t", tt.want, res)
+			}
+		})
+	}
+}
+
 // Should print environment and redact the database password.
 func Test_PrintConfig(t *testing.T) {
 	// Redirect the logger output.
