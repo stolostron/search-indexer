@@ -13,6 +13,7 @@ import (
 	"github.com/stolostron/search-indexer/pkg/clustersync"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/database"
+	"github.com/stolostron/search-indexer/pkg/requestcapture"
 	"github.com/stolostron/search-indexer/pkg/server"
 	"k8s.io/klog/v2"
 )
@@ -46,9 +47,22 @@ func main() {
 	go clustersync.ElectLeaderAndStart(ctx)
 
 	// Start the server.
+	recorder := requestcapture.NewFromConfig(config.Cfg, func(ctx context.Context, sql string, args ...interface{}) error {
+		_, err := dao.ExecRaw(ctx, sql, args...)
+		return err
+	})
+	defer func() {
+		closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := recorder.Close(closeCtx); err != nil {
+			klog.Warningf("Error closing request capture recorder: %v", err)
+		}
+	}()
+
 	srv := &server.ServerConfig{
 		Dao:       &dao,
 		TLSConfig: tlsCfg,
+		Recorder:  recorder,
 	}
 	go srv.StartAndListen(ctx)
 
