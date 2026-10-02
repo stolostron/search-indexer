@@ -13,12 +13,14 @@ import (
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/database"
 	"github.com/stolostron/search-indexer/pkg/metrics"
+	"github.com/stolostron/search-indexer/pkg/requestcapture"
 	"k8s.io/klog/v2"
 )
 
 type ServerConfig struct {
 	Dao       *database.DAO
 	TLSConfig *tls.Config
+	Recorder  requestcapture.Recorder
 }
 
 func (s *ServerConfig) StartAndListen(ctx context.Context) {

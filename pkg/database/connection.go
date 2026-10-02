@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/driftprogramming/pgxpoolmock"
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	pgxpool "github.com/jackc/pgx/v4/pgxpool"
 	"github.com/stolostron/search-indexer/pkg/config"
@@ -127,6 +128,9 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 	_, err = dao.pool.Exec(ctx,
 		"CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")
 	checkError(err, "Error creating table search.edges.")
+	_, err = dao.pool.Exec(ctx,
+		"CREATE TABLE IF NOT EXISTS search.request_capture (id BIGSERIAL PRIMARY KEY, received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), cluster TEXT NOT NULL, overwrite_state_header TEXT, method TEXT NOT NULL, path TEXT NOT NULL, host TEXT, headers JSONB, body BYTEA NOT NULL, body_sha256 TEXT NOT NULL, body_bytes INTEGER NOT NULL, body_truncated BOOLEAN NOT NULL DEFAULT FALSE)")
+	checkError(err, "Error creating table search.request_capture.")
 
 	// Jsonb indexing data keys:
 	_, err = dao.pool.Exec(ctx,
@@ -168,6 +172,14 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 		"CREATE INDEX IF NOT EXISTS edges_cluster_idx ON search.edges USING btree (cluster)")
 	checkError(err, "Error creating index on search.edges key cluster.")
 
+	_, err = dao.pool.Exec(ctx,
+		"CREATE INDEX IF NOT EXISTS request_capture_received_idx ON search.request_capture USING btree (received_at)")
+	checkError(err, "Error creating index on search.request_capture received_at.")
+
+	_, err = dao.pool.Exec(ctx,
+		"CREATE INDEX IF NOT EXISTS request_capture_cluster_idx ON search.request_capture USING btree (cluster)")
+	checkError(err, "Error creating index on search.request_capture cluster.")
+
 	//GRANT USAGE ON SCHEMA search TO search_api_ro, search_mcp_ro;
 	_, err = dao.pool.Exec(ctx,
 		"GRANT USAGE ON SCHEMA search TO search_api_ro, search_mcp_ro")
@@ -180,6 +192,9 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 	_, err = dao.pool.Exec(ctx,
 		"GRANT SELECT ON search.edges TO search_api_ro, search_mcp_ro")
 	checkError(err, "Error granting select on search.edges to search_api_ro, search_mcp_ro.")
+	_, err = dao.pool.Exec(ctx,
+		"GRANT SELECT ON search.request_capture TO search_api_ro, search_mcp_ro")
+	checkError(err, "Error granting select on search.request_capture to search_api_ro, search_mcp_ro.")
 
 	// ALTER DEFAULT PRIVILEGES IN SCHEMA search GRANT SELECT ON TABLES TO search_api_ro, search_mcp_ro;
 	_, err = dao.pool.Exec(ctx,
@@ -198,4 +213,10 @@ func checkErrorAndRollback(err error, logMessage string, tx pgx.Tx, ctx context.
 	if err := tx.Rollback(ctx); err != nil {
 		checkError(err, "Encountered error while rolling back cluster delete transaction command")
 	}
+}
+
+// ExecRaw executes a SQL statement directly using the DAO connection pool.
+// Intended for auxiliary write paths (e.g. request capture) that need a thin pool wrapper.
+func (dao *DAO) ExecRaw(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
+	return dao.pool.Exec(ctx, sql, args...)
 }
