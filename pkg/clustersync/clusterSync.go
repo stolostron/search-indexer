@@ -59,6 +59,41 @@ func ElectLeaderAndStart(ctx context.Context) {
 	runLeaderElection(ctx, lock, syncClusters)
 }
 
+func stripUnusedFields(obj interface{}) (interface{}, error) {
+	u, ok := obj.(*unstructured.Unstructured)
+	if !ok {
+		return obj, nil
+	}
+
+	r := u.DeepCopy()
+	unstructured.RemoveNestedField(r.Object, "metadata", "managedFields")
+	unstructured.RemoveNestedField(r.Object, "metadata", "annotations")
+
+	switch r.GetKind() {
+	case "ManagedCluster":
+		// transformManagedCluster uses: metadata.name, metadata.labels, metadata.creationTimestamp,
+		// status.capacity, status.version, status.conditions
+		unstructured.RemoveNestedField(r.Object, "spec")
+		unstructured.RemoveNestedField(r.Object, "status", "allocatable")
+		unstructured.RemoveNestedField(r.Object, "status", "clusterClaims")
+	case "ManagedClusterInfo":
+		// transformManagedClusterInfo uses: metadata.name, spec.masterEndpoint,
+		// status.consoleURL, status.nodeList
+		unstructured.RemoveNestedField(r.Object, "metadata", "labels")
+		unstructured.RemoveNestedField(r.Object, "metadata", "ownerReferences")
+		unstructured.RemoveNestedField(r.Object, "status", "conditions")
+		unstructured.RemoveNestedField(r.Object, "status", "distributionInfo")
+	case "ManagedClusterAddOn":
+		// processClusterDelete uses only: metadata.name, metadata.namespace
+		unstructured.RemoveNestedField(r.Object, "spec")
+		unstructured.RemoveNestedField(r.Object, "status")
+		unstructured.RemoveNestedField(r.Object, "metadata", "labels")
+		unstructured.RemoveNestedField(r.Object, "metadata", "ownerReferences")
+	}
+
+	return r, nil
+}
+
 // Watches ManagedCluster objects and updates the database with a Cluster node.
 func syncClusters(ctx context.Context) {
 	klog.Info("Attempting to sync clusters. Begin ClusterWatch routine")
@@ -83,9 +118,19 @@ func syncClusters(ctx context.Context) {
 	managedClusterInfoInformer := dynamicFactory.ForResource(*managedClusterInfoGvr).Informer()
 	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
+	err := managedClusterInformer.SetTransform(func(obj interface{}) (interface{}, error) {
+		return stripUnusedFields(obj)
+	})
+	err = managedClusterInfoInformer.SetTransform(func(obj interface{}) (interface{}, error) {
+		return stripUnusedFields(obj)
+	})
+	err = managedClusterAddonInformer.SetTransform(func(obj interface{}) (interface{}, error) {
+		return stripUnusedFields(obj)
+	})
+
 	resyncPeriod := time.Duration(config.Cfg.ResyncPeriodMS) * time.Millisecond
 	// Confirm delete event not missed if indexer OR db goes offline:
-	err := deleteStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
+	err = deleteStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
 	if err != nil {
 		klog.Warning("Error deleting stale clusters resources", err.Error())
 	}
