@@ -290,8 +290,15 @@ func goquDelete(tableName, columnName, arg string) (string, []interface{}, error
 }
 
 // Create the upsert query
-// query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,”,$2)
-// ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1"
+// query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,",$2)
+// ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE "r".data IS DISTINCT FROM $2"
+//
+// "r".data is used (table-qualified) rather than bare data because PostgreSQL
+// exposes both the target row and the EXCLUDED pseudo-row inside ON CONFLICT DO
+// UPDATE, making an unqualified column reference ambiguous.
+// IS DISTINCT FROM is used instead of != so that a NULL data column is treated
+// as distinct from any non-NULL incoming value (SQL != returns UNKNOWN for NULLs,
+// which would silently skip the update).
 func goquInsertUpdate(tableName string, args []interface{}) (string, []interface{}, error) {
 	sql, args, err := goqu.From(
 		goqu.S("search").Table(tableName).As("r")).
@@ -299,7 +306,7 @@ func goquInsertUpdate(tableName string, args []interface{}) (string, []interface
 		Rows(goqu.Record{"uid": args[0], "cluster": args[1], "data": args[2]}).
 		OnConflict(goqu.DoUpdate("uid",
 			goqu.C("data").Set(args[2])).
-			Where(goqu.L(`"r".uid`).Eq(args[0]))).ToSQL()
+			Where(goqu.L(`"r".data IS DISTINCT FROM ?`, args[2]))).ToSQL()
 
 	return sql, args, err
 }
