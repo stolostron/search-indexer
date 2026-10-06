@@ -59,36 +59,57 @@ func ElectLeaderAndStart(ctx context.Context) {
 	runLeaderElection(ctx, lock, syncClusters)
 }
 
-func stripUnusedFields(obj interface{}) (interface{}, error) {
+func storeDesiredFields(obj interface{}) (interface{}, error) {
 	u, ok := obj.(*unstructured.Unstructured)
 	if !ok {
 		return obj, nil
 	}
 
-	r := u.DeepCopy()
-	unstructured.RemoveNestedField(r.Object, "metadata", "managedFields")
-	unstructured.RemoveNestedField(r.Object, "metadata", "annotations")
+	r := &unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": u.GetAPIVersion(),
+		"kind":       u.GetKind(),
+	}}
 
-	switch r.GetKind() {
+	switch u.GetKind() {
 	case "ManagedCluster":
-		// transformManagedCluster uses: metadata.name, metadata.labels, metadata.creationTimestamp,
+		// transformManagedCluster reads: name, labels, creationTimestamp,
 		// status.capacity, status.version, status.conditions
-		unstructured.RemoveNestedField(r.Object, "spec")
-		unstructured.RemoveNestedField(r.Object, "status", "allocatable")
-		unstructured.RemoveNestedField(r.Object, "status", "clusterClaims")
+		r.SetName(u.GetName())
+		r.SetLabels(u.GetLabels())
+		r.SetCreationTimestamp(u.GetCreationTimestamp())
+		if status, ok := u.Object["status"].(map[string]interface{}); ok {
+			kept := map[string]interface{}{}
+			for _, key := range []string{"capacity", "version", "conditions"} {
+				if v, exists := status[key]; exists {
+					kept[key] = v
+				}
+			}
+			r.Object["status"] = kept
+		}
 	case "ManagedClusterInfo":
-		// transformManagedClusterInfo uses: metadata.name, spec.masterEndpoint,
+		// transformManagedClusterInfo reads: name, spec.masterEndpoint,
 		// status.consoleURL, status.nodeList
-		unstructured.RemoveNestedField(r.Object, "metadata", "labels")
-		unstructured.RemoveNestedField(r.Object, "metadata", "ownerReferences")
-		unstructured.RemoveNestedField(r.Object, "status", "conditions")
-		unstructured.RemoveNestedField(r.Object, "status", "distributionInfo")
+		r.SetName(u.GetName())
+		if spec, ok := u.Object["spec"].(map[string]interface{}); ok {
+			kept := map[string]interface{}{}
+			if v, exists := spec["masterEndpoint"]; exists {
+				kept["masterEndpoint"] = v
+			}
+			r.Object["spec"] = kept
+		}
+		if status, ok := u.Object["status"].(map[string]interface{}); ok {
+			kept := map[string]interface{}{}
+			for _, key := range []string{"consoleURL", "nodeList"} {
+				if v, exists := status[key]; exists {
+					kept[key] = v
+				}
+			}
+			r.Object["status"] = kept
+		}
 	case "ManagedClusterAddOn":
-		// processClusterDelete uses only: metadata.name, metadata.namespace
-		unstructured.RemoveNestedField(r.Object, "spec")
-		unstructured.RemoveNestedField(r.Object, "status")
-		unstructured.RemoveNestedField(r.Object, "metadata", "labels")
-		unstructured.RemoveNestedField(r.Object, "metadata", "ownerReferences")
+		// processClusterDelete reads only: name, namespace
+		r.SetName(u.GetName())
+		r.SetNamespace(u.GetNamespace())
 	}
 
 	return r, nil
@@ -119,19 +140,19 @@ func syncClusters(ctx context.Context) {
 	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
 	err := managedClusterInformer.SetTransform(func(obj interface{}) (interface{}, error) {
-		return stripUnusedFields(obj)
+		return storeDesiredFields(obj)
 	})
 	if err != nil {
 		klog.Warning("Error formatting ManagedCluster informer cache fields", err.Error())
 	}
 	err = managedClusterInfoInformer.SetTransform(func(obj interface{}) (interface{}, error) {
-		return stripUnusedFields(obj)
+		return storeDesiredFields(obj)
 	})
 	if err != nil {
 		klog.Warning("Error formatting ManagedClusterInfo informer cache fields", err.Error())
 	}
 	err = managedClusterAddonInformer.SetTransform(func(obj interface{}) (interface{}, error) {
-		return stripUnusedFields(obj)
+		return storeDesiredFields(obj)
 	})
 	if err != nil {
 		klog.Warning("Error formatting ManagedClusterAddOn informer cache fields", err.Error())
