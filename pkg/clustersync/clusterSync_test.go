@@ -583,3 +583,192 @@ func Test_syncClusters_DeleteStaleError(t *testing.T) {
 		t.Error("syncClusters did not exit within timeout after error in deleteStaleClusterResources")
 	}
 }
+
+func Test_stripUnusedFields_NonUnstructured(t *testing.T) {
+	input := "not an unstructured object"
+	result, err := stripUnusedFields(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != input {
+		t.Errorf("expected input returned unchanged, got %v", result)
+	}
+}
+
+func Test_stripUnusedFields_ManagedCluster(t *testing.T) {
+	obj := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "cluster.open-cluster-management.io/v1",
+			"kind":       "ManagedCluster",
+			"metadata": map[string]interface{}{
+				"name":              "test-cluster",
+				"labels":            map[string]interface{}{"env": "dev"},
+				"creationTimestamp": "2024-01-01T00:00:00Z",
+				"managedFields":    []interface{}{"should be removed"},
+				"annotations":      map[string]interface{}{"note": "should be removed"},
+			},
+			"spec": map[string]interface{}{
+				"hubAcceptsClient": true,
+			},
+			"status": map[string]interface{}{
+				"capacity":      map[string]interface{}{"cpu": "4"},
+				"allocatable":   map[string]interface{}{"cpu": "3"},
+				"clusterClaims": []interface{}{"claim1"},
+				"version":       map[string]interface{}{"kubernetes": "v1.28.0"},
+				"conditions":    []interface{}{map[string]interface{}{"type": "Ready"}},
+			},
+		},
+	}
+
+	result, err := stripUnusedFields(obj)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	r := result.(*unstructured.Unstructured)
+
+	// Verify common fields removed
+	_, found, _ := unstructured.NestedFieldNoCopy(r.Object, "metadata", "managedFields")
+	AssertEqual(t, found, false, "managedFields should be removed")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "metadata", "annotations")
+	AssertEqual(t, found, false, "annotations should be removed")
+
+	// Verify ManagedCluster-specific removals
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "spec")
+	AssertEqual(t, found, false, "spec should be removed")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "status", "allocatable")
+	AssertEqual(t, found, false, "status.allocatable should be removed")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "status", "clusterClaims")
+	AssertEqual(t, found, false, "status.clusterClaims should be removed")
+
+	// Verify needed fields preserved
+	name := r.GetName()
+	AssertEqual(t, name, "test-cluster", "metadata.name should be preserved")
+	labels := r.GetLabels()
+	AssertEqual(t, labels["env"], "dev", "metadata.labels should be preserved")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "status", "capacity")
+	AssertEqual(t, found, true, "status.capacity should be preserved")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "status", "version")
+	AssertEqual(t, found, true, "status.version should be preserved")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "status", "conditions")
+	AssertEqual(t, found, true, "status.conditions should be preserved")
+}
+
+func Test_stripUnusedFields_ManagedClusterInfo(t *testing.T) {
+	obj := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "internal.open-cluster-management.io/v1beta1",
+			"kind":       "ManagedClusterInfo",
+			"metadata": map[string]interface{}{
+				"name":            "test-cluster",
+				"namespace":       "test-cluster",
+				"labels":          map[string]interface{}{"env": "dev"},
+				"managedFields":   []interface{}{"should be removed"},
+				"annotations":     map[string]interface{}{"note": "should be removed"},
+				"ownerReferences": []interface{}{map[string]interface{}{"name": "owner"}},
+			},
+			"spec": map[string]interface{}{
+				"masterEndpoint": "https://api.test:6443",
+			},
+			"status": map[string]interface{}{
+				"consoleURL":       "https://console.test",
+				"nodeList":         []interface{}{map[string]interface{}{"name": "node1"}},
+				"conditions":       []interface{}{map[string]interface{}{"type": "Ready"}},
+				"distributionInfo": map[string]interface{}{"type": "OCP"},
+			},
+		},
+	}
+
+	result, err := stripUnusedFields(obj)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	r := result.(*unstructured.Unstructured)
+
+	// Verify ManagedClusterInfo-specific removals
+	_, found, _ := unstructured.NestedFieldNoCopy(r.Object, "metadata", "labels")
+	AssertEqual(t, found, false, "metadata.labels should be removed")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "metadata", "ownerReferences")
+	AssertEqual(t, found, false, "metadata.ownerReferences should be removed")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "status", "conditions")
+	AssertEqual(t, found, false, "status.conditions should be removed")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "status", "distributionInfo")
+	AssertEqual(t, found, false, "status.distributionInfo should be removed")
+
+	// Verify needed fields preserved
+	AssertEqual(t, r.GetName(), "test-cluster", "metadata.name should be preserved")
+	endpoint, _, _ := unstructured.NestedString(r.Object, "spec", "masterEndpoint")
+	AssertEqual(t, endpoint, "https://api.test:6443", "spec.masterEndpoint should be preserved")
+	consoleURL, _, _ := unstructured.NestedString(r.Object, "status", "consoleURL")
+	AssertEqual(t, consoleURL, "https://console.test", "status.consoleURL should be preserved")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "status", "nodeList")
+	AssertEqual(t, found, true, "status.nodeList should be preserved")
+}
+
+func Test_stripUnusedFields_ManagedClusterAddOn(t *testing.T) {
+	obj := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "addon.open-cluster-management.io/v1alpha1",
+			"kind":       "ManagedClusterAddOn",
+			"metadata": map[string]interface{}{
+				"name":            "search-collector",
+				"namespace":       "test-cluster",
+				"labels":          map[string]interface{}{"addon": "search"},
+				"managedFields":   []interface{}{"should be removed"},
+				"annotations":     map[string]interface{}{"note": "should be removed"},
+				"ownerReferences": []interface{}{map[string]interface{}{"name": "owner"}},
+			},
+			"spec": map[string]interface{}{
+				"installNamespace": "open-cluster-management-agent-addon",
+			},
+			"status": map[string]interface{}{
+				"conditions": []interface{}{map[string]interface{}{"type": "Available"}},
+			},
+		},
+	}
+
+	result, err := stripUnusedFields(obj)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	r := result.(*unstructured.Unstructured)
+
+	// Verify ManagedClusterAddOn-specific removals
+	_, found, _ := unstructured.NestedFieldNoCopy(r.Object, "spec")
+	AssertEqual(t, found, false, "spec should be removed")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "status")
+	AssertEqual(t, found, false, "status should be removed")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "metadata", "labels")
+	AssertEqual(t, found, false, "metadata.labels should be removed")
+	_, found, _ = unstructured.NestedFieldNoCopy(r.Object, "metadata", "ownerReferences")
+	AssertEqual(t, found, false, "metadata.ownerReferences should be removed")
+
+	// Verify needed fields preserved
+	AssertEqual(t, r.GetName(), "search-collector", "metadata.name should be preserved")
+	AssertEqual(t, r.GetNamespace(), "test-cluster", "metadata.namespace should be preserved")
+	AssertEqual(t, r.GetKind(), "ManagedClusterAddOn", "kind should be preserved")
+}
+
+func Test_stripUnusedFields_DoesNotMutateOriginal(t *testing.T) {
+	obj := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "cluster.open-cluster-management.io/v1",
+			"kind":       "ManagedCluster",
+			"metadata": map[string]interface{}{
+				"name":          "test-cluster",
+				"managedFields": []interface{}{"original"},
+			},
+			"spec": map[string]interface{}{"hubAcceptsClient": true},
+		},
+	}
+
+	_, err := stripUnusedFields(obj)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Original should still have managedFields and spec
+	_, found, _ := unstructured.NestedFieldNoCopy(obj.Object, "metadata", "managedFields")
+	AssertEqual(t, found, true, "original metadata.managedFields should not be mutated")
+	_, found, _ = unstructured.NestedFieldNoCopy(obj.Object, "spec")
+	AssertEqual(t, found, true, "original spec should not be mutated")
+}

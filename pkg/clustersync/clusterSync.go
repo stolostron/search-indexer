@@ -121,12 +121,21 @@ func syncClusters(ctx context.Context) {
 	err := managedClusterInformer.SetTransform(func(obj interface{}) (interface{}, error) {
 		return stripUnusedFields(obj)
 	})
+	if err != nil {
+		klog.Warning("Error formatting ManagedCluster informer cache fields", err.Error())
+	}
 	err = managedClusterInfoInformer.SetTransform(func(obj interface{}) (interface{}, error) {
 		return stripUnusedFields(obj)
 	})
+	if err != nil {
+		klog.Warning("Error formatting ManagedClusterInfo informer cache fields", err.Error())
+	}
 	err = managedClusterAddonInformer.SetTransform(func(obj interface{}) (interface{}, error) {
 		return stripUnusedFields(obj)
 	})
+	if err != nil {
+		klog.Warning("Error formatting ManagedClusterAddOn informer cache fields", err.Error())
+	}
 
 	resyncPeriod := time.Duration(config.Cfg.ResyncPeriodMS) * time.Millisecond
 	// Confirm delete event not missed if indexer OR db goes offline:
