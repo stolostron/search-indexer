@@ -81,7 +81,7 @@ func Test_UpsertCluster_Update1(t *testing.T) {
 		gomock.Eq([]interface{}{}),
 	).Return(mrows, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
@@ -129,7 +129,7 @@ func Test_UpsertCluster_Update2(t *testing.T) {
 	).Return(mrows, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
 
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
@@ -160,9 +160,11 @@ func Test_goquInsertUpdate_WhereClauseUsesDataComparison(t *testing.T) {
 
 	assert.Nil(t, err, "goquInsertUpdate should not return an error")
 	assert.Empty(t, args, "goquInsertUpdate should return no bound args (all values are inlined)")
-	// The WHERE clause must use IS DISTINCT FROM for NULL-safe comparison
-	assert.Contains(t, sql, `WHERE data IS DISTINCT FROM '`+data+`'`,
-		"ON CONFLICT WHERE clause should use IS DISTINCT FROM for NULL-safe data comparison")
+	// The WHERE clause must use "r".data (table-qualified) with IS DISTINCT FROM.
+	// "r".data is required because PostgreSQL exposes both the target row and the
+	// EXCLUDED pseudo-row in ON CONFLICT DO UPDATE, making a bare 'data' reference ambiguous.
+	assert.Contains(t, sql, `WHERE "r".data IS DISTINCT FROM '`+data+`'`,
+		"ON CONFLICT WHERE clause should use \"r\".data IS DISTINCT FROM for NULL-safe, unambiguous data comparison")
 	assert.NotContains(t, sql, `"r".uid`,
 		"ON CONFLICT WHERE clause must NOT reference r.uid (old behaviour)")
 	assert.NotContains(t, sql, `"uid" =`,
@@ -201,7 +203,7 @@ func Test_UpsertCluster_Insert(t *testing.T) {
 	).Return(nil, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
 
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
@@ -475,7 +477,7 @@ func Test_UpsertCluster_ExecContextCanceled(t *testing.T) {
 	).Return(nil, nil)
 
 	expectedProps, _ := json.Marshal(currCluster.Properties)
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
 
 	// Mock Exec to return context.Canceled error
 	mockPool.EXPECT().Exec(gomock.Any(),
