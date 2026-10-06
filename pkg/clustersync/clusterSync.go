@@ -69,6 +69,7 @@ func storeDesiredFields(obj interface{}) (interface{}, error) {
 		"apiVersion": u.GetAPIVersion(),
 		"kind":       u.GetKind(),
 	}}
+	r.SetResourceVersion(u.GetResourceVersion())
 
 	switch u.GetKind() {
 	case "ManagedCluster":
@@ -90,6 +91,7 @@ func storeDesiredFields(obj interface{}) (interface{}, error) {
 		// transformManagedClusterInfo reads: name, spec.masterEndpoint,
 		// status.consoleURL, status.nodeList
 		r.SetName(u.GetName())
+		r.SetNamespace(u.GetNamespace())
 		if spec, ok := u.Object["spec"].(map[string]interface{}); ok {
 			kept := map[string]interface{}{}
 			if v, exists := spec["masterEndpoint"]; exists {

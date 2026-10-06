@@ -669,8 +669,8 @@ func Test_storeDesiredFields_ManagedCluster(t *testing.T) {
 	if _, ok := meta["annotations"]; ok {
 		t.Error("metadata.annotations should be stripped")
 	}
-	if _, ok := meta["resourceVersion"]; ok {
-		t.Error("metadata.resourceVersion should be stripped")
+	if meta["resourceVersion"] != "12345" {
+		t.Errorf("metadata.resourceVersion should be kept, got %v", meta["resourceVersion"])
 	}
 }
 
@@ -705,6 +705,9 @@ func Test_storeDesiredFields_ManagedClusterInfo(t *testing.T) {
 
 	if u.GetName() != "cluster1" {
 		t.Errorf("name mismatch: %s", u.GetName())
+	}
+	if u.GetNamespace() != "cluster1" {
+		t.Errorf("namespace mismatch: %s", u.GetNamespace())
 	}
 	if u.GetKind() != "ManagedClusterInfo" {
 		t.Errorf("kind mismatch: %s", u.GetKind())
@@ -741,6 +744,9 @@ func Test_storeDesiredFields_ManagedClusterInfo(t *testing.T) {
 	meta, _ := u.Object["metadata"].(map[string]interface{})
 	if _, ok := meta["uid"]; ok {
 		t.Error("metadata.uid should be stripped")
+	}
+	if meta["resourceVersion"] != "999" {
+		t.Errorf("metadata.resourceVersion should be kept, got %v", meta["resourceVersion"])
 	}
 }
 
@@ -792,6 +798,9 @@ func Test_storeDesiredFields_ManagedClusterAddOn(t *testing.T) {
 	}
 	if _, ok := meta["annotations"]; ok {
 		t.Error("metadata.annotations should be stripped")
+	}
+	if meta["resourceVersion"] != "777" {
+		t.Errorf("metadata.resourceVersion should be kept, got %v", meta["resourceVersion"])
 	}
 }
 
