@@ -290,8 +290,11 @@ func goquDelete(tableName, columnName, arg string) (string, []interface{}, error
 }
 
 // Create the upsert query
-// query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,”,$2)
-// ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.data != $2"
+// query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,",$2)
+// ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE data IS DISTINCT FROM $2"
+// IS DISTINCT FROM is used instead of != so that a NULL data column is treated
+// as distinct from any non-NULL incoming value (SQL != returns UNKNOWN for NULLs,
+// which would silently skip the update).
 func goquInsertUpdate(tableName string, args []interface{}) (string, []interface{}, error) {
 	sql, args, err := goqu.From(
 		goqu.S("search").Table(tableName).As("r")).
@@ -299,7 +302,7 @@ func goquInsertUpdate(tableName string, args []interface{}) (string, []interface
 		Rows(goqu.Record{"uid": args[0], "cluster": args[1], "data": args[2]}).
 		OnConflict(goqu.DoUpdate("uid",
 			goqu.C("data").Set(args[2])).
-			Where(goqu.C("data").Neq(args[2]))).ToSQL()
+			Where(goqu.L("data IS DISTINCT FROM ?", args[2]))).ToSQL()
 
 	return sql, args, err
 }
