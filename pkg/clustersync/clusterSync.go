@@ -297,7 +297,7 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 	// Properties duplicated between this and ManagedClusterInfo are taken from ManagedCluster
 
 	props := make(map[string]interface{})
-	if labels := managedCluster.GetLabels(); len(labels) > 0 {
+	if labels := managedCluster.GetLabels(); labels != nil {
 		labelMap := make(map[string]interface{}, len(labels))
 		for k, v := range labels {
 			labelMap[k] = v
