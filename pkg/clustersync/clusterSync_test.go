@@ -308,10 +308,6 @@ func Test_AddAdditionalProps(t *testing.T) {
 	AssertEqual(t, kindPluralPresent, true, "Expected kindPlural to be set")
 }
 
-type error interface {
-	Error() string
-}
-
 // Find stale cluster resources, if found, delete them
 func Test_DeleteStaleClustersResources(t *testing.T) {
 	//ensure cluster in cache exists
