@@ -297,18 +297,15 @@ func transformManagedCluster(managedCluster *clusterv1.ManagedCluster) model.Res
 	// Properties duplicated between this and ManagedClusterInfo are taken from ManagedCluster
 
 	props := make(map[string]interface{})
-	if managedCluster.GetLabels() != nil {
-		// Unmarshaling labels to map[string]interface{}
-		var labelMap map[string]interface{}
-		clusterLabels, _ := json.Marshal(managedCluster.GetLabels())
-		err := json.Unmarshal(clusterLabels, &labelMap)
-		if err == nil {
-			props["label"] = labelMap
-
-			// Extract the enabled addons from labels
-			props["addon"] = getEnabledAddons(labelMap) // maps to the enabled addons on the cluster
-
+	if labels := managedCluster.GetLabels(); len(labels) > 0 {
+		labelMap := make(map[string]interface{}, len(labels))
+		for k, v := range labels {
+			labelMap[k] = v
 		}
+		props["label"] = labelMap
+
+		// Extract the enabled addons from the labels
+		props["addon"] = getEnabledAddons(labelMap) // maps to the enabled addons on the cluster
 	}
 
 	props["kind"] = "Cluster"
