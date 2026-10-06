@@ -1,12 +1,45 @@
 # Jorge's notes
 
-Table search.request_capture columns
+
+## Enable request capture
+
 ```
-id | received_at | cluster | overwrite_state_header | method |  path | host  |headers | body | body_sha256 | body_bytes | body_truncated
+REQUEST_CAPTURE_ENABLED = true
+
+```
+
+## Copy the table locally.
+```sh
+export NS="open-cluster-management"
+export POD=$(oc get pod -n "$NS" -l name=search-postgres -o jsonpath='{.items[0].metadata.name}')
+export OUT="search-request-capture-$(date +%Y%m%d-%H%M%S).dmp"
+
+oc exec -n "$NS" "$POD" -- sh -c '
+  pg_dump -U "$POSTGRESQL_USER" -d "$POSTGRESQL_DATABASE" -t search.request_capture -Fc
+' > "$OUT"
+
+ls -lh "$OUT"
 ```
 
 
-Query the request_capture table
+## Table schema
+```sql
+CREATE TABLE IF NOT EXISTS search.request_capture (
+    id BIGSERIAL PRIMARY KEY, 
+    received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), 
+    cluster TEXT NOT NULL, 
+    overwrite_state_header TEXT, 
+    method TEXT NOT NULL, 
+    path TEXT NOT NULL, 
+    host TEXT, headers JSONB, 
+    body BYTEA NOT NULL, 
+    body_sha256 TEXT NOT NULL, 
+    body_bytes INTEGER NOT NULL, 
+    body_truncated BOOLEAN NOT NULL DEFAULT FALSE)
+```
+
+
+## Useful queries
 
 ```sql
 -- START and END times of the request capture.
