@@ -308,10 +308,6 @@ func Test_AddAdditionalProps(t *testing.T) {
 	AssertEqual(t, kindPluralPresent, true, "Expected kindPlural to be set")
 }
 
-type error interface {
-	Error() string
-}
-
 // Find stale cluster resources, if found, delete them
 func Test_DeleteStaleClustersResources(t *testing.T) {
 	//ensure cluster in cache exists
@@ -585,5 +581,262 @@ func Test_syncClusters_DeleteStaleError(t *testing.T) {
 		// Success - function handled the error and exited when context was canceled
 	case <-time.After(500 * time.Millisecond):
 		t.Error("syncClusters did not exit within timeout after error in deleteStaleClusterResources")
+	}
+}
+
+func Test_storeDesiredFields_NonUnstructured(t *testing.T) {
+	input := "not an unstructured object"
+	result, err := storeDesiredFields(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != input {
+		t.Errorf("expected passthrough, got %v", result)
+	}
+}
+
+func Test_storeDesiredFields_ManagedCluster(t *testing.T) {
+	input := &unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "cluster.open-cluster-management.io/v1",
+		"kind":       "ManagedCluster",
+		"metadata": map[string]interface{}{
+			"name":              "cluster1",
+			"uid":               "should-be-stripped",
+			"resourceVersion":   "12345",
+			"creationTimestamp":  "2024-01-01T00:00:00Z",
+			"labels":            map[string]interface{}{"env": "prod"},
+			"managedFields":     []interface{}{"big", "blob"},
+			"annotations":       map[string]interface{}{"note": "strip-me"},
+		},
+		"spec": map[string]interface{}{
+			"hubAcceptsClient": true,
+		},
+		"status": map[string]interface{}{
+			"capacity":   map[string]interface{}{"cpu": "8"},
+			"version":    map[string]interface{}{"kubernetes": "v1.28.0"},
+			"conditions": []interface{}{map[string]interface{}{"type": "Available"}},
+			"allocatable": map[string]interface{}{"cpu": "6"},
+		},
+	}}
+
+	result, err := storeDesiredFields(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	u := result.(*unstructured.Unstructured)
+
+	if u.GetAPIVersion() != "cluster.open-cluster-management.io/v1" {
+		t.Errorf("apiVersion mismatch: %s", u.GetAPIVersion())
+	}
+	if u.GetKind() != "ManagedCluster" {
+		t.Errorf("kind mismatch: %s", u.GetKind())
+	}
+	if u.GetName() != "cluster1" {
+		t.Errorf("name mismatch: %s", u.GetName())
+	}
+	if u.GetLabels()["env"] != "prod" {
+		t.Errorf("labels mismatch: %v", u.GetLabels())
+	}
+
+	status, _ := u.Object["status"].(map[string]interface{})
+	if status == nil {
+		t.Fatal("status should be present")
+	}
+	if _, ok := status["capacity"]; !ok {
+		t.Error("status.capacity should be kept")
+	}
+	if _, ok := status["version"]; !ok {
+		t.Error("status.version should be kept")
+	}
+	if _, ok := status["conditions"]; !ok {
+		t.Error("status.conditions should be kept")
+	}
+	if _, ok := status["allocatable"]; ok {
+		t.Error("status.allocatable should be stripped")
+	}
+
+	// Verify stripped fields are absent.
+	if _, ok := u.Object["spec"]; ok {
+		t.Error("spec should be stripped from ManagedCluster")
+	}
+	meta, _ := u.Object["metadata"].(map[string]interface{})
+	if _, ok := meta["uid"]; ok {
+		t.Error("metadata.uid should be stripped")
+	}
+	if _, ok := meta["managedFields"]; ok {
+		t.Error("metadata.managedFields should be stripped")
+	}
+	if _, ok := meta["annotations"]; ok {
+		t.Error("metadata.annotations should be stripped")
+	}
+	if meta["resourceVersion"] != "12345" {
+		t.Errorf("metadata.resourceVersion should be kept, got %v", meta["resourceVersion"])
+	}
+}
+
+func Test_storeDesiredFields_ManagedClusterInfo(t *testing.T) {
+	input := &unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "internal.open-cluster-management.io/v1beta1",
+		"kind":       "ManagedClusterInfo",
+		"metadata": map[string]interface{}{
+			"name":            "cluster1",
+			"namespace":       "cluster1",
+			"uid":             "should-be-stripped",
+			"managedFields":   []interface{}{"big"},
+			"resourceVersion": "999",
+		},
+		"spec": map[string]interface{}{
+			"masterEndpoint": "https://api.cluster1:6443",
+			"loggingCA":      "strip-me",
+		},
+		"status": map[string]interface{}{
+			"consoleURL":    "https://console.cluster1",
+			"nodeList":      []interface{}{map[string]interface{}{"name": "node1"}},
+			"distributionInfo": map[string]interface{}{"type": "OCP"},
+			"conditions":    []interface{}{map[string]interface{}{"type": "Available"}},
+		},
+	}}
+
+	result, err := storeDesiredFields(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	u := result.(*unstructured.Unstructured)
+
+	if u.GetName() != "cluster1" {
+		t.Errorf("name mismatch: %s", u.GetName())
+	}
+	if u.GetNamespace() != "cluster1" {
+		t.Errorf("namespace mismatch: %s", u.GetNamespace())
+	}
+	if u.GetKind() != "ManagedClusterInfo" {
+		t.Errorf("kind mismatch: %s", u.GetKind())
+	}
+
+	spec, _ := u.Object["spec"].(map[string]interface{})
+	if spec == nil {
+		t.Fatal("spec should be present")
+	}
+	if spec["masterEndpoint"] != "https://api.cluster1:6443" {
+		t.Errorf("spec.masterEndpoint mismatch: %v", spec["masterEndpoint"])
+	}
+	if _, ok := spec["loggingCA"]; ok {
+		t.Error("spec.loggingCA should be stripped")
+	}
+
+	status, _ := u.Object["status"].(map[string]interface{})
+	if status == nil {
+		t.Fatal("status should be present")
+	}
+	if status["consoleURL"] != "https://console.cluster1" {
+		t.Error("status.consoleURL should be kept")
+	}
+	if _, ok := status["nodeList"]; !ok {
+		t.Error("status.nodeList should be kept")
+	}
+	if _, ok := status["distributionInfo"]; ok {
+		t.Error("status.distributionInfo should be stripped")
+	}
+	if _, ok := status["conditions"]; ok {
+		t.Error("status.conditions should be stripped")
+	}
+
+	meta, _ := u.Object["metadata"].(map[string]interface{})
+	if _, ok := meta["uid"]; ok {
+		t.Error("metadata.uid should be stripped")
+	}
+	if meta["resourceVersion"] != "999" {
+		t.Errorf("metadata.resourceVersion should be kept, got %v", meta["resourceVersion"])
+	}
+}
+
+func Test_storeDesiredFields_ManagedClusterAddOn(t *testing.T) {
+	input := &unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "addon.open-cluster-management.io/v1alpha1",
+		"kind":       "ManagedClusterAddOn",
+		"metadata": map[string]interface{}{
+			"name":            "search-collector",
+			"namespace":       "cluster1",
+			"uid":             "should-be-stripped",
+			"managedFields":   []interface{}{"big"},
+			"resourceVersion": "777",
+			"annotations":     map[string]interface{}{"note": "strip-me"},
+		},
+		"spec": map[string]interface{}{
+			"installNamespace": "open-cluster-management-agent-addon",
+		},
+		"status": map[string]interface{}{
+			"conditions": []interface{}{map[string]interface{}{"type": "Available"}},
+		},
+	}}
+
+	result, err := storeDesiredFields(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	u := result.(*unstructured.Unstructured)
+
+	if u.GetName() != "search-collector" {
+		t.Errorf("name mismatch: %s", u.GetName())
+	}
+	if u.GetNamespace() != "cluster1" {
+		t.Errorf("namespace mismatch: %s", u.GetNamespace())
+	}
+	if u.GetKind() != "ManagedClusterAddOn" {
+		t.Errorf("kind mismatch: %s", u.GetKind())
+	}
+
+	if _, ok := u.Object["spec"]; ok {
+		t.Error("spec should be stripped from ManagedClusterAddOn")
+	}
+	if _, ok := u.Object["status"]; ok {
+		t.Error("status should be stripped from ManagedClusterAddOn")
+	}
+	meta, _ := u.Object["metadata"].(map[string]interface{})
+	if _, ok := meta["uid"]; ok {
+		t.Error("metadata.uid should be stripped")
+	}
+	if _, ok := meta["annotations"]; ok {
+		t.Error("metadata.annotations should be stripped")
+	}
+	if meta["resourceVersion"] != "777" {
+		t.Errorf("metadata.resourceVersion should be kept, got %v", meta["resourceVersion"])
+	}
+}
+
+func Test_storeDesiredFields_DoesNotMutateOriginal(t *testing.T) {
+	input := &unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "cluster.open-cluster-management.io/v1",
+		"kind":       "ManagedCluster",
+		"metadata": map[string]interface{}{
+			"name":      "cluster1",
+			"uid":       "original-uid",
+			"labels":    map[string]interface{}{"env": "prod"},
+		},
+		"spec": map[string]interface{}{
+			"hubAcceptsClient": true,
+		},
+		"status": map[string]interface{}{
+			"capacity":    map[string]interface{}{"cpu": "8"},
+			"allocatable": map[string]interface{}{"cpu": "6"},
+		},
+	}}
+
+	_, err := storeDesiredFields(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify original is untouched.
+	meta := input.Object["metadata"].(map[string]interface{})
+	if meta["uid"] != "original-uid" {
+		t.Error("original metadata.uid was mutated")
+	}
+	if _, ok := input.Object["spec"]; !ok {
+		t.Error("original spec was removed")
+	}
+	status := input.Object["status"].(map[string]interface{})
+	if _, ok := status["allocatable"]; !ok {
+		t.Error("original status.allocatable was removed")
 	}
 }

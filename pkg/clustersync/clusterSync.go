@@ -59,6 +59,64 @@ func ElectLeaderAndStart(ctx context.Context) {
 	runLeaderElection(ctx, lock, syncClusters)
 }
 
+func storeDesiredFields(obj interface{}) (interface{}, error) {
+	u, ok := obj.(*unstructured.Unstructured)
+	if !ok {
+		return obj, nil
+	}
+
+	r := &unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": u.GetAPIVersion(),
+		"kind":       u.GetKind(),
+	}}
+	r.SetResourceVersion(u.GetResourceVersion())
+
+	switch u.GetKind() {
+	case "ManagedCluster":
+		// transformManagedCluster reads: name, labels, creationTimestamp,
+		// status.capacity, status.version, status.conditions
+		r.SetName(u.GetName())
+		r.SetLabels(u.GetLabels())
+		r.SetCreationTimestamp(u.GetCreationTimestamp())
+		if status, ok := u.Object["status"].(map[string]interface{}); ok {
+			kept := map[string]interface{}{}
+			for _, key := range []string{"capacity", "version", "conditions"} {
+				if v, exists := status[key]; exists {
+					kept[key] = v
+				}
+			}
+			r.Object["status"] = kept
+		}
+	case "ManagedClusterInfo":
+		// transformManagedClusterInfo reads: name, spec.masterEndpoint,
+		// status.consoleURL, status.nodeList
+		r.SetName(u.GetName())
+		r.SetNamespace(u.GetNamespace())
+		if spec, ok := u.Object["spec"].(map[string]interface{}); ok {
+			kept := map[string]interface{}{}
+			if v, exists := spec["masterEndpoint"]; exists {
+				kept["masterEndpoint"] = v
+			}
+			r.Object["spec"] = kept
+		}
+		if status, ok := u.Object["status"].(map[string]interface{}); ok {
+			kept := map[string]interface{}{}
+			for _, key := range []string{"consoleURL", "nodeList"} {
+				if v, exists := status[key]; exists {
+					kept[key] = v
+				}
+			}
+			r.Object["status"] = kept
+		}
+	case "ManagedClusterAddOn":
+		// processClusterDelete reads only: name, namespace
+		r.SetName(u.GetName())
+		r.SetNamespace(u.GetNamespace())
+	}
+
+	return r, nil
+}
+
 // Watches ManagedCluster objects and updates the database with a Cluster node.
 func syncClusters(ctx context.Context) {
 	klog.Info("Attempting to sync clusters. Begin ClusterWatch routine")
@@ -83,9 +141,28 @@ func syncClusters(ctx context.Context) {
 	managedClusterInfoInformer := dynamicFactory.ForResource(*managedClusterInfoGvr).Informer()
 	managedClusterAddonInformer := filteredDynamicFactory.ForResource(*managedClusterAddonGvr).Informer()
 
+	err := managedClusterInformer.SetTransform(func(obj interface{}) (interface{}, error) {
+		return storeDesiredFields(obj)
+	})
+	if err != nil {
+		klog.Warning("Error formatting ManagedCluster informer cache fields", err.Error())
+	}
+	err = managedClusterInfoInformer.SetTransform(func(obj interface{}) (interface{}, error) {
+		return storeDesiredFields(obj)
+	})
+	if err != nil {
+		klog.Warning("Error formatting ManagedClusterInfo informer cache fields", err.Error())
+	}
+	err = managedClusterAddonInformer.SetTransform(func(obj interface{}) (interface{}, error) {
+		return storeDesiredFields(obj)
+	})
+	if err != nil {
+		klog.Warning("Error formatting ManagedClusterAddOn informer cache fields", err.Error())
+	}
+
 	resyncPeriod := time.Duration(config.Cfg.ResyncPeriodMS) * time.Millisecond
 	// Confirm delete event not missed if indexer OR db goes offline:
-	err := deleteStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
+	err = deleteStaleClusterResources(ctx, dynamicClient, *managedClusterGvr)
 	if err != nil {
 		klog.Warning("Error deleting stale clusters resources", err.Error())
 	}
