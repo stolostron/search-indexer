@@ -291,7 +291,7 @@ func goquDelete(tableName, columnName, arg string) (string, []interface{}, error
 
 // Create the upsert query
 // query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,”,$2)
-// ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.uid=$1"
+// ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE r.data != $2"
 func goquInsertUpdate(tableName string, args []interface{}) (string, []interface{}, error) {
 	sql, args, err := goqu.From(
 		goqu.S("search").Table(tableName).As("r")).
@@ -299,7 +299,7 @@ func goquInsertUpdate(tableName string, args []interface{}) (string, []interface
 		Rows(goqu.Record{"uid": args[0], "cluster": args[1], "data": args[2]}).
 		OnConflict(goqu.DoUpdate("uid",
 			goqu.C("data").Set(args[2])).
-			Where(goqu.L(`"r".uid`).Eq(args[0]))).ToSQL()
+			Where(goqu.C("data").Neq(args[2]))).ToSQL()
 
 	return sql, args, err
 }
