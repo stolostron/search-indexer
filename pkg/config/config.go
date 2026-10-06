@@ -20,34 +20,39 @@ var Cfg = new()
 
 // Struct to hold our configuration
 type Config struct {
-	DBBatchSize         int // Batch size used to write to DB. Default: 2500
-	DBHealthCkeckPeriod int // Overrides pgxpool.Config{ HealthCheckPeriod } Default: 1 min
-	DBHost              string
-	DBMinConns          int32 // Overrides pgxpool.Config{ MinConns } Default: 2
-	DBMaxConns          int32 // Overrides pgxpool.Config{ MaxConns } Default: 10
-	DBMaxConnIdleTime   int   // Overrides pgxpool.Config{ MaxConnIdleTime } Default: 5 min
-	DBMaxConnLifeTime   int   // Overrides pgxpool.Config{ MaxConnLifetime } Default: 5 min
-	DBMaxConnLifeJitter int   // Overrides pgxpool.Config{ MaxConnLifetimeJitter } Default: 1 min
-	DBName              string
-	DBPass              string
-	DBPort              int
-	DBUser              string
-	DetailedMetrics     bool // Enable detailed metrics. Default: false
-	DevelopmentMode     bool
-	HTTPTimeout         int // Timeout for http server connections. Default: 5 min
-	KubeClient          *kubernetes.Clientset
-	KubeConfigPath      string
-	MaxBackoffMS        int // Maximum backoff in ms to wait after db connection error
-	PodName             string
-	PodNamespace        string
-	ResyncPeriodMS      int    // Time in MS for the clusters informer. Default: 15 min.
-	RediscoverRateMS    int    // Time in MS we should check on cluster resource type
-	RequestLimit        int    // Max number of concurrent requests. Used to prevent from overloading the database
-	LargeRequestLimit   int    // Max number of large concurrent requests. Used to help control memory spikes
-	LargeRequestSize    int    // Size defining a large request. Used by large request limiter middleware to control large requests
-	ServerAddress       string // Web server address
-	SlowLog             int    // Log operations slower than the specified time in ms. Default: 1 sec
-	Version             string
+	DBBatchSize           int // Batch size used to write to DB. Default: 2500
+	DBHealthCkeckPeriod   int // Overrides pgxpool.Config{ HealthCheckPeriod } Default: 1 min
+	DBHost                string
+	DBMinConns            int32 // Overrides pgxpool.Config{ MinConns } Default: 2
+	DBMaxConns            int32 // Overrides pgxpool.Config{ MaxConns } Default: 10
+	DBMaxConnIdleTime     int   // Overrides pgxpool.Config{ MaxConnIdleTime } Default: 5 min
+	DBMaxConnLifeTime     int   // Overrides pgxpool.Config{ MaxConnLifetime } Default: 5 min
+	DBMaxConnLifeJitter   int   // Overrides pgxpool.Config{ MaxConnLifetimeJitter } Default: 1 min
+	DBName                string
+	DBPass                string
+	DBPort                int
+	DBUser                string
+	DetailedMetrics       bool // Enable detailed metrics. Default: false
+	DevelopmentMode       bool
+	HTTPTimeout           int // Timeout for http server connections. Default: 5 min
+	KubeClient            *kubernetes.Clientset
+	KubeConfigPath        string
+	MaxBackoffMS          int // Maximum backoff in ms to wait after db connection error
+	PodName               string
+	PodNamespace          string
+	ResyncPeriodMS        int    // Time in MS for the clusters informer. Default: 15 min.
+	RediscoverRateMS      int    // Time in MS we should check on cluster resource type
+	RequestLimit          int    // Max number of concurrent requests. Used to prevent from overloading the database
+	LargeRequestLimit     int    // Max number of large concurrent requests. Used to help control memory spikes
+	LargeRequestSize      int    // Size defining a large request. Used by large request limiter middleware to control large requests
+	ServerAddress         string // Web server address
+	SlowLog               int    // Log operations slower than the specified time in ms. Default: 1 sec
+	RequestCaptureEnabled bool   // Persist incoming sync requests for replay/debug. Default: false
+	RequestCaptureBackend string // Capture sink backend. Supported: postgres,file. Default: postgres
+	RequestCaptureFile    string // NDJSON output file for captured requests. Empty logs to stdout.
+	RequestCaptureBuffer  int    // Buffered request capture queue size. Default: 200
+	RequestCaptureMaxBody int    // Max body bytes to capture. 0 means unlimited.
+	Version               string
 }
 
 // Reads config from environment.
@@ -70,17 +75,22 @@ func new() *Config {
 		HTTPTimeout:         getEnvAsInt("HTTP_TIMEOUT", 5*60*1000), // 5 min
 		KubeConfigPath:      getKubeConfigPath(),
 		// Use 5 min for delete cluster activities and 30 seconds for db reconnect retry
-		MaxBackoffMS:      getEnvAsInt("MAX_BACKOFF_MS", 5*60*1000), // 5 min
-		PodName:           getEnv("POD_NAME", "local-dev"),
-		PodNamespace:      getEnv("POD_NAMESPACE", "open-cluster-management"),
-		RediscoverRateMS:  getEnvAsInt("REDISCOVER_RATE_MS", 5*60*1000), // 5 min
-		ResyncPeriodMS:    getEnvAsInt("RESYNC_PERIOD_MS", 15*60*1000),  // 15 min - cluster resync period
-		RequestLimit:      getEnvAsInt("REQUEST_LIMIT", 25),             // Set to 25 to prevent memory issues.
-		LargeRequestLimit: getEnvAsInt("LARGE_REQUEST_LIMIT", 5),
-		LargeRequestSize:  getEnvAsInt("LARGE_REQUEST_SIZE", 1024*1024*20), // 20 MB
-		ServerAddress:     getEnv("AGGREGATOR_ADDRESS", ":3010"),
-		SlowLog:           getEnvAsInt("SLOW_LOG", 1000), // 1 second
-		Version:           COMPONENT_VERSION,
+		MaxBackoffMS:          getEnvAsInt("MAX_BACKOFF_MS", 5*60*1000), // 5 min
+		PodName:               getEnv("POD_NAME", "local-dev"),
+		PodNamespace:          getEnv("POD_NAMESPACE", "open-cluster-management"),
+		RediscoverRateMS:      getEnvAsInt("REDISCOVER_RATE_MS", 5*60*1000), // 5 min
+		ResyncPeriodMS:        getEnvAsInt("RESYNC_PERIOD_MS", 15*60*1000),  // 15 min - cluster resync period
+		RequestLimit:          getEnvAsInt("REQUEST_LIMIT", 25),             // Set to 25 to prevent memory issues.
+		LargeRequestLimit:     getEnvAsInt("LARGE_REQUEST_LIMIT", 5),
+		LargeRequestSize:      getEnvAsInt("LARGE_REQUEST_SIZE", 1024*1024*20), // 20 MB
+		ServerAddress:         getEnv("AGGREGATOR_ADDRESS", ":3010"),
+		SlowLog:               getEnvAsInt("SLOW_LOG", 1000), // 1 second
+		RequestCaptureEnabled: getEnvAsBool("REQUEST_CAPTURE_ENABLED", false),
+		RequestCaptureBackend: getEnv("REQUEST_CAPTURE_BACKEND", "postgres"),
+		RequestCaptureFile:    getEnv("REQUEST_CAPTURE_FILE", ""),
+		RequestCaptureBuffer:  getEnvAsInt("REQUEST_CAPTURE_BUFFER", 200),
+		RequestCaptureMaxBody: getEnvAsInt("REQUEST_CAPTURE_MAX_BODY", 0),
+		Version:               COMPONENT_VERSION,
 	}
 
 	// URLEncode the db password.

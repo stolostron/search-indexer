@@ -17,6 +17,7 @@ func Test_initializeTables(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE SCHEMA IF NOT EXISTS search")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS search.request_capture (id BIGSERIAL PRIMARY KEY, received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), cluster TEXT NOT NULL, overwrite_state_header TEXT, method TEXT NOT NULL, path TEXT NOT NULL, host TEXT, headers JSONB, body BYTEA NOT NULL, body_sha256 TEXT NOT NULL, body_bytes INTEGER NOT NULL, body_truncated BOOLEAN NOT NULL DEFAULT FALSE)")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_kind_idx ON search.resources USING GIN ((data -> 'kind'))")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_namespace_idx ON search.resources USING GIN ((data -> 'namespace'))")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")).Return(nil, nil)
@@ -26,9 +27,12 @@ func Test_initializeTables(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS edges_sourceid_idx ON search.edges USING btree (sourceid)")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS edges_destid_idx ON search.edges USING btree (destid)")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS edges_cluster_idx ON search.edges USING btree (cluster)")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS request_capture_received_idx ON search.request_capture USING btree (received_at)")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS request_capture_cluster_idx ON search.request_capture USING btree (cluster)")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT USAGE ON SCHEMA search TO search_api_ro, search_mcp_ro")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.resources TO search_api_ro, search_mcp_ro")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.edges TO search_api_ro, search_mcp_ro")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.request_capture TO search_api_ro, search_mcp_ro")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("ALTER DEFAULT PRIVILEGES IN SCHEMA search GRANT SELECT ON TABLES TO search_api_ro, search_mcp_ro")).Return(nil, nil)
 
 	// Execute function test.

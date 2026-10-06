@@ -39,6 +39,10 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 		overwriteState = false
 	}
 
+	if s.Recorder != nil && s.Recorder.Enabled() {
+		s.Recorder.Record(clusterName, overwriteStateHeader, r.Method, r.URL.Path, r.Host, bodyBytes, map[string][]string(r.Header))
+	}
+
 	// Initialize SyncResponse object.
 	syncResponse := &model.SyncResponse{
 		Version:          config.COMPONENT_VERSION,
