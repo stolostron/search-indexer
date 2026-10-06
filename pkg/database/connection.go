@@ -181,9 +181,6 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 	_, err = dao.pool.Exec(ctx,
 		"GRANT SELECT ON search.edges TO search_api_ro, search_mcp_ro")
 	checkError(err, "Error granting select on search.edges to search_api_ro, search_mcp_ro.")
-	_, err = dao.pool.Exec(ctx,
-		"GRANT SELECT ON search.request_capture TO search_api_ro, search_mcp_ro")
-	checkError(err, "Error granting select on search.request_capture to search_api_ro, search_mcp_ro.")
 
 	// ALTER DEFAULT PRIVILEGES IN SCHEMA search GRANT SELECT ON TABLES TO search_api_ro, search_mcp_ro;
 	_, err = dao.pool.Exec(ctx,
@@ -191,20 +188,29 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 	checkError(err, "Error granting select on tables to search_api_ro, search_mcp_ro.")
 
 	if config.Cfg.RequestCaptureEnabled {
-		// CREATE TABLE IF NOT EXISTS search.request_capture (id BIGSERIAL PRIMARY KEY, received_at TIMESTAMPTZ
-		//   NOT NULL DEFAULT NOW(), cluster TEXT NOT NULL, overwrite_state_header TEXT, method TEXT NOT NULL,
-		//   path TEXT NOT NULL, host TEXT, headers JSONB, body BYTEA NOT NULL, body_sha256 TEXT NOT NULL,
-		//   body_bytes INTEGER NOT NULL, body_truncated BOOLEAN NOT NULL DEFAULT FALSE)
+		// CREATE TABLE IF NOT EXISTS search.request_capture (
+		//   id BIGSERIAL PRIMARY KEY,
+		//   received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		//   cluster TEXT NOT NULL,
+		//   overwrite_state_header TEXT,
+		//   method TEXT NOT NULL,
+		//   path TEXT NOT NULL,
+		//   host TEXT,
+		//   headers JSONB,
+		//   body BYTEA NOT NULL,
+		//   body_sha256 TEXT NOT NULL,
+		//   body_bytes INTEGER NOT NULL,
+		//   body_truncated BOOLEAN NOT NULL DEFAULT FALSE);
 		_, err = dao.pool.Exec(ctx,
 			"CREATE TABLE IF NOT EXISTS search.request_capture (id BIGSERIAL PRIMARY KEY, received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), cluster TEXT NOT NULL, overwrite_state_header TEXT, method TEXT NOT NULL, path TEXT NOT NULL, host TEXT, headers JSONB, body BYTEA NOT NULL, body_sha256 TEXT NOT NULL, body_bytes INTEGER NOT NULL, body_truncated BOOLEAN NOT NULL DEFAULT FALSE)")
 		checkError(err, "Error creating table search.request_capture.")
 
-		// CREATE INDEX IF NOT EXISTS request_capture_received_idx ON search.request_capture USING btree (received_at)
+		// CREATE INDEX IF NOT EXISTS request_capture_received_idx ON search.request_capture USING btree (received_at);
 		_, err = dao.pool.Exec(ctx,
 			"CREATE INDEX IF NOT EXISTS request_capture_received_idx ON search.request_capture USING btree (received_at)")
 		checkError(err, "Error creating index on search.request_capture received_at.")
 
-		// CREATE INDEX IF NOT EXISTS request_capture_cluster_idx ON search.request_capture USING btree (cluster)
+		// CREATE INDEX IF NOT EXISTS request_capture_cluster_idx ON search.request_capture USING btree (cluster);
 		_, err = dao.pool.Exec(ctx,
 			"CREATE INDEX IF NOT EXISTS request_capture_cluster_idx ON search.request_capture USING btree (cluster)")
 		checkError(err, "Error creating index on search.request_capture cluster.")
