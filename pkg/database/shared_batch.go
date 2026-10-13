@@ -5,6 +5,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 type sharedBatchItem struct {
 	batchItem
 	onResult func(pgconn.CommandTag) // nil for most items; DELETE items use this for RowsAffected routing
+	onError  func(string)            // called when this item is isolated as the cause of a batch failure
 }
 
 type SharedBatch struct {
@@ -99,20 +101,28 @@ func (sb *SharedBatch) fire() {
 }
 
 func (sb *SharedBatch) executeBatch(items []sharedBatchItem, waiters []chan error) {
-	var firstErr error
+	var connErr error
 
 	defer func() {
 		if r := recover(); r != nil {
 			klog.Errorf("SharedBatch executeBatch panic: %v", r)
-			if firstErr == nil {
-				firstErr = fmt.Errorf("executeBatch panic: %v", r)
+			if connErr == nil {
+				connErr = fmt.Errorf("executeBatch panic: %v", r)
 			}
 		}
 		for _, ch := range waiters {
-			ch <- firstErr
+			ch <- connErr
 		}
 	}()
 
+	connErr = sb.sendBatch(items)
+}
+
+// sendBatch sends items to Postgres. On error it retries with binary search to
+// isolate the failing item(s), calling onError for each. On success it calls
+// onResult for items that have one. Returns non-nil only for connection errors
+// that should stop all retries.
+func (sb *SharedBatch) sendBatch(items []sharedBatchItem) error {
 	batch := &pgx.Batch{}
 	for _, item := range items {
 		batch.Queue(item.query, item.args...)
@@ -120,6 +130,7 @@ func (sb *SharedBatch) executeBatch(items []sharedBatchItem, waiters []chan erro
 
 	br := sb.dao.pool.SendBatch(context.Background(), batch)
 
+	var firstErr error
 	tags := make([]pgconn.CommandTag, len(items))
 	for i := range items {
 		tag, err := br.Exec()
@@ -130,17 +141,38 @@ func (sb *SharedBatch) executeBatch(items []sharedBatchItem, waiters []chan erro
 	}
 
 	closeErr := br.Close()
-	if closeErr != nil && firstErr == nil {
-		firstErr = closeErr
-	}
-
-	if firstErr != nil {
-		klog.Warningf("SharedBatch executeBatch error: %v", firstErr)
-	} else {
-		for i, item := range items {
-			if item.onResult != nil {
-				item.onResult(tags[i])
-			}
+	if closeErr != nil {
+		if strings.Contains(closeErr.Error(), "unexpected EOF") || strings.Contains(closeErr.Error(), "failed to connect") {
+			klog.Error("SharedBatch send failed because database is unavailable. Won't retry.")
+			return closeErr
+		}
+		klog.Error("Error closing shared batch result. ", closeErr)
+		if firstErr == nil {
+			firstErr = closeErr
 		}
 	}
+
+	if firstErr != nil && len(items) == 1 {
+		errorItem := items[0]
+		klog.Errorf("ERROR processing shared batch item. %+v", errorItem.batchItem)
+		if errorItem.onError != nil {
+			errorItem.onError("Resource generated an error while updating the database.")
+		}
+		return nil
+	} else if firstErr != nil {
+		if err := sb.sendBatch(items[:len(items)/2]); err != nil {
+			return err
+		}
+		if err := sb.sendBatch(items[len(items)/2:]); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	for i, item := range items {
+		if item.onResult != nil {
+			item.onResult(tags[i])
+		}
+	}
+	return nil
 }

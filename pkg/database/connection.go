@@ -33,13 +33,12 @@ func NewDAO(p pgxpoolmock.PgxPool) DAO {
 	}
 	if p != nil {
 		dao.pool = p
-		return dao
+	} else {
+		if poolSingleton == nil {
+			poolSingleton = initializePool()
+		}
+		dao.pool = poolSingleton
 	}
-
-	if poolSingleton == nil {
-		poolSingleton = initializePool()
-	}
-	dao.pool = poolSingleton
 
 	dao.Accumulator = NewSharedBatch(&dao, dao.batchSize,
 		time.Duration(config.Cfg.BatchAccumulationTimeout)*time.Millisecond)

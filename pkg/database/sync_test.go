@@ -53,18 +53,22 @@ func Test_SyncDataShared_With_Exec_Errors(t *testing.T) {
 	dao, mockPool := buildMockDAO(t)
 	dao.Accumulator = NewSharedBatch(&dao, 2500, 1*time.Millisecond)
 
-	// Batch exec error causes the entire shared batch to fail → SyncDataShared returns error.
+	// Exec error on every SendBatch triggers binary-search retry.
+	// Each item is isolated and its onError callback fires.
 	br := &testutils.MockBatchResults{
 		MockErrorOnExec: errors.New("mocking error on exec"),
 	}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(1)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).AnyTimes()
 
 	defer testutils.SupressConsoleOutput()()
 
 	response := &model.SyncResponse{}
 	err := dao.SyncDataShared(context.Background(), loadSimpleSyncEvent(t), "local-cluster", response)
 
-	assert.NotNil(t, err)
+	assert.Nil(t, err, "per-item errors are handled via onError, not propagated as batch-level error")
+	assert.NotEmpty(t, response.AddErrors, "add errors should be populated by onError callbacks")
+	assert.NotEmpty(t, response.UpdateErrors, "update errors should be populated by onError callbacks")
+	assert.NotEmpty(t, response.DeleteErrors, "delete errors should be populated by onError callbacks")
 }
 
 func Test_SyncDataShared_With_OnClose_Errors(t *testing.T) {

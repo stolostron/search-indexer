@@ -51,6 +51,10 @@ func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 				uid:  resource.UID,
 				args: []interface{}{resource.UID, clusterName, string(data)},
 			},
+			onError: func(msg string) {
+				syncResponse.AddErrors = append(syncResponse.AddErrors,
+					model.SyncError{ResourceUID: resource.UID, Message: msg})
+			},
 		})
 		kind := resource.Properties["kind"].(string)
 		metrics.IncrementDBResourceEventSent("insert", kind, clusterName)
@@ -74,15 +78,17 @@ func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 				uid:    resource.UID,
 				args:   []interface{}{resource.UID, string(data), clusterName},
 			},
+			onError: func(msg string) {
+				syncResponse.UpdateErrors = append(syncResponse.UpdateErrors,
+					model.SyncError{ResourceUID: resource.UID, Message: msg})
+			},
 		})
 		kind := resource.Properties["kind"].(string)
 		metrics.IncrementDBResourceEventSent("update", kind, clusterName)
 	}
 
 	// DELETE RESOURCES and all edges pointing to the resource.
-	//	// AND cluster=$N ensures a spoke can only delete its own rows.
-	//	// The resource DELETE runs via pool.Exec (outside the batch) so we can read
-	//	// RowsAffected() and use the actual DB count for the metric.
+	// AND cluster=$N ensures a spoke can only delete its own rows.
 	if len(event.DeleteResources) > 0 {
 		params := make([]string, len(event.DeleteResources))
 		uids := make([]interface{}, len(event.DeleteResources))
@@ -93,16 +99,21 @@ func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 		paramStr := strings.Join(params, ",")
 		args := append([]interface{}{clusterName}, uids...)
 
+		deleteUID := fmt.Sprintf("%s", uids)
 		allItems = append(allItems, sharedBatchItem{
 			batchItem: batchItem{
 				action: "deleteResource",
 				query:  fmt.Sprintf("DELETE from search.resources WHERE cluster=$1 AND uid IN (%s)", paramStr),
-				uid:    fmt.Sprintf("%s", uids),
+				uid:    deleteUID,
 				args:   args,
 			},
 			onResult: func(tag pgconn.CommandTag) {
 				syncResponse.TotalDeleted = int(tag.RowsAffected())
 				metrics.IncrementDBResourceEventSentBy("delete", "", clusterName, syncResponse.TotalDeleted)
+			},
+			onError: func(msg string) {
+				syncResponse.DeleteErrors = append(syncResponse.DeleteErrors,
+					model.SyncError{ResourceUID: deleteUID, Message: msg})
 			},
 		})
 
@@ -111,8 +122,12 @@ func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 			batchItem: batchItem{
 				action: "deleteEdge",
 				query:  fmt.Sprintf("DELETE from search.edges WHERE cluster=$1 AND (sourceid IN (%s) OR destid IN (%s))", paramStr, paramStr),
-				uid:    fmt.Sprintf("%s", uids),
+				uid:    deleteUID,
 				args:   args,
+			},
+			onError: func(msg string) {
+				syncResponse.DeleteEdgeErrors = append(syncResponse.DeleteEdgeErrors,
+					model.SyncError{ResourceUID: deleteUID, Message: msg})
 			},
 		})
 	}
@@ -126,6 +141,10 @@ func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 				query:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
 				uid:    edge.SourceUID,
 				args:   []interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName},
+			},
+			onError: func(msg string) {
+				syncResponse.AddEdgeErrors = append(syncResponse.AddEdgeErrors,
+					model.SyncError{ResourceUID: edge.SourceUID, Message: msg})
 			},
 		})
 	}
@@ -142,6 +161,10 @@ func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 				query:  "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4",
 				uid:    edge.SourceUID,
 				args:   []interface{}{edge.SourceUID, edge.DestUID, edge.EdgeType, clusterName},
+			},
+			onError: func(msg string) {
+				syncResponse.DeleteEdgeErrors = append(syncResponse.DeleteEdgeErrors,
+					model.SyncError{ResourceUID: edge.SourceUID, Message: msg})
 			},
 		})
 	}

@@ -99,11 +99,74 @@ func Test_SharedBatch_OnResultCallback(t *testing.T) {
 	assert.True(t, callbackCalled, "onResult callback should have been called")
 }
 
-func Test_SharedBatch_ErrorPropagates(t *testing.T) {
+func Test_SharedBatch_ExecError_IsolatesViaRetry(t *testing.T) {
 	dao, mockPool := buildMockDAO(t)
 
 	br := &testutils.MockBatchResults{
-		MockErrorOnExec: errors.New("batch exec error"),
+		MockErrorOnExec: errors.New("bad item"),
+	}
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).AnyTimes()
+
+	defer testutils.SupressConsoleOutput()()
+
+	sb := NewSharedBatch(&dao, 100, 1*time.Millisecond)
+
+	var onErrorCalled bool
+	items := []sharedBatchItem{
+		{
+			batchItem: batchItem{query: "INSERT INTO search.resources VALUES($1)", args: []interface{}{"uid1"}, action: "addResource", uid: "uid1"},
+			onError: func(msg string) {
+				onErrorCalled = true
+			},
+		},
+	}
+
+	err := sb.SubmitAndWait(context.Background(), items)
+	assert.Nil(t, err, "per-item errors should not propagate as batch-level errors")
+	assert.True(t, onErrorCalled, "onError callback should have been called for the isolated item")
+}
+
+func Test_SharedBatch_ExecError_BinarySearchMultipleItems(t *testing.T) {
+	dao, mockPool := buildMockDAO(t)
+
+	br := &testutils.MockBatchResults{
+		MockErrorOnExec: errors.New("bad item"),
+	}
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).AnyTimes()
+
+	defer testutils.SupressConsoleOutput()()
+
+	sb := NewSharedBatch(&dao, 100, 1*time.Millisecond)
+
+	errorUIDs := make([]string, 0)
+	items := []sharedBatchItem{
+		{
+			batchItem: batchItem{query: "INSERT 1", args: []interface{}{"uid1"}, action: "addResource", uid: "uid1"},
+			onError:   func(msg string) { errorUIDs = append(errorUIDs, "uid1") },
+		},
+		{
+			batchItem: batchItem{query: "INSERT 2", args: []interface{}{"uid2"}, action: "addResource", uid: "uid2"},
+			onError:   func(msg string) { errorUIDs = append(errorUIDs, "uid2") },
+		},
+		{
+			batchItem: batchItem{query: "INSERT 3", args: []interface{}{"uid3"}, action: "addResource", uid: "uid3"},
+			onError:   func(msg string) { errorUIDs = append(errorUIDs, "uid3") },
+		},
+	}
+
+	err := sb.SubmitAndWait(context.Background(), items)
+	assert.Nil(t, err)
+	assert.Len(t, errorUIDs, 3, "all items should have been isolated via binary search")
+	assert.Contains(t, errorUIDs, "uid1")
+	assert.Contains(t, errorUIDs, "uid2")
+	assert.Contains(t, errorUIDs, "uid3")
+}
+
+func Test_SharedBatch_ConnectionError_StopsRetry(t *testing.T) {
+	dao, mockPool := buildMockDAO(t)
+
+	br := &testutils.MockBatchResults{
+		MockErrorOnClose: errors.New("unexpected EOF"),
 	}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(1)
 
@@ -113,11 +176,12 @@ func Test_SharedBatch_ErrorPropagates(t *testing.T) {
 
 	items := []sharedBatchItem{
 		{batchItem: batchItem{query: "INSERT INTO search.resources VALUES($1)", args: []interface{}{"uid1"}, action: "addResource", uid: "uid1"}},
+		{batchItem: batchItem{query: "INSERT INTO search.resources VALUES($1)", args: []interface{}{"uid2"}, action: "addResource", uid: "uid2"}},
 	}
 
 	err := sb.SubmitAndWait(context.Background(), items)
-	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "batch exec error")
+	assert.NotNil(t, err, "connection errors should propagate to waiters")
+	assert.Contains(t, err.Error(), "unexpected EOF")
 }
 
 func Test_SharedBatch_ContextCancellation(t *testing.T) {
