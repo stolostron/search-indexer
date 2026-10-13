@@ -64,7 +64,7 @@ func (s *ServerConfig) SyncResources(w http.ResponseWriter, r *http.Request) {
 			// Observe the request size after decoding so the count reflects actual resources.
 			resourceTotal := len(syncEvent.AddResources) + len(syncEvent.UpdateResources) + len(syncEvent.DeleteResources)
 			metrics.RequestSize.Observe(float64(resourceTotal))
-			err = s.Dao.SyncData(r.Context(), syncEvent, clusterName, syncResponse)
+			err = s.Dao.SyncDataShared(r.Context(), syncEvent, clusterName, syncResponse)
 		}
 	}
 	if err != nil {

@@ -40,7 +40,8 @@ func Test_syncRequest(t *testing.T) {
 			MockData: []map[string]interface{}{{"count": 5}, {"count": 3}},
 		},
 	}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
+	// SyncDataShared sends 1 batch (all items) + ClusterTotals sends 1 batch = 2.
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)
@@ -83,7 +84,8 @@ func Test_syncRequest_withError(t *testing.T) {
 		},
 		MockErrorOnClose: errors.New("unexpected EOF"),
 	}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
+	// SyncDataShared sends 1 batch. Close error causes all callers to get error → 500.
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(1)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)
@@ -108,13 +110,15 @@ func Test_syncRequest_withErrorQueryingTotalResources(t *testing.T) {
 	// Create server with mock database.
 	server, mockPool := buildMockServer(t)
 
-	br := &testutils.MockBatchResults{
+	// First SendBatch (SyncDataShared) succeeds, second (ClusterTotals) fails on scan.
+	brOk := &testutils.MockBatchResults{}
+	brErr := &testutils.MockBatchResults{
 		MockRows: testutils.MockRows{
-			MockData: []map[string]interface{}{{"count": 10}, {"count": 4}},
+			MockErrorOnScan: errors.New("unexpected EOF"),
 		},
-		MockErrorOnClose: errors.New("unexpected EOF"),
 	}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(brOk).Times(1)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(brErr).Times(1)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)

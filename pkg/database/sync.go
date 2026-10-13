@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgconn"
 	"github.com/stolostron/search-indexer/pkg/metrics"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
@@ -24,12 +25,12 @@ func validateUIDPrefix(uid, clusterName string) error {
 	return nil
 }
 
-func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
+func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 	clusterName string, syncResponse *model.SyncResponse) error {
 
 	defer metrics.SlowLog(fmt.Sprintf("Slow Sync from cluster %s.", clusterName), 0)()
-	batch := NewBatchWithRetry(ctx, dao, syncResponse)
-	var queueErr error
+
+	allItems := make([]sharedBatchItem, 0)
 
 	// ADD RESOURCES
 	// In case of conflict update only if data has changed AND the row is owned by this cluster.
@@ -42,18 +43,17 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			continue
 		}
 		data, _ := json.Marshal(resource.Properties)
-		queueErr = batch.Queue(batchItem{
-			action: "addResource",
-			query: `INSERT into search.resources as r values($1,$2,$3) ON CONFLICT (uid) 
-			DO UPDATE SET data=$3 WHERE r.uid=$1 AND r.cluster=$2 AND r.data IS DISTINCT FROM $3`,
-			uid:  resource.UID,
-			args: []interface{}{resource.UID, clusterName, string(data)},
+		allItems = append(allItems, sharedBatchItem{
+			batchItem: batchItem{
+				action: "addResource",
+				query: `INSERT into search.resources as r values($1,$2,$3) ON CONFLICT (uid)
+				DO UPDATE SET data=$3 WHERE r.uid=$1 AND r.cluster=$2 AND r.data IS DISTINCT FROM $3`,
+				uid:  resource.UID,
+				args: []interface{}{resource.UID, clusterName, string(data)},
+			},
 		})
-		// Only count the event when the item was accepted into the batch queue.
-		if queueErr == nil {
-			kind := resource.Properties["kind"].(string)
-			metrics.IncrementDBResourceEventSent("insert", kind, clusterName)
-		}
+		kind := resource.Properties["kind"].(string)
+		metrics.IncrementDBResourceEventSent("insert", kind, clusterName)
 	}
 
 	// UPDATE RESOURCES
@@ -67,74 +67,67 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			continue
 		}
 		data, _ := json.Marshal(resource.Properties)
-		queueErr = batch.Queue(batchItem{
-			action: "updateResource",
-			query:  "UPDATE search.resources SET data=$2 WHERE uid=$1 AND cluster=$3",
-			uid:    resource.UID,
-			args:   []interface{}{resource.UID, string(data), clusterName},
+		allItems = append(allItems, sharedBatchItem{
+			batchItem: batchItem{
+				action: "updateResource",
+				query:  "UPDATE search.resources SET data=$2 WHERE uid=$1 AND cluster=$3",
+				uid:    resource.UID,
+				args:   []interface{}{resource.UID, string(data), clusterName},
+			},
 		})
-		// Only count the event when the item was accepted into the batch queue.
-		if queueErr == nil {
-			kind := resource.Properties["kind"].(string)
-			metrics.IncrementDBResourceEventSent("update", kind, clusterName)
-		}
+		kind := resource.Properties["kind"].(string)
+		metrics.IncrementDBResourceEventSent("update", kind, clusterName)
 	}
 
 	// DELETE RESOURCES and all edges pointing to the resource.
-	// AND cluster=$N ensures a spoke can only delete its own rows.
-	// The resource DELETE runs via pool.Exec (outside the batch) so we can read
-	// RowsAffected() and use the actual DB count for the metric.
+	//	// AND cluster=$N ensures a spoke can only delete its own rows.
+	//	// The resource DELETE runs via pool.Exec (outside the batch) so we can read
+	//	// RowsAffected() and use the actual DB count for the metric.
 	if len(event.DeleteResources) > 0 {
-		// clusterName occupies $1; UIDs follow as $2, $3, …
 		params := make([]string, len(event.DeleteResources))
 		uids := make([]interface{}, len(event.DeleteResources))
 		for i, resource := range event.DeleteResources {
-			params[i] = fmt.Sprintf("$%d", i+2) // $2, $3, … (cluster is $1)
+			params[i] = fmt.Sprintf("$%d", i+2)
 			uids[i] = resource.UID
 		}
 		paramStr := strings.Join(params, ",")
 		args := append([]interface{}{clusterName}, uids...)
 
-		// Flush queued upserts before the DELETE so the resource rows are up to date.
-		batch.flush()
-		batch.wg.Wait()
+		allItems = append(allItems, sharedBatchItem{
+			batchItem: batchItem{
+				action: "deleteResource",
+				query:  fmt.Sprintf("DELETE from search.resources WHERE cluster=$1 AND uid IN (%s)", paramStr),
+				uid:    fmt.Sprintf("%s", uids),
+				args:   args,
+			},
+			onResult: func(tag pgconn.CommandTag) {
+				syncResponse.TotalDeleted = int(tag.RowsAffected())
+				metrics.IncrementDBResourceEventSentBy("delete", "", clusterName, syncResponse.TotalDeleted)
+			},
+		})
 
-		// Skip the DELETE if the upsert batch lost its DB connection. Running the DELETE
-		// on a recovered connection would prune rows whose upserts never committed.
-		if batch.connError != nil {
-			klog.Warningf("Skipping resource DELETE for cluster %s due to upsert connection error: %v", clusterName, batch.connError)
-			return batch.connError
-		}
-
-		tag, execErr := dao.pool.Exec(ctx,
-			fmt.Sprintf("DELETE from search.resources WHERE cluster=$1 AND uid IN (%s)", paramStr),
-			args...)
-		if execErr != nil {
-			klog.Warningf("Error deleting resources for cluster %s: %+v", clusterName, execErr)
-			syncResponse.DeleteErrors = append(syncResponse.DeleteErrors,
-				model.SyncError{ResourceUID: fmt.Sprintf("%s", uids), Message: execErr.Error()})
-		} else {
-			syncResponse.TotalDeleted = int(tag.RowsAffected())
-			metrics.IncrementDBResourceEventSentBy("delete", "", clusterName, syncResponse.TotalDeleted)
-		}
-
-		// Delete edges for the removed resources (still batched — no count needed).
-		queueErr = batch.Queue(batchItem{
-			action: "deleteEdge",
-			query:  fmt.Sprintf("DELETE from search.edges WHERE cluster=$1 AND (sourceid IN (%s) OR destid IN (%s))", paramStr, paramStr),
-			uid:    fmt.Sprintf("%s", uids),
-			args:   args,
+		// Delete edges for the removed resources.
+		allItems = append(allItems, sharedBatchItem{
+			batchItem: batchItem{
+				action: "deleteEdge",
+				query:  fmt.Sprintf("DELETE from search.edges WHERE cluster=$1 AND (sourceid IN (%s) OR destid IN (%s))", paramStr, paramStr),
+				uid:    fmt.Sprintf("%s", uids),
+				args:   args,
+			},
 		})
 	}
 
 	// ADD EDGES
 	// Nothing to update in case of conflict as resource kind cannot change
 	for _, edge := range event.AddEdges {
-		queueErr = batch.Queue(batchItem{
-			action: "addEdge",
-			query:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
-			uid:    edge.SourceUID,
-			args:   []interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName}})
+		allItems = append(allItems, sharedBatchItem{
+			batchItem: batchItem{
+				action: "addEdge",
+				query:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
+				uid:    edge.SourceUID,
+				args:   []interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName},
+			},
+		})
 	}
 
 	// UPDATE EDGES
@@ -143,30 +136,27 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	// DELETE EDGES
 	// AND cluster=$4 ensures a spoke can only delete edges it owns.
 	for _, edge := range event.DeleteEdges {
-		queueErr = batch.Queue(batchItem{
-			action: "deleteEdge",
-			query:  "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4",
-			uid:    edge.SourceUID,
-			args:   []interface{}{edge.SourceUID, edge.DestUID, edge.EdgeType, clusterName}})
+		allItems = append(allItems, sharedBatchItem{
+			batchItem: batchItem{
+				action: "deleteEdge",
+				query:  "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4",
+				uid:    edge.SourceUID,
+				args:   []interface{}{edge.SourceUID, edge.DestUID, edge.EdgeType, clusterName},
+			},
+		})
 	}
 
-	// Flush remaining items in the batch.
-	batch.flush()
-
-	// Wait for all batches to complete.
-	batch.wg.Wait()
-	if queueErr != nil {
+	err := dao.Accumulator.SubmitAndWait(ctx, allItems)
+	if err != nil {
 		klog.V(1).Infof("Completed sync of cluster %12s with errors.", clusterName)
-		return queueErr
+		return err
 	}
 
-	// The response fields below are redundant, these are more interesting for resync.
 	syncResponse.TotalAdded = len(event.AddResources) - len(syncResponse.AddErrors)
 	syncResponse.TotalUpdated = len(event.UpdateResources) - len(syncResponse.UpdateErrors)
-	// TotalDeleted and the delete metric are set from RowsAffected() in the DELETE block above.
 	syncResponse.TotalEdgesAdded = len(event.AddEdges) - len(syncResponse.AddEdgeErrors)
 	syncResponse.TotalEdgesDeleted = len(event.DeleteEdges) - len(syncResponse.DeleteEdgeErrors)
 
 	klog.V(1).Infof("Completed sync of cluster %12s", clusterName)
-	return batch.connError
+	return nil
 }
