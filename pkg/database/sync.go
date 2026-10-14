@@ -163,7 +163,7 @@ func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 		})
 	}
 
-	err := dao.Accumulator.SubmitAndWait(ctx, allItems)
+	err := dao.Accumulator.SubmitAndWait(ctx, clusterName, allItems)
 	if err != nil {
 		klog.V(1).Infof("Completed sync of cluster %12s with errors.", clusterName)
 		return err
@@ -175,6 +175,6 @@ func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 	syncResponse.TotalEdgesAdded = len(event.AddEdges) - len(syncResponse.AddEdgeErrors)
 	syncResponse.TotalEdgesDeleted = len(event.DeleteEdges) - len(syncResponse.DeleteEdgeErrors)
 
-	klog.Infof("Completed sync of cluster %12s", clusterName)
+	klog.V(1).Infof("Completed sync of cluster %12s", clusterName)
 	return nil
 }

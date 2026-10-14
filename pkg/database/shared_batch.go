@@ -5,6 +5,8 @@ package database
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -25,9 +27,10 @@ type SharedBatch struct {
 	batchSize int
 	timeout   time.Duration
 
-	items   []sharedBatchItem
-	waiters []chan error
-	timer   *time.Timer
+	items    []sharedBatchItem
+	clusters map[string]struct{} // unique cluster names in the current batch
+	waiters  []chan error
+	timer    *time.Timer
 }
 
 func NewSharedBatch(dao *DAO, batchSize int, timeout time.Duration) *SharedBatch {
@@ -40,7 +43,7 @@ func NewSharedBatch(dao *DAO, batchSize int, timeout time.Duration) *SharedBatch
 	}
 }
 
-func (sb *SharedBatch) SubmitAndWait(ctx context.Context, items []sharedBatchItem) error {
+func (sb *SharedBatch) SubmitAndWait(ctx context.Context, clusterName string, items []sharedBatchItem) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -49,6 +52,10 @@ func (sb *SharedBatch) SubmitAndWait(ctx context.Context, items []sharedBatchIte
 
 	sb.mu.Lock()
 	sb.items = append(sb.items, items...)
+	if sb.clusters == nil {
+		sb.clusters = make(map[string]struct{})
+	}
+	sb.clusters[clusterName] = struct{}{}
 	sb.waiters = append(sb.waiters, ch)
 
 	if sb.timer == nil {
@@ -80,7 +87,6 @@ func (sb *SharedBatch) SubmitAndWait(ctx context.Context, items []sharedBatchIte
 // fire snapshots the current items and waiters, resets the buffer, and spawns
 // a goroutine to execute the batch and notify waiters. Must be called with mu held.
 func (sb *SharedBatch) fire() {
-	defer metrics.SlowLog("Slow shared batch send", 1000)()
 	if len(sb.items) == 0 {
 		return
 	}
@@ -91,16 +97,22 @@ func (sb *SharedBatch) fire() {
 	}
 
 	items := sb.items
+	clusters := slices.Collect(maps.Keys(sb.clusters))
 	waiters := sb.waiters
 	sb.items = make([]sharedBatchItem, 0)
+	sb.clusters = nil
 	sb.waiters = make([]chan error, 0)
 
 	klog.V(4).Infof("SharedBatch firing with %d items for %d callers.", len(items), len(waiters))
 
-	go sb.executeBatch(items, waiters)
+	go sb.executeBatch(items, clusters, waiters)
 }
 
-func (sb *SharedBatch) executeBatch(items []sharedBatchItem, waiters []chan error) {
+func (sb *SharedBatch) executeBatch(items []sharedBatchItem, clusters []string, waiters []chan error) {
+	defer metrics.SlowLog(
+		fmt.Sprintf("Slow shared database batch send for clusters [%s] (%d items)",
+			strings.Join(clusters, ", "), len(items)), 0)()
+
 	var connErr error
 
 	defer func() {

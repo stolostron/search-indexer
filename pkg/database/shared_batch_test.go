@@ -26,7 +26,7 @@ func Test_SharedBatch_SingleCaller_TimerFire(t *testing.T) {
 		{batchItem: batchItem{query: "INSERT INTO search.resources VALUES($1,$2,$3)", args: []interface{}{"uid2", "cluster1", "{}"}, action: "addResource", uid: "uid2"}},
 	}
 
-	err := sb.SubmitAndWait(context.Background(), items)
+	err := sb.SubmitAndWait(context.Background(), "test-cluster", items)
 	assert.Nil(t, err)
 }
 
@@ -43,7 +43,7 @@ func Test_SharedBatch_FireOnBatchSize(t *testing.T) {
 		{batchItem: batchItem{query: "INSERT INTO search.resources VALUES($1)", args: []interface{}{"uid2"}, action: "addResource", uid: "uid2"}},
 	}
 
-	err := sb.SubmitAndWait(context.Background(), items)
+	err := sb.SubmitAndWait(context.Background(), "test-cluster", items)
 	assert.Nil(t, err)
 }
 
@@ -65,7 +65,7 @@ func Test_SharedBatch_MultipleConcurrentCallers(t *testing.T) {
 			items := []sharedBatchItem{
 				{batchItem: batchItem{query: "INSERT INTO search.resources VALUES($1)", args: []interface{}{idx}, action: "addResource", uid: "uid"}},
 			}
-			errs[idx] = sb.SubmitAndWait(context.Background(), items)
+			errs[idx] = sb.SubmitAndWait(context.Background(), "test-cluster", items)
 		}(i)
 	}
 	wg.Wait()
@@ -97,7 +97,7 @@ func Test_SharedBatch_ExecError_IsolatesViaRetry(t *testing.T) {
 		},
 	}
 
-	err := sb.SubmitAndWait(context.Background(), items)
+	err := sb.SubmitAndWait(context.Background(), "test-cluster", items)
 	assert.Nil(t, err, "per-item errors should not propagate as batch-level errors")
 	assert.True(t, onErrorCalled, "onError callback should have been called for the isolated item")
 }
@@ -130,7 +130,7 @@ func Test_SharedBatch_ExecError_BinarySearchMultipleItems(t *testing.T) {
 		},
 	}
 
-	err := sb.SubmitAndWait(context.Background(), items)
+	err := sb.SubmitAndWait(context.Background(), "test-cluster", items)
 	assert.Nil(t, err)
 	assert.Len(t, errorUIDs, 3, "all items should have been isolated via binary search")
 	assert.Contains(t, errorUIDs, "uid1")
@@ -155,7 +155,7 @@ func Test_SharedBatch_ConnectionError_StopsRetry(t *testing.T) {
 		{batchItem: batchItem{query: "INSERT INTO search.resources VALUES($1)", args: []interface{}{"uid2"}, action: "addResource", uid: "uid2"}},
 	}
 
-	err := sb.SubmitAndWait(context.Background(), items)
+	err := sb.SubmitAndWait(context.Background(), "test-cluster", items)
 	assert.NotNil(t, err, "connection errors should propagate to waiters")
 	assert.Contains(t, err.Error(), "unexpected EOF")
 }
@@ -176,7 +176,7 @@ func Test_SharedBatch_ContextCancellation(t *testing.T) {
 		{batchItem: batchItem{query: "INSERT INTO search.resources VALUES($1)", args: []interface{}{"uid1"}, action: "addResource", uid: "uid1"}},
 	}
 
-	err := sb.SubmitAndWait(ctx, items)
+	err := sb.SubmitAndWait(ctx, "test-cluster", items)
 	assert.Equal(t, context.Canceled, err)
 }
 
@@ -185,6 +185,6 @@ func Test_SharedBatch_EmptyItems(t *testing.T) {
 
 	sb := NewSharedBatch(&dao, 100, 1*time.Millisecond)
 
-	err := sb.SubmitAndWait(context.Background(), []sharedBatchItem{})
+	err := sb.SubmitAndWait(context.Background(), "test-cluster", []sharedBatchItem{})
 	assert.Nil(t, err)
 }
