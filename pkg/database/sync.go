@@ -24,7 +24,10 @@ func validateUIDPrefix(uid, clusterName string) error {
 	return nil
 }
 
-func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
+// SyncData batches multiple clusters worth of requests together during a configurable time and batch size.
+// The intent is to share Postgres connections for multiple smaller delta sync requests to increase throughput
+// and reduce connection overhead.
+func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	clusterName string, syncResponse *model.SyncResponse) error {
 
 	allItems := make([]sharedBatchItem, 0)

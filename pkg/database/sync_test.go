@@ -40,7 +40,7 @@ func Test_SyncDataShared(t *testing.T) {
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(1)
 
 	response := &model.SyncResponse{}
-	err := dao.SyncDataShared(context.Background(), loadSimpleSyncEvent(t), "local-cluster", response)
+	err := dao.SyncData(context.Background(), loadSimpleSyncEvent(t), "local-cluster", response)
 
 	assert.Nil(t, err)
 	AssertEqual(t, response.TotalAdded, 2, "Incorrect number of resources added.")
@@ -63,7 +63,7 @@ func Test_SyncDataShared_With_Exec_Errors(t *testing.T) {
 	defer testutils.SupressConsoleOutput()()
 
 	response := &model.SyncResponse{}
-	err := dao.SyncDataShared(context.Background(), loadSimpleSyncEvent(t), "local-cluster", response)
+	err := dao.SyncData(context.Background(), loadSimpleSyncEvent(t), "local-cluster", response)
 
 	assert.Nil(t, err, "per-item errors are handled via onError, not propagated as batch-level error")
 	assert.NotEmpty(t, response.AddErrors, "add errors should be populated by onError callbacks")
@@ -83,7 +83,7 @@ func Test_SyncDataShared_With_OnClose_Errors(t *testing.T) {
 	defer testutils.SupressConsoleOutput()()
 
 	response := &model.SyncResponse{}
-	err := dao.SyncDataShared(context.Background(), loadSimpleSyncEvent(t), "local-cluster", response)
+	err := dao.SyncData(context.Background(), loadSimpleSyncEvent(t), "local-cluster", response)
 
 	assert.NotNil(t, err)
 }
@@ -103,7 +103,7 @@ func Test_SyncDataShared_RejectsWrongClusterUID(t *testing.T) {
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(1)
 
 	response := &model.SyncResponse{}
-	err := dao.SyncDataShared(context.Background(), loadSimpleSyncEvent(t), "evil-cluster", response)
+	err := dao.SyncData(context.Background(), loadSimpleSyncEvent(t), "evil-cluster", response)
 
 	assert.Nil(t, err)
 	AssertEqual(t, response.TotalAdded, 0, "No resources should be added for wrong-cluster UIDs.")
