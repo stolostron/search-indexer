@@ -106,8 +106,10 @@ func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 				args:   args,
 			},
 			onError: func(msg string) {
-				syncResponse.DeleteErrors = append(syncResponse.DeleteErrors,
-					model.SyncError{ResourceUID: deleteUID, Message: msg})
+				for _, resource := range event.DeleteResources {
+					syncResponse.DeleteErrors = append(syncResponse.DeleteErrors,
+						model.SyncError{ResourceUID: resource.UID, Message: msg})
+				}
 			},
 		})
 
