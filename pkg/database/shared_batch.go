@@ -9,15 +9,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jackc/pgconn"
 	pgx "github.com/jackc/pgx/v4"
+	"github.com/stolostron/search-indexer/pkg/metrics"
 	"k8s.io/klog/v2"
 )
 
 type sharedBatchItem struct {
 	batchItem
-	onResult func(pgconn.CommandTag) // nil for most items; DELETE items use this for RowsAffected routing
-	onError  func(string)            // called when this item is isolated as the cause of a batch failure
+	onError func(string) // called when this item is isolated as the cause of a batch failure
 }
 
 type SharedBatch struct {
@@ -81,6 +80,7 @@ func (sb *SharedBatch) SubmitAndWait(ctx context.Context, items []sharedBatchIte
 // fire snapshots the current items and waiters, resets the buffer, and spawns
 // a goroutine to execute the batch and notify waiters. Must be called with mu held.
 func (sb *SharedBatch) fire() {
+	defer metrics.SlowLog("Slow shared batch send", 1000)()
 	if len(sb.items) == 0 {
 		return
 	}
@@ -119,9 +119,8 @@ func (sb *SharedBatch) executeBatch(items []sharedBatchItem, waiters []chan erro
 }
 
 // sendBatch sends items to Postgres. On error it retries with binary search to
-// isolate the failing item(s), calling onError for each. On success it calls
-// onResult for items that have one. Returns non-nil only for connection errors
-// that should stop all retries.
+// isolate the failing item(s), calling onError for each. Returns non-nil only
+// for connection errors that should stop all retries.
 func (sb *SharedBatch) sendBatch(items []sharedBatchItem) error {
 	batch := &pgx.Batch{}
 	for _, item := range items {
@@ -129,16 +128,7 @@ func (sb *SharedBatch) sendBatch(items []sharedBatchItem) error {
 	}
 
 	br := sb.dao.pool.SendBatch(context.Background(), batch)
-
-	var firstErr error
-	tags := make([]pgconn.CommandTag, len(items))
-	for i := range items {
-		tag, err := br.Exec()
-		tags[i] = tag
-		if err != nil && firstErr == nil {
-			firstErr = err
-		}
-	}
+	_, execErr := br.Exec()
 
 	closeErr := br.Close()
 	if closeErr != nil {
@@ -147,19 +137,19 @@ func (sb *SharedBatch) sendBatch(items []sharedBatchItem) error {
 			return closeErr
 		}
 		klog.Error("Error closing shared batch result. ", closeErr)
-		if firstErr == nil {
-			firstErr = closeErr
+		if execErr == nil {
+			execErr = closeErr
 		}
 	}
 
-	if firstErr != nil && len(items) == 1 {
+	if execErr != nil && len(items) == 1 {
 		errorItem := items[0]
 		klog.Errorf("ERROR processing shared batch item. %+v", errorItem.batchItem)
 		if errorItem.onError != nil {
 			errorItem.onError("Resource generated an error while updating the database.")
 		}
 		return nil
-	} else if firstErr != nil {
+	} else if execErr != nil {
 		if err := sb.sendBatch(items[:len(items)/2]); err != nil {
 			return err
 		}
@@ -169,10 +159,5 @@ func (sb *SharedBatch) sendBatch(items []sharedBatchItem) error {
 		return nil
 	}
 
-	for i, item := range items {
-		if item.onResult != nil {
-			item.onResult(tags[i])
-		}
-	}
 	return nil
 }

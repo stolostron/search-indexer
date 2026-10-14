@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jackc/pgconn"
 	"github.com/stolostron/search-indexer/pkg/metrics"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
@@ -27,8 +26,6 @@ func validateUIDPrefix(uid, clusterName string) error {
 
 func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 	clusterName string, syncResponse *model.SyncResponse) error {
-
-	defer metrics.SlowLog(fmt.Sprintf("Slow Sync from cluster %s.", clusterName), 0)()
 
 	allItems := make([]sharedBatchItem, 0)
 
@@ -95,6 +92,7 @@ func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 		for i, resource := range event.DeleteResources {
 			params[i] = fmt.Sprintf("$%d", i+2)
 			uids[i] = resource.UID
+			metrics.IncrementDBResourceEventSent("delete", "", clusterName)
 		}
 		paramStr := strings.Join(params, ",")
 		args := append([]interface{}{clusterName}, uids...)
@@ -106,10 +104,6 @@ func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 				query:  fmt.Sprintf("DELETE from search.resources WHERE cluster=$1 AND uid IN (%s)", paramStr),
 				uid:    deleteUID,
 				args:   args,
-			},
-			onResult: func(tag pgconn.CommandTag) {
-				syncResponse.TotalDeleted = int(tag.RowsAffected())
-				metrics.IncrementDBResourceEventSentBy("delete", "", clusterName, syncResponse.TotalDeleted)
 			},
 			onError: func(msg string) {
 				syncResponse.DeleteErrors = append(syncResponse.DeleteErrors,
@@ -177,9 +171,10 @@ func (dao *DAO) SyncDataShared(ctx context.Context, event model.SyncEvent,
 
 	syncResponse.TotalAdded = len(event.AddResources) - len(syncResponse.AddErrors)
 	syncResponse.TotalUpdated = len(event.UpdateResources) - len(syncResponse.UpdateErrors)
+	syncResponse.TotalDeleted = len(event.DeleteResources) - len(syncResponse.DeleteErrors)
 	syncResponse.TotalEdgesAdded = len(event.AddEdges) - len(syncResponse.AddEdgeErrors)
 	syncResponse.TotalEdgesDeleted = len(event.DeleteEdges) - len(syncResponse.DeleteEdgeErrors)
 
-	klog.V(1).Infof("Completed sync of cluster %12s", clusterName)
+	klog.Infof("Completed sync of cluster %12s", clusterName)
 	return nil
 }
