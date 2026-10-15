@@ -1,4 +1,5 @@
 from locust import HttpUser, task, between, TaskSet
+import copy
 import time
 import json
 import uuid
@@ -20,21 +21,46 @@ class ClusterBehavior(TaskSet):
         j = json.load(f)        
         self.client.payload = j
         self.client.headers["X-Overwrite-State"] = "true"
+        self.requestName = self.user.template
         self.do_post()
 
+
+    # Build a payload with the desired number of add and update resources.
     def send_update_payload(self):
         print("%10s - Sending update" % self.user.name)
-        f = open("cluster-templates/add-resources.json",)
-        j = json.load(f)        
-        for resource in j["addResources"]: 
-            resource["uid"] = "{}/{}".format(self.user.name, str(uuid.uuid4()) )
-            resource["properties"]["name"] = "gen-name-{}".format(str(uuid.uuid4()) )
+        f = open("cluster-templates/add-update-template.json", "r")
+        j = json.load(f)
+        adds = []
+        updates = []
+        # Replace add resource template with desired number of resources.
+        add_template = j["addResources"][0]
+        for i in range(self.user.updatesPerCycle):
+            r = copy.deepcopy(add_template)
+            r["uid"] = r["uid"].replace("<<CLUSTER_NAME>>", self.user.name)
+            r["uid"] = r["uid"].replace("<<UID>>", str(i) )
+            r["properties"]["name"] = r["properties"]["name"].replace("<<UID>>", str(i) )
+            r["properties"]["label"]["update-label"] = "Added at {}".format(str(time.time()) )
+            adds.append(r)
+        j["addResources"] = adds
+
+        # Replace update resource template with desired number of resources.
+        update_template = j["updateResources"][0]
+        for i in range(self.user.updatesPerCycle):
+            r = copy.deepcopy(update_template)
+            r["uid"] = r["uid"].replace("<<CLUSTER_NAME>>", self.user.name)
+            r["uid"] = r["uid"].replace("<<UID>>", str(i) )
+            r["properties"]["name"] = r["properties"]["name"].replace("<<UID>>", str(i) )
+            r["properties"]["label"]["update-label"] = "Updated at {}".format(str(time.time()) )
+            updates.append(r)
+        j["updateResources"] = updates
         self.client.payload = j
         self.client.headers["X-Overwrite-State"] = "false"
+        self.requestName = "delta-add-update"
         self.do_post()
 
+    # Send a payload to the cluster.
     def do_post(self):
-        resp = self.client.post("/aggregator/clusters/{}/sync".format(self.user.name), name=self.user.template, json=self.client.payload, verify=False)
+        resp = self.client.post("/aggregator/clusters/{}/sync".format(self.user.name), name=self.requestName, json=self.client.payload, verify=False)
         if resp.status_code != 200: # The first request is receiving 0 instead of 429.
             self.user.retries = self.user.retries + 1
             print("%10s -\t Received response code %s. Waiting %d seconds and retrying." % (self.user.name, resp.status_code, self.user.retries * 2))
@@ -46,9 +72,9 @@ class ClusterBehavior(TaskSet):
 
     def on_start(self):
         self.send_full_state_payload()
-        time.sleep(120)
+        # self.send_update_payload()
 
-    @task(10)
+    @task(50)
     def send_update(self):
         self.send_update_payload()
 
@@ -60,7 +86,7 @@ class ClusterBehavior(TaskSet):
 class Cluster(HttpUser):
     abstract = True
     tasks = [ClusterBehavior]
-    wait_time = between(5, 300)
+    wait_time = between(5, 30)
     retries = 0
     def on_start(self):
         global clusterCount
@@ -72,11 +98,14 @@ class Cluster(HttpUser):
 # Cluster5k - simulates 5k resources.
 class Cluster5k(Cluster):
     template = "sno-5k.json"
+    updatesPerCycle = 10
 
 # Cluster100k - simulates 100k resources.
 class Cluster100k(Cluster):
     template = "sno-100k.json"
+    updatesPerCycle = 20
 
 # Cluster150k - simulates 150k resources.
 class Cluster150k(Cluster):
     template = "sno-150k.json"
+    updatesPerCycle = 30
