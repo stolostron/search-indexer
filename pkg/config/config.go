@@ -20,7 +20,7 @@ var Cfg = new()
 
 // Struct to hold our configuration
 type Config struct {
-	BatchAccumulationTimeout int // Time in MS to wait before firing a shared batch. Default: 5000
+	BatchAccumulationTimeout int // Time in MS to wait before firing a shared batch. Default: 1000
 	DBBatchSize              int // Batch size used to write to DB. Default: 2500
 	DBHealthCkeckPeriod      int // Overrides pgxpool.Config{ HealthCheckPeriod } Default: 1 min
 	DBHost                   string
@@ -54,7 +54,7 @@ type Config struct {
 // Reads config from environment.
 func new() *Config {
 	conf := &Config{
-		BatchAccumulationTimeout: getEnvAsInt("BATCH_ACCUMULATION_TIMEOUT", 5000),
+		BatchAccumulationTimeout: getEnvAsInt("BATCH_ACCUMULATION_TIMEOUT", 1000),
 		DBBatchSize:              getEnvAsInt("DB_BATCH_SIZE", 2500),
 		DBHost:                   getEnv("DB_HOST", "localhost"),
 		// Postgres has 100 conns by default. Using 10 allows scaling indexer and api.
