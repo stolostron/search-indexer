@@ -86,7 +86,7 @@ class ClusterBehavior(TaskSet):
 class Cluster(HttpUser):
     abstract = True
     tasks = [ClusterBehavior]
-    wait_time = between(5, 10)
+    wait_time = between(5, 30)
     retries = 0
     def on_start(self):
         global clusterCount
