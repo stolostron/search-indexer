@@ -1,4 +1,5 @@
 from locust import HttpUser, task, between, TaskSet
+import copy
 import time
 import json
 import uuid
@@ -32,8 +33,9 @@ class ClusterBehavior(TaskSet):
         adds = []
         updates = []
         # Replace add resource template with desired number of resources.
+        add_template = j["addResources"][0]
         for i in range(self.user.updatesPerCycle):
-            r = j["addResources"][0].copy()
+            r = copy.deepcopy(add_template)
             r["uid"] = r["uid"].replace("<<CLUSTER_NAME>>", self.user.name)
             r["uid"] = r["uid"].replace("<<UID>>", str(i) )
             r["properties"]["name"] = r["properties"]["name"].replace("<<UID>>", str(i) )
@@ -42,10 +44,11 @@ class ClusterBehavior(TaskSet):
         j["addResources"] = adds
 
         # Replace update resource template with desired number of resources.
+        update_template = j["updateResources"][0]
         for i in range(self.user.updatesPerCycle):
-            r = j["updateResources"][0].copy()
+            r = copy.deepcopy(update_template)
             r["uid"] = r["uid"].replace("<<CLUSTER_NAME>>", self.user.name)
-            r["uid"] = r["uid"].replace("<<ID>>", str(i) )
+            r["uid"] = r["uid"].replace("<<UID>>", str(i) )
             r["properties"]["name"] = r["properties"]["name"].replace("<<UID>>", str(i) )
             r["properties"]["label"]["update-label"] = "Updated at {}".format(str(time.time()) )
             updates.append(r)
@@ -68,7 +71,8 @@ class ClusterBehavior(TaskSet):
             self.user.retries = 0
 
     def on_start(self):
-        self.send_update_payload()
+        self.send_full_state_payload()
+        # self.send_update_payload()
 
     @task(50)
     def send_update(self):
