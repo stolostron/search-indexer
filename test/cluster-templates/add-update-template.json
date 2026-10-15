@@ -1,0 +1,35 @@
+{
+    "addResources": [
+        {
+            "uid": "<<CLUSTER_NAME>>/<<UID>>",
+            "resourceString": "configmaps",
+            "properties": {
+              "apiversion": "v1",
+              "created": "2022-07-07T13:31:54Z",
+              "kind": "ConfigMap",
+              "name": "configmap-to-update-<<UID>>",
+              "namespace": "default",
+              "label": {
+                 "update-label": "Created at {{GENERATED_WITH_CODE}}"
+              }
+            }
+        }
+    ],
+    "updateResources": [
+        {
+            "uid": "<<CLUSTER_NAME>>/<<UID>>",
+            "resourceString": "configmaps",
+            "properties": {
+              "apiversion": "v1",
+              "created": "2022-07-07T13:31:54Z",
+              "kind": "ConfigMap",
+              "name": "configmap-to-update-<<UID>>",
+              "namespace": "default",
+              "label": {
+                 "update-label": "Updated at {{GENERATED_WITH_CODE}}"
+              }
+            }
+        }
+    ],
+    "clearAll": false
+}
