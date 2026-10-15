@@ -75,7 +75,7 @@ func new() *Config {
 		PodNamespace:      getEnv("POD_NAMESPACE", "open-cluster-management"),
 		RediscoverRateMS:  getEnvAsInt("REDISCOVER_RATE_MS", 5*60*1000), // 5 min
 		ResyncPeriodMS:    getEnvAsInt("RESYNC_PERIOD_MS", 15*60*1000),  // 15 min - cluster resync period
-		RequestLimit:      getEnvAsInt("REQUEST_LIMIT", 50),             // Set to 25 to prevent memory issues.
+		RequestLimit:      getEnvAsInt("REQUEST_LIMIT", 25),             // Set to 25 to prevent memory issues.
 		LargeRequestLimit: getEnvAsInt("LARGE_REQUEST_LIMIT", 5),
 		LargeRequestSize:  getEnvAsInt("LARGE_REQUEST_SIZE", 1024*1024*20), // 20 MB
 		ServerAddress:     getEnv("AGGREGATOR_ADDRESS", ":3010"),
