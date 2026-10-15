@@ -33,7 +33,7 @@ func loadSimpleSyncEvent(t *testing.T) model.SyncEvent {
 
 func Test_SyncDataShared(t *testing.T) {
 	dao, mockPool := buildMockDAO(t)
-	dao.Accumulator = NewSharedBatch(&dao, 2500, 1*time.Millisecond)
+	dao.Dispatcher = NewSharedBatch(&dao, 2500, 1*time.Millisecond)
 
 	// SyncDataShared sends all items in a single SharedBatch → 1 SendBatch call.
 	br := &testutils.MockBatchResults{}
@@ -51,7 +51,7 @@ func Test_SyncDataShared(t *testing.T) {
 
 func Test_SyncDataShared_With_Exec_Errors(t *testing.T) {
 	dao, mockPool := buildMockDAO(t)
-	dao.Accumulator = NewSharedBatch(&dao, 2500, 1*time.Millisecond)
+	dao.Dispatcher = NewSharedBatch(&dao, 2500, 1*time.Millisecond)
 
 	// Exec error on every SendBatch triggers binary-search retry.
 	// Each item is isolated and its onError callback fires.
@@ -73,7 +73,7 @@ func Test_SyncDataShared_With_Exec_Errors(t *testing.T) {
 
 func Test_SyncDataShared_With_OnClose_Errors(t *testing.T) {
 	dao, mockPool := buildMockDAO(t)
-	dao.Accumulator = NewSharedBatch(&dao, 2500, 1*time.Millisecond)
+	dao.Dispatcher = NewSharedBatch(&dao, 2500, 1*time.Millisecond)
 
 	br := &testutils.MockBatchResults{
 		MockErrorOnClose: errors.New("unexpected EOF"),
@@ -94,7 +94,7 @@ func Test_SyncDataShared_RejectsWrongClusterUID(t *testing.T) {
 	defer testutils.SupressConsoleOutput()()
 
 	dao, mockPool := buildMockDAO(t)
-	dao.Accumulator = NewSharedBatch(&dao, 2500, 1*time.Millisecond)
+	dao.Dispatcher = NewSharedBatch(&dao, 2500, 1*time.Millisecond)
 
 	// All add/update UIDs are "local-cluster/..." but we send as "evil-cluster".
 	// The adds and updates are rejected before reaching the batch.

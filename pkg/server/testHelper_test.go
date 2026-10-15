@@ -17,7 +17,7 @@ func buildMockServer(t *testing.T) (ServerConfig, *pgxpoolmock.MockPgxPool) {
 	mockPool := pgxpoolmock.NewMockPgxPool(ctrl)
 
 	dao := database.NewDAO(mockPool)
-	dao.Accumulator = database.NewSharedBatch(&dao, 2500, 1*time.Millisecond)
+	dao.Dispatcher = database.NewSharedBatch(&dao, 2500, 1*time.Millisecond)
 	server := ServerConfig{
 		Dao: &dao,
 	}

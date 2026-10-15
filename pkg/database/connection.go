@@ -18,9 +18,9 @@ import (
 
 // Database Access Object. Use a DAO instance so we can replace the pool object in the unit tests.
 type DAO struct {
-	pool        pgxpoolmock.PgxPool
-	batchSize   int
-	Accumulator *SharedBatch
+	pool       pgxpoolmock.PgxPool
+	batchSize  int
+	Dispatcher *SharedBatch
 }
 
 var poolSingleton pgxpoolmock.PgxPool
@@ -40,7 +40,7 @@ func NewDAO(p pgxpoolmock.PgxPool) DAO {
 		dao.pool = poolSingleton
 	}
 
-	dao.Accumulator = NewSharedBatch(&dao, dao.batchSize,
+	dao.Dispatcher = NewSharedBatch(&dao, dao.batchSize,
 		time.Duration(config.Cfg.BatchAccumulationTimeout)*time.Millisecond)
 	return dao
 }

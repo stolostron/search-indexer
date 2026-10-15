@@ -168,7 +168,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 		})
 	}
 
-	err := dao.Accumulator.SubmitAndWait(ctx, clusterName, allItems)
+	err := dao.Dispatcher.SubmitAndWait(ctx, clusterName, allItems)
 	if err != nil {
 		klog.V(1).Infof("Completed sync of cluster %12s with errors.", clusterName)
 		return err
