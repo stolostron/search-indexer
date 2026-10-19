@@ -38,7 +38,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	for _, resource := range event.AddResources {
 		if err := validateUIDPrefix(resource.UID, clusterName); err != nil {
 			klog.Warningf("Rejecting addResource from cluster [%s]: %v", clusterName, err)
-			syncResponse.AddErrors = append(syncResponse.AddErrors, model.SyncError{ResourceUID: resource.UID, Message: err.Error()})
+			syncResponse.AppendError("addResource", model.SyncError{ResourceUID: resource.UID, Message: err.Error()})
 			continue
 		}
 		data, _ := json.Marshal(resource.Properties)
@@ -63,7 +63,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	for _, resource := range event.UpdateResources {
 		if err := validateUIDPrefix(resource.UID, clusterName); err != nil {
 			klog.Warningf("Rejecting updateResource from cluster [%s]: %v", clusterName, err)
-			syncResponse.UpdateErrors = append(syncResponse.UpdateErrors, model.SyncError{ResourceUID: resource.UID, Message: err.Error()})
+			syncResponse.AppendError("updateResource", model.SyncError{ResourceUID: resource.UID, Message: err.Error()})
 			continue
 		}
 		data, _ := json.Marshal(resource.Properties)
@@ -111,7 +111,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 			args...)
 		if execErr != nil {
 			klog.Warningf("Error deleting resources for cluster %s: %+v", clusterName, execErr)
-			syncResponse.DeleteErrors = append(syncResponse.DeleteErrors,
+			syncResponse.AppendError("deleteResource",
 				model.SyncError{ResourceUID: fmt.Sprintf("%s", uids), Message: execErr.Error()})
 		} else {
 			syncResponse.TotalDeleted = int(tag.RowsAffected())

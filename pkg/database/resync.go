@@ -210,7 +210,7 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 				// Reject UIDs that don't belong to this cluster before they reach the DB.
 				if err := validateUIDPrefix(uid, clusterName); err != nil {
 					klog.Warningf("Rejecting resync resource from cluster [%s]: %v", clusterName, err)
-					syncResponse.AddErrors = append(syncResponse.AddErrors, model.SyncError{ResourceUID: uid, Message: err.Error()})
+					syncResponse.AppendError("addResource", model.SyncError{ResourceUID: uid, Message: err.Error()})
 					continue
 				}
 				data, _ := json.Marshal(resource.Properties)
