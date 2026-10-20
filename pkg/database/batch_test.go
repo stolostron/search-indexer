@@ -4,6 +4,7 @@ package database
 
 import (
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,7 +12,8 @@ import (
 
 func Test_QueueWithErrors(t *testing.T) {
 	mock := &batchWithRetry{
-		connError: errors.New("failed to connect"),
+		connError:   errors.New("failed to connect"),
+		connErrorMu: &sync.RWMutex{},
 	}
 
 	result := mock.Queue(batchItem{})

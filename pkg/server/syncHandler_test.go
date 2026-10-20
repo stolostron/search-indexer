@@ -58,8 +58,8 @@ func Test_syncRequest(t *testing.T) {
 		t.Error("Unable to decode respoonse body.")
 	}
 
-	if fmt.Sprintf("%+v", decodedResp) != fmt.Sprintf("%+v", expected) {
-		t.Errorf("Incorrect response body.\n expected '%+v'\n received '%+v'", expected, decodedResp)
+	if fmt.Sprintf("%+v", &decodedResp) != fmt.Sprintf("%+v", &expected) {
+		t.Errorf("Incorrect response body.\n expected '%+v'\n received '%+v'", &expected, &decodedResp)
 	}
 }
 
@@ -167,8 +167,8 @@ func Test_resyncRequest(t *testing.T) {
 	}
 
 	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalDeleted: 0, TotalResources: 10, TotalEdgesDeleted: 1, TotalEdges: 4}
-	if fmt.Sprintf("%+v", decodedResp) != fmt.Sprintf("%+v", expected) {
-		t.Errorf("Incorrect response body.\n expected '%+v'\n received '%+v'", expected, decodedResp)
+	if fmt.Sprintf("%+v", &decodedResp) != fmt.Sprintf("%+v", &expected) {
+		t.Errorf("Incorrect response body.\n expected '%+v'\n received '%+v'", &expected, &decodedResp)
 	}
 }
 

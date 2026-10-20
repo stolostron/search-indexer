@@ -27,6 +27,7 @@ type batchItem struct {
 
 type batchWithRetry struct {
 	connError    error
+	connErrorMu  *sync.RWMutex
 	ctx          context.Context
 	items        []batchItem
 	dao          *DAO
@@ -36,6 +37,7 @@ type batchWithRetry struct {
 
 func NewBatchWithRetry(ctx context.Context, dao *DAO, syncResponse *model.SyncResponse) batchWithRetry {
 	batch := batchWithRetry{
+		connErrorMu:  &sync.RWMutex{},
 		ctx:          ctx,
 		items:        make([]batchItem, 0),
 		wg:           &sync.WaitGroup{},
@@ -47,6 +49,8 @@ func NewBatchWithRetry(ctx context.Context, dao *DAO, syncResponse *model.SyncRe
 
 // Adds a query to the queue and check if there's enough items to process the batch.
 func (b *batchWithRetry) Queue(item batchItem) error {
+	b.connErrorMu.RLock()
+	defer b.connErrorMu.RUnlock()
 	if b.connError != nil { // Can't queue more items after DB connection error.
 		return b.connError
 	}
@@ -76,7 +80,9 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 	closeErr := br.Close()
 	if closeErr != nil {
 		if strings.Contains(closeErr.Error(), "unexpected EOF") || strings.Contains(closeErr.Error(), "failed to connect") {
+			b.connErrorMu.Lock()
 			b.connError = closeErr
+			b.connErrorMu.Unlock()
 			klog.Error("Send batch failed because database is unavailable. Won't retry.")
 			return errors.New("failed to connect to database")
 		}
@@ -91,23 +97,11 @@ func (b *batchWithRetry) sendBatch(items []batchItem) error {
 		errorItem := items[0]
 		klog.Errorf("ERROR processing batchItem. %+v", errorItem)
 
-		var errorArray *[]model.SyncError
-		switch errorItem.action {
-		case "addResource":
-			errorArray = &b.syncResponse.AddErrors
-		case "updateResource":
-			errorArray = &b.syncResponse.UpdateErrors
-		case "deleteResource":
-			errorArray = &b.syncResponse.DeleteErrors
-		case "addEdge":
-			errorArray = &b.syncResponse.AddEdgeErrors
-		case "deleteEdge":
-			errorArray = &b.syncResponse.DeleteEdgeErrors
-		default:
+		ok := b.syncResponse.AppendError(errorItem.action,
+			model.SyncError{ResourceUID: errorItem.uid, Message: "Resource generated an error while updating the database."})
+		if !ok {
 			klog.Error("Unable to process sync error with type: ", errorItem.action)
 		}
-		*errorArray = append(*errorArray,
-			model.SyncError{ResourceUID: errorItem.uid, Message: "Resource generated an error while updating the database."})
 
 		return nil // We have processed the error, so don't return an error here to stop the recursion.
 

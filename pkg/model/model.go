@@ -2,6 +2,8 @@
 
 package model
 
+import "sync"
+
 // Resource - Describes a resource (node)
 type Resource struct {
 	Kind           string `json:"kind,omitempty"`
@@ -29,6 +31,7 @@ type SyncEvent struct {
 
 // SyncResponse - Response to a SyncEvent
 type SyncResponse struct {
+	mu                sync.Mutex // guards []SyncError fields, Total fields only ever accessed singly threaded
 	TotalAdded        int
 	TotalUpdated      int
 	TotalDeleted      int
@@ -42,6 +45,27 @@ type SyncResponse struct {
 	AddEdgeErrors     []SyncError
 	DeleteEdgeErrors  []SyncError
 	Version           string
+}
+
+func (r *SyncResponse) AppendError(action string, e SyncError) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	switch action {
+	case "addResource":
+		r.AddErrors = append(r.AddErrors, e)
+	case "updateResource":
+		r.UpdateErrors = append(r.UpdateErrors, e)
+	case "deleteResource":
+		r.DeleteErrors = append(r.DeleteErrors, e)
+	case "addEdge":
+		r.AddEdgeErrors = append(r.AddEdgeErrors, e)
+	case "deleteEdge":
+		r.DeleteEdgeErrors = append(r.DeleteEdgeErrors, e)
+	default:
+		return false
+	}
+	return true
 }
 
 // SyncError is used to respond with errors.
