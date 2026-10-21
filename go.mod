@@ -18,7 +18,7 @@ require (
 	k8s.io/apimachinery v0.33.2
 	k8s.io/client-go v0.33.2
 	k8s.io/klog/v2 v2.130.1
-	open-cluster-management.io/api v0.16.2-0.20250422072120-cadf714c3055
+	open-cluster-management.io/api v0.16.2
 )
 
 require (
