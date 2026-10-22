@@ -4,7 +4,7 @@ module github.com/stolostron/search-indexer
 go 1.26.0
 
 require (
-	github.com/doug-martin/goqu/v9 v9.18.0
+	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/driftprogramming/pgxpoolmock v1.1.0
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/mux v1.8.1
