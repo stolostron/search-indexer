@@ -10,7 +10,7 @@ import (
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/doug-martin/goqu/v9/exp"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"

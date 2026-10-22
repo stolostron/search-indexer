@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	pgx "github.com/jackc/pgx/v4"
+	pgx "github.com/jackc/pgx/v5"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"k8s.io/klog/v2"
 )
