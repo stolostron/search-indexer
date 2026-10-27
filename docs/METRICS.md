@@ -371,6 +371,7 @@ Lap-timer for resync sub-steps. Only visible at klog verbosity level 5 (`-v=5`).
 |---|---|---|
 | `AGGREGATOR_ADDRESS` | `:3010` | Address and port where `/metrics` is served |
 | `SLOW_LOG` | `1000` | Threshold in ms above which a sync/resync emits a `klog.Warning`; no effect on Prometheus counters |
-| `REQUEST_LIMIT` | `25` | Max concurrent requests; shapes when `search_indexer_requests_in_flight` reaches saturation |
+| `REQUEST_LIMIT` | `25` | Max concurrent sync requests; shapes when `search_indexer_requests_in_flight` reaches saturation |
+| `VALIDATION_REQUEST_LIMIT` | `5` | Max concurrent validation requests; reserves validation capacity during sync saturation |
 | `LARGE_REQUEST_LIMIT` | `5` | Max concurrent large requests; same indirect effect as above |
 | `LARGE_REQUEST_SIZE` | `20971520` | Byte threshold to classify a request as "large"; influences concurrency limits and therefore `search_indexer_requests_in_flight` |

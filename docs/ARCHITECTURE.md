@@ -63,9 +63,9 @@ Tables are in the `search` schema (not the default `public`):
 
 ## Rate limiting
 
-Two independent semaphore-based middlewares protect the database from overload:
+Request-limiting middleware protects the database from overload:
 
-- `requestLimiterMiddleware`: caps total concurrent requests (default 25, `REQUEST_LIMIT`).
+- `requestLimiterMiddleware`: independently caps concurrent sync requests (default 25, `REQUEST_LIMIT`) and validation requests (default 5, `VALIDATION_REQUEST_LIMIT`).
 - `largeRequestLimiterMiddleware`: caps concurrent requests larger than 20 MB (default 5, `LARGE_REQUEST_LIMIT`/`LARGE_REQUEST_SIZE`). Requests below the size threshold bypass this limiter.
 
 ## TLS
