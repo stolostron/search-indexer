@@ -22,6 +22,8 @@ The server address can be overridden with the `AGGREGATOR_ADDRESS` environment v
 | `search_indexer_request_duration` | HistogramVec | `code` | Sync request processing latency (seconds) |
 | `search_indexer_requests_in_flight` | Gauge | — | Concurrent sync requests currently being processed |
 | `search_indexer_request_size` | Histogram | — | Resource changes (add+update+delete) per **delta** sync |
+| `search_indexer_validation_request_count` | CounterVec | `managed_cluster_name` | Validation requests received per managed cluster |
+| `search_indexer_validation_request_duration` | HistogramVec | `code` | Validation request processing latency (seconds) |
 | `search_indexer_db_resource_event_count` | CounterVec | `operation` (`insert`/`update`/`delete`), `kind`, `cluster` | Resource DB events sent to PostgreSQL (deletes counted by rows affected) |
 
 ## PromQL
@@ -34,6 +36,7 @@ Useful queries to visualize the health of this service.
 | Average request duration | `rate(search_indexer_request_duration_sum[5m])/rate(search_indexer_request_duration_count[5m])` |
 | Sync request rate (all clusters) | `sum(rate(search_indexer_request_count[5m]))` |
 | p99 sync latency | `histogram_quantile(0.99, sum(rate(search_indexer_request_duration_bucket[5m])) by (le))` |
+| Validation request rate | `sum(rate(search_indexer_validation_request_count[5m]))` |
 | Resources written per second | `sum(rate(search_indexer_db_resource_event_count[5m]))` |
 
 ---
@@ -56,10 +59,10 @@ Every POST to `/aggregator/clusters/{id}/sync` — both delta syncs and full res
 **PromQL examples**
 
 ```promql
-# Overall request rate per second (all clusters)
+# Overall sync request rate per second (all clusters)
 sum(rate(search_indexer_request_count[5m]))
 
-# Request rate per cluster
+# Sync request rate per cluster
 rate(search_indexer_request_count[5m])
 
 # Top 5 most active clusters in the last 10 minutes
@@ -89,7 +92,7 @@ Wall-clock time (in seconds) spent processing each sync request, from the moment
 | Populated by | `promhttp.InstrumentHandlerDuration` in the middleware |
 
 **When is it recorded?**
-Once per handled request. The `code` label lets you separate successful requests from errors at a glance.
+Once per handled sync request. The `code` label separates successful requests from errors.
 
 **PromQL examples**
 
@@ -121,6 +124,34 @@ rate(search_indexer_request_duration_sum[5m])
 histogram_quantile(0.99,
   sum(rate(search_indexer_request_duration_bucket[2m])) by (le)
 ) > 5
+```
+
+---
+
+### Validation request metrics
+
+Validation traffic uses separate metrics so the existing sync metric schemas and semantics remain unchanged.
+
+| Metric | Type | Labels |
+|---|---|---|
+| `search_indexer_validation_request_count` | `counter` | `managed_cluster_name` |
+| `search_indexer_validation_request_duration` | `histogram` | `code` |
+
+The validation duration histogram uses the same buckets as `search_indexer_request_duration`.
+Validation requests are not included in `search_indexer_requests_in_flight`.
+
+```promql
+# Validation request rate per cluster
+rate(search_indexer_validation_request_count[5m])
+
+# p99 validation latency
+histogram_quantile(0.99,
+  sum(rate(search_indexer_validation_request_duration_bucket[5m])) by (le)
+)
+
+# Fraction of validation requests returning errors
+sum(rate(search_indexer_validation_request_duration_count{code!="200"}[5m]))
+  / sum(rate(search_indexer_validation_request_duration_count[5m]))
 ```
 
 ---
@@ -313,7 +344,7 @@ search_indexer_requests_in_flight
 # ── Error rate ──────────────────────────────────────────────────────────────
 
 # Fraction of requests that returned a non-200 status
-# search_indexer_request_count only has the managed_cluster_name label (no code label),
+# search_indexer_request_count has no code label,
 # so use the duration histogram which is keyed by code.
 sum(rate(search_indexer_request_duration_count{code!="200"}[5m]))
   / sum(rate(search_indexer_request_duration_count[5m]))

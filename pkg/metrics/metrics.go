@@ -33,6 +33,17 @@ var (
 		Buckets: []float64{50, 100, 200, 500, 5000, 10000, 25000, 50000, 100000, 200000},
 	})
 
+	ValidationRequestCount = promauto.With(PromRegistry).NewCounterVec(prometheus.CounterOpts{
+		Name: "search_indexer_validation_request_count",
+		Help: "Total validation requests received by the search indexer (from managed clusters).",
+	}, []string{"managed_cluster_name"})
+
+	ValidationRequestDuration = promauto.With(PromRegistry).NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "search_indexer_validation_request_duration",
+		Help:    "Time (seconds) the search indexer takes to process a validation request (from managed cluster).",
+		Buckets: []float64{.25, .5, 1, 1.5, 2, 3, 5, 10},
+	}, []string{"code"})
+
 	// DBResourceEventSent counts the number of resource operations sent to the database,
 	// broken down by operation type, resource kind, and managed cluster name.
 	// Use rate() or irate() in PromQL to obtain operations per minute/second.
