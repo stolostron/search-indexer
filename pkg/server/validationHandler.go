@@ -28,6 +28,6 @@ func (s *ServerConfig) ValidateCluster(w http.ResponseWriter, r *http.Request) {
 		TotalEdges:     totalEdges,
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		klog.Error("Error responding to cluster validation request: ", err)
+		klog.Error("Error encoding validation response: ", err)
 	}
 }
