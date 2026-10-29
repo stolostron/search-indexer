@@ -18,9 +18,7 @@ func NewRows(columns []string) *Rows {
 
 func (r *Rows) AddRow(values ...interface{}) *Rows {
 	vals := make([]any, len(values))
-	for i, v := range values {
-		vals[i] = v
-	}
+	copy(vals, values)
 	r.rows.AddRow(vals...)
 	return r
 }

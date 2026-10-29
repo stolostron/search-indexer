@@ -59,6 +59,11 @@ func beforeAcquire(ctx context.Context, c *pgx.Conn) bool {
 	return true
 }
 
+// Checks idle connection is healthy before using it.
+func prepareConn(ctx context.Context, c *pgx.Conn) (bool, error) {
+	return beforeAcquire(ctx, c), nil
+}
+
 func initializePool() PgxPool {
 	cfg := config.Cfg
 
@@ -79,8 +84,8 @@ func initializePool() PgxPool {
 	if configErr != nil {
 		klog.Fatal("Error parsing database connection configuration. ", configErr)
 	}
-	config.AfterConnect = afterConnect   // Checks new connection health before using it.
-	config.BeforeAcquire = beforeAcquire // Checks idle connection health before using it.
+	config.AfterConnect = afterConnect // Checks new connection health before using it.
+	config.PrepareConn = prepareConn   // Checks idle connection health before using it.
 	// Add jitter to prevent all connections from being closed at same time.
 	config.MaxConnLifetimeJitter = time.Duration(cfg.DBMaxConnLifeJitter) * time.Millisecond
 	config.MaxConns = cfg.DBMaxConns
@@ -95,6 +100,13 @@ func initializePool() PgxPool {
 	var err error
 	for {
 		conn, err = pgxpool.NewWithConfig(context.TODO(), config)
+		if err == nil {
+			err = conn.Ping(context.TODO())
+			if err != nil {
+				conn.Close()
+			}
+		}
+
 		if err != nil {
 			// Max wait time is 30 sec
 			waitMS := int(math.Min(float64(retry*500), float64(cfg.MaxBackoffMS/10)))
