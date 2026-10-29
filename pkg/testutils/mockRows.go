@@ -4,8 +4,8 @@ package testutils
 import (
 	"fmt"
 
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgproto3/v2"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // ====================================================
@@ -40,9 +40,9 @@ func (r *MockRows) Close() {}
 
 func (r *MockRows) Err() error { return nil }
 
-func (r *MockRows) CommandTag() pgconn.CommandTag { return nil }
+func (r *MockRows) CommandTag() pgconn.CommandTag { return pgconn.CommandTag{} }
 
-func (r *MockRows) FieldDescriptions() []pgproto3.FieldDescription { return nil }
+func (r *MockRows) FieldDescriptions() []pgconn.FieldDescription { return nil }
 
 func (r *MockRows) Next() bool {
 	r.Index = r.Index + 1
@@ -86,3 +86,5 @@ func (r *MockRows) Scan(dest ...interface{}) error {
 func (r *MockRows) Values() ([]interface{}, error) { return nil, nil }
 
 func (r *MockRows) RawValues() [][]byte { return nil }
+
+func (r *MockRows) Conn() *pgx.Conn { return nil }

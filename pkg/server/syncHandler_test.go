@@ -13,7 +13,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
-	"github.com/pashagolub/pgxmock"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"github.com/stolostron/search-indexer/pkg/testutils"
@@ -188,7 +189,7 @@ func Test_resyncRequest_withErrorDeletingResources(t *testing.T) {
 	server, mockPool := buildMockServer(t)
 	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
 
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(pgconn.CommandTag{}, errors.New("unexpected EOF"))
 
 	br := &testutils.MockBatchResults{
 		MockRows: testutils.MockRows{
@@ -223,7 +224,7 @@ func Test_resyncRequest_withErrorDeletingEdges(t *testing.T) {
 	server, mockPool := buildMockServer(t)
 	testutils.MockDatabaseState(mockPool) // Mock Postgres state and SELECT queries.
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any())
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("unexpected EOF"))
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(pgconn.CommandTag{}, errors.New("unexpected EOF"))
 
 	br := &testutils.MockBatchResults{
 		MockRows: testutils.MockRows{

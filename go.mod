@@ -5,13 +5,10 @@ go 1.26.0
 
 require (
 	github.com/doug-martin/goqu/v9 v9.19.0
-	github.com/driftprogramming/pgxpoolmock v1.1.0
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/jackc/pgconn v1.14.3
-	github.com/jackc/pgproto3/v2 v2.3.3
-	github.com/jackc/pgx/v5 v5.0.0
-	github.com/pashagolub/pgxmock v1.8.0
+	github.com/jackc/pgx/v5 v5.9.2
+	github.com/pashagolub/pgxmock/v4 v4.9.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20261016140402-a0759edd9e0d
 	github.com/stretchr/testify v1.12.1
@@ -34,14 +31,9 @@ require (
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
-	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/pgtype v1.14.0 // indirect
-	github.com/jackc/pgx/v4 v4.17.0 // indirect
-	github.com/jackc/puddle v1.3.0 // indirect
-	github.com/jackc/puddle/v2 v2.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/lib/pq v1.10.7 // indirect
@@ -53,14 +45,13 @@ require (
 	github.com/prometheus/client_model v0.6.3 // indirect
 	github.com/prometheus/common v0.72.0 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
-	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
