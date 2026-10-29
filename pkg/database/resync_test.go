@@ -7,7 +7,7 @@ import (
 	"errors"
 	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/jackc/pgconn"
-	"github.com/pashagolub/pgxmock"
+	"github.com/pashagolub/pgxmock/v5"
 	"io"
 	"os"
 	"testing"
