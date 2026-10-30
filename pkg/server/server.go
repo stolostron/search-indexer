@@ -33,6 +33,7 @@ func (s *ServerConfig) StartAndListen(ctx context.Context) {
 	syncSubrouter.Use(requestLimiterMiddleware)
 	syncSubrouter.Use(largeRequestLimiterMiddleware)
 	syncSubrouter.HandleFunc("/clusters/{id}/sync", s.SyncResources).Methods("POST")
+	syncSubrouter.HandleFunc("/clusters/{id}/validation", s.ValidateCluster).Methods("GET")
 
 	srv := &http.Server{
 		Addr:              config.Cfg.ServerAddress,

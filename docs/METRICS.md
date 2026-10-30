@@ -18,11 +18,14 @@ The server address can be overridden with the `AGGREGATOR_ADDRESS` environment v
 
 | Metric | Type | Labels | What it measures |
 |---|---|---|---|
-| `search_indexer_request_count` | CounterVec | `managed_cluster_name` | Sync requests received per managed cluster |
-| `search_indexer_request_duration` | HistogramVec | `code` | Sync request processing latency (seconds) |
-| `search_indexer_requests_in_flight` | Gauge | — | Concurrent sync requests currently being processed |
+| `search_indexer_request_count` | CounterVec | `managed_cluster_name`, `path` | Sync and validation requests received per managed cluster |
+| `search_indexer_request_duration` | HistogramVec | `code`, `path` | Sync and validation request processing latency (seconds) |
+| `search_indexer_requests_in_flight` | GaugeVec | `path` | Concurrent requests currently being processed per path |
 | `search_indexer_request_size` | Histogram | — | Resource changes (add+update+delete) per **delta** sync |
 | `search_indexer_db_resource_event_count` | CounterVec | `operation` (`insert`/`update`/`delete`), `kind`, `cluster` | Resource DB events sent to PostgreSQL (deletes counted by rows affected) |
+
+The request metrics use only `path="/sync"` and `path="/validation"`; the label never contains the cluster name or full URL.
+Queries without a `path` selector include both types of requests, with separate series for each path unless aggregated.
 
 ## PromQL
 
@@ -32,8 +35,9 @@ Useful queries to visualize the health of this service.
 |---|---|
 | Requests per minute | `rate(search_indexer_request_duration_count[2m])*60` |
 | Average request duration | `rate(search_indexer_request_duration_sum[5m])/rate(search_indexer_request_duration_count[5m])` |
-| Sync request rate (all clusters) | `sum(rate(search_indexer_request_count[5m]))` |
-| p99 sync latency | `histogram_quantile(0.99, sum(rate(search_indexer_request_duration_bucket[5m])) by (le))` |
+| Sync request rate (all clusters) | `sum(rate(search_indexer_request_count{path="/sync"}[5m]))` |
+| p99 sync latency | `histogram_quantile(0.99, sum(rate(search_indexer_request_duration_bucket{path="/sync"}[5m])) by (le))` |
+| Validation request rate | `sum(rate(search_indexer_request_count{path="/validation"}[5m]))` |
 | Resources written per second | `sum(rate(search_indexer_db_resource_event_count[5m]))` |
 
 ---
@@ -47,23 +51,23 @@ Incremented once per HTTP request received from a managed cluster.
 | Attribute | Value |
 |---|---|
 | Type | `counter` |
-| Labels | `managed_cluster_name` |
+| Labels | `managed_cluster_name`, `path` (`"/sync"` or `"/validation"`) |
 | Populated by | `promhttp.InstrumentHandlerCounter` in the middleware |
 
 **When is it recorded?**
-Every POST to `/aggregator/clusters/{id}/sync` — both delta syncs and full resyncs — increments this counter by 1 at handler entry, regardless of whether the request succeeds or fails.
+Every POST to `/aggregator/clusters/{id}/sync` — both delta syncs and full resyncs — and GET to `/aggregator/clusters/{id}/validation` increments this counter by 1 at handler entry, regardless of whether the request succeeds or fails.
 
 **PromQL examples**
 
 ```promql
-# Overall request rate per second (all clusters)
-sum(rate(search_indexer_request_count[5m]))
+# Overall sync request rate per second (all clusters)
+sum(rate(search_indexer_request_count{path="/sync"}[5m]))
 
-# Request rate per cluster
-rate(search_indexer_request_count[5m])
+# Sync request rate per cluster
+rate(search_indexer_request_count{path="/sync"}[5m])
 
-# Top 5 most active clusters in the last 10 minutes
-topk(5, increase(search_indexer_request_count[10m]))
+# Top 5 most active sync clusters in the last 10 minutes
+topk(5, increase(search_indexer_request_count{path="/sync"}[10m]))
 
 # Clusters that have sent at least one request in the last 15 minutes
 count by (managed_cluster_name) (
@@ -72,24 +76,24 @@ count by (managed_cluster_name) (
 
 # Alert: a cluster has not checked in for more than 20 minutes
 # (useful to detect a lost collector)
-increase(search_indexer_request_count[20m]) == 0
+sum by (managed_cluster_name) (increase(search_indexer_request_count[20m])) == 0
 ```
 
 ---
 
 ### `search_indexer_request_duration` · HistogramVec
 
-Wall-clock time (in seconds) spent processing each sync request, from the moment the HTTP handler receives the request to when the response is written.
+Wall-clock time (in seconds) spent processing each sync or validation request, from the moment the HTTP handler receives the request to when the response is written.
 
 | Attribute | Value |
 |---|---|
 | Type | `histogram` |
-| Labels | `code` (HTTP response status code, e.g. `"200"`, `"500"`) |
+| Labels | `code` (HTTP response status code, e.g. `"200"`, `"500"`), `path` (`"/sync"` or `"/validation"`) |
 | Buckets (s) | `0.25, 0.5, 1, 1.5, 2, 3, 5, 10` |
 | Populated by | `promhttp.InstrumentHandlerDuration` in the middleware |
 
 **When is it recorded?**
-Once per handled request. The `code` label lets you separate successful requests from errors at a glance.
+Once per handled sync or validation request. The `code` label separates successful requests from errors.
 
 **PromQL examples**
 
@@ -125,14 +129,34 @@ histogram_quantile(0.99,
 
 ---
 
-### `search_indexer_requests_in_flight` · Gauge
+### Validation request metrics
 
-Number of sync requests being actively processed at any given instant.
+Validation traffic uses the request count, duration, and in-flight metrics with `path="/validation"`.
+
+```promql
+# Validation request rate per cluster
+rate(search_indexer_request_count{path="/validation"}[5m])
+
+# p99 validation latency
+histogram_quantile(0.99,
+  sum(rate(search_indexer_request_duration_bucket{path="/validation"}[5m])) by (le)
+)
+
+# Fraction of validation requests returning errors
+sum(rate(search_indexer_request_duration_count{path="/validation",code!="200"}[5m]))
+  / sum(rate(search_indexer_request_duration_count{path="/validation"}[5m]))
+```
+
+---
+
+### `search_indexer_requests_in_flight` · GaugeVec
+
+Number of sync and validation requests being actively processed at any given instant, tracked separately by path.
 
 | Attribute | Value |
 |---|---|
 | Type | `gauge` |
-| Labels | none |
+| Labels | `path` (`"/sync"` or `"/validation"`) |
 | Populated by | `promhttp.InstrumentHandlerInFlight` in the middleware |
 
 **When is it recorded?**
@@ -151,7 +175,7 @@ avg_over_time(search_indexer_requests_in_flight[5m])
 max_over_time(search_indexer_requests_in_flight[1h])
 
 # Alert: concurrency has been above the request limit (default 25) for 1 minute
-search_indexer_requests_in_flight > 25
+search_indexer_requests_in_flight{path="/sync"} > 25
 ```
 
 ---
@@ -277,7 +301,7 @@ sum(rate(search_indexer_db_resource_event_count{operation="delete"}[2m])) * 60 >
 # Alert: insert rate drops to zero while the indexer is still receiving requests
 #   (requests coming in but nothing being inserted — possible DB issue)
 (
-  sum(rate(search_indexer_request_count[5m])) > 0
+  sum(rate(search_indexer_request_count{path="/sync"}[5m])) > 0
 ) and (
   sum(rate(search_indexer_db_resource_event_count{operation="insert"}[5m])) == 0
 )
@@ -297,7 +321,7 @@ sum(rate(search_indexer_db_resource_event_count[5m]))
 
 # DB events per request (average batch size per sync)
 sum(rate(search_indexer_db_resource_event_count[5m]))
-  / sum(rate(search_indexer_request_count[5m]))
+  / sum(rate(search_indexer_request_count{path="/sync"}[5m]))
 
 
 # ── Latency vs. load ────────────────────────────────────────────────────────
@@ -313,7 +337,7 @@ search_indexer_requests_in_flight
 # ── Error rate ──────────────────────────────────────────────────────────────
 
 # Fraction of requests that returned a non-200 status
-# search_indexer_request_count only has the managed_cluster_name label (no code label),
+# search_indexer_request_count has no code label,
 # so use the duration histogram which is keyed by code.
 sum(rate(search_indexer_request_duration_count{code!="200"}[5m]))
   / sum(rate(search_indexer_request_duration_count[5m]))
@@ -326,14 +350,14 @@ sum(rate(search_indexer_request_duration_count{code=~"5.."}[5m]))
 
 # Number of distinct clusters that have synced in the last 5 minutes
 count(count by (managed_cluster_name) (
-  increase(search_indexer_request_count[5m]) > 0
+  increase(search_indexer_request_count{path="/sync"}[5m]) > 0
 ))
 
 # Clusters that synced in the last 5 m but not in the previous 5 m
 # (newly appearing collectors)
-count by (managed_cluster_name) (increase(search_indexer_request_count[5m]) > 0)
+count by (managed_cluster_name) (increase(search_indexer_request_count{path="/sync"}[5m]) > 0)
   unless
-count by (managed_cluster_name) (increase(search_indexer_request_count[5m] offset 5m) > 0)
+count by (managed_cluster_name) (increase(search_indexer_request_count{path="/sync"}[5m] offset 5m) > 0)
 ```
 
 ---
@@ -371,6 +395,7 @@ Lap-timer for resync sub-steps. Only visible at klog verbosity level 5 (`-v=5`).
 |---|---|---|
 | `AGGREGATOR_ADDRESS` | `:3010` | Address and port where `/metrics` is served |
 | `SLOW_LOG` | `1000` | Threshold in ms above which a sync/resync emits a `klog.Warning`; no effect on Prometheus counters |
-| `REQUEST_LIMIT` | `25` | Max concurrent requests; shapes when `search_indexer_requests_in_flight` reaches saturation |
+| `REQUEST_LIMIT` | `25` | Max concurrent sync requests; shapes when `search_indexer_requests_in_flight` reaches saturation |
+| `VALIDATION_REQUEST_LIMIT` | `15` | Max concurrent validation requests; reserves validation capacity during sync saturation |
 | `LARGE_REQUEST_LIMIT` | `5` | Max concurrent large requests; same indirect effect as above |
 | `LARGE_REQUEST_SIZE` | `20971520` | Byte threshold to classify a request as "large"; influences concurrency limits and therefore `search_indexer_requests_in_flight` |

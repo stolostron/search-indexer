@@ -9,13 +9,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 
 // Verify that request is accepted with 3 pending requests.
 func Test_requestLimiterMiddleware(t *testing.T) {
 	// Mock 3 pending requests.
-	requestTracker = map[string]time.Time {"A": time.Now(), "B": time.Now(), "C": time.Now()}
+	syncRequestTracker = map[string]time.Time{
+		"A": time.Now(),
+		"B": time.Now(),
+		"C": time.Now(),
+	}
+	validationRequestTracker = map[string]time.Time{}
 
 	requestLimiterHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 	req := httptest.NewRequest("POST", "https://localhost:3010/aggregator/clusters/cluster1/sync", nil)
@@ -35,7 +41,8 @@ func Test_requestLimiterMiddleware_existingRequest(t *testing.T) {
 	// Mock a pending request from cluster.
 	// NOTE: Omitting the cluster name to keep the test simple, otherwise we would need to mock
 	// the mux router so the handler can read the cluster {id} from the route.
-	requestTracker = map[string]time.Time {"": time.Now()}
+	syncRequestTracker = map[string]time.Time{"": time.Now()}
+	validationRequestTracker = map[string]time.Time{}
 
 	// Mock Request and Response.
 	requestLimiterHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
@@ -55,12 +62,26 @@ func Test_requestLimiterMiddleware_existingRequest(t *testing.T) {
 
 }
 
+func Test_requestLimiterMiddleware_validationBlocksSyncForSameCluster(t *testing.T) {
+	syncRequestTracker = map[string]time.Time{}
+	validationRequestTracker = map[string]time.Time{"": time.Now()}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	req := httptest.NewRequest(http.MethodPost, "https://localhost:3010/aggregator/clusters/cluster1/sync", nil)
+	res := httptest.NewRecorder()
+
+	requestLimiterMiddleware(handler).ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusTooManyRequests, res.Code)
+}
+
 // Verify that request is rejected when there's 50 or more pending requests.
 func Test_requestLimiterMiddleware_with50PendingRequests(t *testing.T) {
 	// Mock 50 pending requests.
-	requestTracker = map[string]time.Time {}
-	for i:=0; i<50; i++{
-		requestTracker["cluster" + strconv.Itoa(i)] = time.Now()
+	syncRequestTracker = map[string]time.Time{}
+	validationRequestTracker = map[string]time.Time{}
+	for i := 0; i < 50; i++ {
+		syncRequestTracker["cluster"+strconv.Itoa(i)] = time.Now()
 	}
 
 	requestLimiterHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
@@ -78,4 +99,54 @@ func Test_requestLimiterMiddleware_with50PendingRequests(t *testing.T) {
 	bodyBytes, _ := io.ReadAll(res.Body)
 	assert.Equal(t, "Indexer has too many pending requests, retry later.\n", string(bodyBytes))
 
+}
+
+func Test_requestLimiterMiddleware_validationHasReservedCapacity(t *testing.T) {
+	syncRequestTracker = map[string]time.Time{}
+	validationRequestTracker = map[string]time.Time{}
+	for i := 0; i < config.Cfg.RequestLimit; i++ {
+		syncRequestTracker["sync-cluster"+strconv.Itoa(i)] = time.Now()
+	}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	req := httptest.NewRequest(http.MethodGet, "https://localhost:3010/aggregator/clusters/validation-cluster/validation", nil)
+	res := httptest.NewRecorder()
+
+	requestLimiterMiddleware(handler).ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+}
+
+func Test_requestLimiterMiddleware_validationLimit(t *testing.T) {
+	syncRequestTracker = map[string]time.Time{}
+	validationRequestTracker = map[string]time.Time{}
+	for i := 0; i < config.Cfg.ValidationRequestLimit; i++ {
+		validationRequestTracker["validation-cluster"+strconv.Itoa(i)] = time.Now()
+	}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	req := httptest.NewRequest(http.MethodGet, "https://localhost:3010/aggregator/clusters/another-cluster/validation", nil)
+	res := httptest.NewRecorder()
+
+	requestLimiterMiddleware(handler).ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusTooManyRequests, res.Code)
+	bodyBytes, _ := io.ReadAll(res.Body)
+	assert.Equal(t, "Indexer has too many pending validation requests, retry later.\n", string(bodyBytes))
+}
+
+func Test_requestLimiterMiddleware_syncHasSeparateCapacity(t *testing.T) {
+	syncRequestTracker = map[string]time.Time{}
+	validationRequestTracker = map[string]time.Time{}
+	for i := 0; i < config.Cfg.ValidationRequestLimit; i++ {
+		validationRequestTracker["validation-cluster"+strconv.Itoa(i)] = time.Now()
+	}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	req := httptest.NewRequest(http.MethodPost, "https://localhost:3010/aggregator/clusters/sync-cluster/sync", nil)
+	res := httptest.NewRecorder()
+
+	requestLimiterMiddleware(handler).ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusOK, res.Code)
 }
