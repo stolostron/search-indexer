@@ -15,21 +15,19 @@ func PrometheusMiddleware(next http.Handler) http.Handler {
 		params := mux.Vars(r)
 		clusterName := params["id"]
 
-		clusterNameLabel := prometheus.Labels{"managed_cluster_name": clusterName}
+		path := "/sync"
 		if isValidationRequest(r.URL.Path) {
-			// Add the managed_cluster_name label to metrics.
-			curriedValidationCount, _ := ValidationRequestCount.CurryWith(clusterNameLabel)
-			promhttp.InstrumentHandlerDuration(ValidationRequestDuration,
-				promhttp.InstrumentHandlerCounter(curriedValidationCount, next)).ServeHTTP(w, r)
-			return
+			path = "/validation"
 		}
 
-		// Add the managed_cluster_name label to metrics.
-		curriedRequestCount, _ := RequestCount.CurryWith(clusterNameLabel)
+		// Keep path labels bounded; the full URL contains the cluster name.
+		requestLabels := prometheus.Labels{"managed_cluster_name": clusterName, "path": path}
+		curriedRequestCount, _ := RequestCount.CurryWith(requestLabels)
+		curriedRequestDuration, _ := RequestDuration.CurryWith(prometheus.Labels{"path": path})
 
 		// Instrument and serve.
-		promhttp.InstrumentHandlerInFlight(RequestsInFlight,
-			promhttp.InstrumentHandlerDuration(RequestDuration,
+		promhttp.InstrumentHandlerInFlight(RequestsInFlight.WithLabelValues(path),
+			promhttp.InstrumentHandlerDuration(curriedRequestDuration,
 				promhttp.InstrumentHandlerCounter(curriedRequestCount, next))).ServeHTTP(w, r)
 	})
 }

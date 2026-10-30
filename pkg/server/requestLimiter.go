@@ -40,18 +40,23 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		klog.V(6).Infof("Checking request capacity. Sync requests: %d, validation requests: %d",
-			len(syncRequestTracker), len(validationRequestTracker))
+		syncRequestCount := len(syncRequestTracker)
+		validationRequestCount := len(validationRequestTracker)
+		klog.V(6).Infof("Checking request capacity. Sync requests: %d / %d, validation requests: %d / %d",
+			syncRequestCount, config.Cfg.RequestLimit, validationRequestCount, config.Cfg.ValidationRequestLimit)
 
 		// Give higher priority to requests from the collector in the hub cluster.
 		//   request host is stored as plain text service when originating from hub cluster
 		//   request host uses internal IP when coming from proxy service, i.e. managed clusters
 		hubClusterReq := r.Host == "search-indexer.open-cluster-management.svc:3010"
-		requestLimitReached := (!isValidation && len(syncRequestTracker) >= config.Cfg.RequestLimit) ||
-			(isValidation && len(validationRequestTracker) >= config.Cfg.ValidationRequestLimit)
+		requestLimitReached := (!isValidation && syncRequestCount >= config.Cfg.RequestLimit) ||
+			(isValidation && validationRequestCount >= config.Cfg.ValidationRequestLimit)
 		if requestLimitReached && !hubClusterReq {
 			requestTrackerLock.Unlock()
-			klog.Warningf("Request limit reached. Rejecting request from %s (validation: %t)", clusterName, isValidation)
+			klog.Warningf("Request limit reached. Rejecting request from %s (validation: %t). "+
+				"Sync requests: %d / %d, validation requests: %d / %d",
+				clusterName, isValidation, syncRequestCount, config.Cfg.RequestLimit,
+				validationRequestCount, config.Cfg.ValidationRequestLimit)
 			message := "Indexer has too many pending requests, retry later."
 			if isValidation {
 				message = "Indexer has too many pending validation requests, retry later."
