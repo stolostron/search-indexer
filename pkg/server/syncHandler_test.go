@@ -40,13 +40,13 @@ func Test_syncRequest(t *testing.T) {
 			MockData: []map[string]interface{}{{"count": 5}, {"count": 3}},
 		},
 	}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
 
 	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
 	router.ServeHTTP(responseRecorder, request)
 
 	// Validation
-	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalResources: 5, TotalEdges: 3}
+	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2}
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Errorf("Want status '%d', got '%d'", http.StatusOK, responseRecorder.Code)
@@ -94,37 +94,6 @@ func Test_syncRequest_withError(t *testing.T) {
 	assert.Equal(t, "Server error while processing the request.\n", bodyString)
 }
 
-func Test_syncRequest_withErrorQueryingTotalResources(t *testing.T) {
-	// Read mock request body.
-	body, readErr := os.Open("./mocks/simple.json")
-	if readErr != nil {
-		t.Fatal(readErr)
-	}
-	responseRecorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, "/aggregator/clusters/local-cluster/sync", body)
-	request.Header.Set("X-Overwrite-State", "false")
-	router := mux.NewRouter()
-
-	// Create server with mock database.
-	server, mockPool := buildMockServer(t)
-
-	br := &testutils.MockBatchResults{
-		MockRows: testutils.MockRows{
-			MockData: []map[string]interface{}{{"count": 10}, {"count": 4}},
-		},
-		MockErrorOnClose: errors.New("unexpected EOF"),
-	}
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(2)
-
-	router.HandleFunc("/aggregator/clusters/{id}/sync", server.SyncResources)
-	router.ServeHTTP(responseRecorder, request)
-
-	// Validate
-	assert.Equal(t, http.StatusInternalServerError, responseRecorder.Code)
-	bodyString, _ := responseRecorder.Body.ReadString(byte(0))
-	assert.Equal(t, "Server error while processing the request.\n", bodyString)
-}
-
 func Test_resyncRequest(t *testing.T) {
 	// Read mock request body.
 	body, readErr := os.Open("./mocks/clearAll.json")
@@ -147,9 +116,9 @@ func Test_resyncRequest(t *testing.T) {
 		},
 	}
 
-	// SendBatch count: 1 (upserts) + 1 (edge delete in resetResources) + 1 (resetEdges) + 1 (ClusterTotals) = 4.
+	// SendBatch count: 1 (upserts) + 1 (edge delete in resetResources) + 1 (resetEdges) = 3.
 	// Resource DELETE is now a direct pool.Exec call returning RowsAffected().
-	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(4)
+	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(3)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(pgxmock.NewResult("DELETE", 0), nil)
 
@@ -166,7 +135,7 @@ func Test_resyncRequest(t *testing.T) {
 		t.Error("Unable to decode response body.")
 	}
 
-	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalDeleted: 0, TotalResources: 10, TotalEdgesDeleted: 1, TotalEdges: 4}
+	expected := model.SyncResponse{Version: config.COMPONENT_VERSION, TotalAdded: 2, TotalDeleted: 0, TotalEdgesDeleted: 1}
 	if fmt.Sprintf("%+v", &decodedResp) != fmt.Sprintf("%+v", &expected) {
 		t.Errorf("Incorrect response body.\n expected '%+v'\n received '%+v'", &expected, &decodedResp)
 	}

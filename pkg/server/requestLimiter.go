@@ -4,6 +4,7 @@ package server
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,8 +14,9 @@ import (
 	"github.com/stolostron/search-indexer/pkg/config"
 )
 
-var requestTracker = map[string]time.Time{}
-var requestTrackerLock = sync.RWMutex{}
+var syncRequestTracker = map[string]time.Time{}
+var validationRequestTracker = map[string]time.Time{}
+var requestTrackerLock = sync.Mutex{}
 
 // Checks if we are able to accept the incoming request.
 func requestLimiterMiddleware(next http.Handler) http.Handler {
@@ -22,37 +24,62 @@ func requestLimiterMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		clusterName := params["id"]
+		isValidation := r.Method == http.MethodGet && strings.HasSuffix(strings.TrimSuffix(r.URL.Path, "/"), "/validation")
 
-		requestTrackerLock.RLock()
-		requestCount := len(requestTracker)
-		klog.V(6).Info("Checking if we can process incoming request. Current requests: ", requestCount)
-		timeReqReceived, foundClusterProcessing := requestTracker[clusterName]
-		requestTrackerLock.RUnlock()
+		requestTrackerLock.Lock()
+		timeReqReceived, foundClusterProcessing := syncRequestTracker[clusterName]
+		if !foundClusterProcessing {
+			timeReqReceived, foundClusterProcessing = validationRequestTracker[clusterName]
+		}
 
 		if foundClusterProcessing {
+			requestTrackerLock.Unlock()
 			klog.Warningf("Rejecting request from %s because there's a previous request processing. Duration: %s",
 				clusterName, time.Since(timeReqReceived))
 			http.Error(w, "A previous request from this cluster is processing, retry later.", http.StatusTooManyRequests)
 			return
 		}
 
+		syncRequestCount := len(syncRequestTracker)
+		validationRequestCount := len(validationRequestTracker)
+		klog.V(6).Infof("Checking request capacity. Sync requests: %d / %d, validation requests: %d / %d",
+			syncRequestCount, config.Cfg.RequestLimit, validationRequestCount, config.Cfg.ValidationRequestLimit)
+
 		// Give higher priority to requests from the collector in the hub cluster.
 		//   request host is stored as plain text service when originating from hub cluster
 		//   request host uses internal IP when coming from proxy service, i.e. managed clusters
 		hubClusterReq := r.Host == "search-indexer.open-cluster-management.svc:3010"
-		if requestCount >= config.Cfg.RequestLimit && !hubClusterReq {
-			klog.Warningf("Too many pending requests (%d). Rejecting sync from %s", requestCount, clusterName)
-			http.Error(w, "Indexer has too many pending requests, retry later.", http.StatusTooManyRequests)
+		requestLimitReached := (!isValidation && syncRequestCount >= config.Cfg.RequestLimit) ||
+			(isValidation && validationRequestCount >= config.Cfg.ValidationRequestLimit)
+		if requestLimitReached && !hubClusterReq {
+			requestTrackerLock.Unlock()
+			klog.Warningf("Request limit reached. Rejecting request from %s (validation: %t). "+
+				"Sync requests: %d / %d, validation requests: %d / %d",
+				clusterName, isValidation, syncRequestCount, config.Cfg.RequestLimit,
+				validationRequestCount, config.Cfg.ValidationRequestLimit)
+			message := "Indexer has too many pending requests, retry later."
+			if isValidation {
+				message = "Indexer has too many pending validation requests, retry later."
+			}
+			http.Error(w, message, http.StatusTooManyRequests)
 			return
 		}
 
-		requestTrackerLock.Lock()
-		requestTracker[clusterName] = time.Now()
+		now := time.Now()
+		if isValidation {
+			validationRequestTracker[clusterName] = now
+		} else {
+			syncRequestTracker[clusterName] = now
+		}
 		requestTrackerLock.Unlock()
 
 		defer func() { // Using defer to guarantee this gets executed if there's an error processing the request.
 			requestTrackerLock.Lock()
-			delete(requestTracker, clusterName)
+			if isValidation {
+				delete(validationRequestTracker, clusterName)
+			} else {
+				delete(syncRequestTracker, clusterName)
+			}
 			requestTrackerLock.Unlock()
 		}()
 

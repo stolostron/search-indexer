@@ -35,16 +35,20 @@ type SyncResponse struct {
 	TotalAdded        int
 	TotalUpdated      int
 	TotalDeleted      int
-	TotalResources    int
 	TotalEdgesAdded   int
 	TotalEdgesDeleted int
-	TotalEdges        int
 	AddErrors         []SyncError
 	UpdateErrors      []SyncError
 	DeleteErrors      []SyncError
 	AddEdgeErrors     []SyncError
 	DeleteEdgeErrors  []SyncError
 	Version           string
+}
+
+// ValidationResponse contains the resource counts from the database for a cluster.
+type ValidationResponse struct {
+	TotalResources int
+	TotalEdges     int
 }
 
 func (r *SyncResponse) AppendError(action string, e SyncError) bool {
