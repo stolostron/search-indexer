@@ -9,7 +9,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/pashagolub/pgxmock"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"github.com/stolostron/search-indexer/pkg/testutils"
 	"github.com/stretchr/testify/assert"
@@ -70,7 +71,7 @@ func Test_Sync_With_Exec_Errors(t *testing.T) {
 	}
 	mockPool.EXPECT().SendBatch(gomock.Any(), gomock.Any()).Return(br).Times(6)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(nil, errors.New("mocking exec error"))
+		Return(pgconn.CommandTag{}, errors.New("mocking exec error"))
 
 	// Supress console output to prevent log messages from polluting test output.
 	defer testutils.SupressConsoleOutput()()

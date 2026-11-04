@@ -7,9 +7,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
 	"github.com/stolostron/search-indexer/pkg/testutils"
+	"github.com/stolostron/search-indexer/pkg/testutils/pgxpoolmock"
 	"k8s.io/klog/v2"
 )
 

@@ -2,8 +2,8 @@
 package testutils
 
 import (
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // ===========================================================
@@ -20,9 +20,9 @@ type MockBatchResults struct {
 
 func (br *MockBatchResults) Exec() (pgconn.CommandTag, error) {
 	if br.MockErrorOnExec != nil {
-		return nil, br.MockErrorOnExec
+		return pgconn.CommandTag{}, br.MockErrorOnExec
 	}
-	return nil, nil
+	return pgconn.CommandTag{}, nil
 }
 func (br *MockBatchResults) Query() (pgx.Rows, error) {
 	if br.MockErrorOnQuery != nil {
@@ -32,9 +32,6 @@ func (br *MockBatchResults) Query() (pgx.Rows, error) {
 }
 func (br *MockBatchResults) QueryRow() pgx.Row {
 	return &br.MockRows
-}
-func (br *MockBatchResults) QueryFunc(scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
-	return nil, nil
 }
 func (br *MockBatchResults) Close() error {
 	if br.MockErrorOnClose != nil {

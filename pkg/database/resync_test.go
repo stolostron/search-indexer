@@ -5,9 +5,9 @@ package database
 import (
 	"context"
 	"errors"
-	"github.com/driftprogramming/pgxpoolmock"
-	"github.com/jackc/pgconn"
-	"github.com/pashagolub/pgxmock"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/pashagolub/pgxmock/v4"
+	"github.com/stolostron/search-indexer/pkg/testutils/pgxpoolmock"
 	"io"
 	"os"
 	"testing"
@@ -124,10 +124,10 @@ func Test_HubClusterCleanupWithoutChangeWithRetry(t *testing.T) {
 		[]interface{}{}).Times(2).DoAndReturn(func(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
 		if retry == 0 {
 			retry++
-			return nil, errors.New("error deleting old hub cluster")
+			return pgconn.CommandTag{}, errors.New("error deleting old hub cluster")
 		} else {
 			retry = 0
-			return pgconn.CommandTag("DELETE 1"), nil
+			return pgconn.NewCommandTag("DELETE 1"), nil
 		}
 	})
 
@@ -137,9 +137,9 @@ func Test_HubClusterCleanupWithoutChangeWithRetry(t *testing.T) {
 		[]interface{}{}).Times(2).DoAndReturn(func(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
 		if retry == 0 {
 			retry++
-			return nil, errors.New("error deleting old hub cluster")
+			return pgconn.CommandTag{}, errors.New("error deleting old hub cluster")
 		} else {
-			return pgconn.CommandTag("DELETE 1"), nil
+			return pgconn.NewCommandTag("DELETE 1"), nil
 		}
 	})
 

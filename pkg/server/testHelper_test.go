@@ -4,9 +4,9 @@ package server
 import (
 	"testing"
 
-	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
 	"github.com/stolostron/search-indexer/pkg/database"
+	"github.com/stolostron/search-indexer/pkg/testutils/pgxpoolmock"
 )
 
 // Builds a ServerConfig instance with a mock database connection.

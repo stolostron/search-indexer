@@ -11,11 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
-	"github.com/jackc/pgx/v4"
-	"github.com/pashagolub/pgxmock"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stolostron/search-indexer/pkg/database"
+	"github.com/stolostron/search-indexer/pkg/testutils/pgxpoolmock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -142,7 +143,7 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
-	).Return(nil, nil)
+	).Return(pgconn.CommandTag{}, nil)
 
 	processClusterUpsert(context.Background(), obj)
 	// Once processClusterUpsert is done, existingClustersCache should have an entry for cluster foo
@@ -175,7 +176,7 @@ func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
-	).Return(nil, nil)
+	).Return(pgconn.CommandTag{}, nil)
 
 	processClusterUpsert(context.Background(), obj)
 	// Once processClusterUpsert is done, existingClustersCache should have an entry for cluster foo
@@ -249,7 +250,7 @@ func Test_ProcessClusterDeleteOnMC(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
 		gomock.Eq([]interface{}{}),
-	).Return(nil, nil)
+	).Return(pgconn.CommandTag{}, nil)
 
 	processClusterDelete(context.Background(), obj)
 
@@ -359,7 +360,7 @@ func Test_DeleteStaleClustersResources(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
 		gomock.Eq([]interface{}{}),
-	).Return(nil, nil)
+	).Return(pgconn.CommandTag{}, nil)
 	//delete managed cluster:
 	processClusterDelete(context.Background(), obj)
 
@@ -464,7 +465,7 @@ func Test_DeleteStaleClustersResources_DB_Outage(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(`DELETE FROM "search"."resources" WHERE ("uid" = 'cluster__name-foo')`),
 		gomock.Eq([]interface{}{}),
-	).Return(nil, nil)
+	).Return(pgconn.CommandTag{}, nil)
 	//delete managed cluster:
 
 	processClusterDelete(context.Background(), obj)
@@ -515,7 +516,7 @@ func Test_syncClusters_ContextCanceled(t *testing.T) {
 	// Allow any Query calls for checking existing resources
 	mockPool.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	// Allow any Exec calls for upserting clusters
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(pgconn.CommandTag{}, nil).AnyTimes()
 
 	// Create a context with a short timeout to ensure syncClusters exits
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -562,7 +563,7 @@ func Test_syncClusters_DeleteStaleError(t *testing.T) {
 	// Allow any Query calls for checking existing resources
 	mockPool.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	// Allow any Exec calls for upserting clusters
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(pgconn.CommandTag{}, nil).AnyTimes()
 
 	// Create a context with a short timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -603,7 +604,7 @@ func Test_storeDesiredFields_ManagedCluster(t *testing.T) {
 			"name":              "cluster1",
 			"uid":               "should-be-stripped",
 			"resourceVersion":   "12345",
-			"creationTimestamp":  "2024-01-01T00:00:00Z",
+			"creationTimestamp": "2024-01-01T00:00:00Z",
 			"labels":            map[string]interface{}{"env": "prod"},
 			"managedFields":     []interface{}{"big", "blob"},
 			"annotations":       map[string]interface{}{"note": "strip-me"},
@@ -612,9 +613,9 @@ func Test_storeDesiredFields_ManagedCluster(t *testing.T) {
 			"hubAcceptsClient": true,
 		},
 		"status": map[string]interface{}{
-			"capacity":   map[string]interface{}{"cpu": "8"},
-			"version":    map[string]interface{}{"kubernetes": "v1.28.0"},
-			"conditions": []interface{}{map[string]interface{}{"type": "Available"}},
+			"capacity":    map[string]interface{}{"cpu": "8"},
+			"version":     map[string]interface{}{"kubernetes": "v1.28.0"},
+			"conditions":  []interface{}{map[string]interface{}{"type": "Available"}},
 			"allocatable": map[string]interface{}{"cpu": "6"},
 		},
 	}}
@@ -690,10 +691,10 @@ func Test_storeDesiredFields_ManagedClusterInfo(t *testing.T) {
 			"loggingCA":      "strip-me",
 		},
 		"status": map[string]interface{}{
-			"consoleURL":    "https://console.cluster1",
-			"nodeList":      []interface{}{map[string]interface{}{"name": "node1"}},
+			"consoleURL":       "https://console.cluster1",
+			"nodeList":         []interface{}{map[string]interface{}{"name": "node1"}},
 			"distributionInfo": map[string]interface{}{"type": "OCP"},
-			"conditions":    []interface{}{map[string]interface{}{"type": "Available"}},
+			"conditions":       []interface{}{map[string]interface{}{"type": "Available"}},
 		},
 	}}
 
@@ -809,9 +810,9 @@ func Test_storeDesiredFields_DoesNotMutateOriginal(t *testing.T) {
 		"apiVersion": "cluster.open-cluster-management.io/v1",
 		"kind":       "ManagedCluster",
 		"metadata": map[string]interface{}{
-			"name":      "cluster1",
-			"uid":       "original-uid",
-			"labels":    map[string]interface{}{"env": "prod"},
+			"name":   "cluster1",
+			"uid":    "original-uid",
+			"labels": map[string]interface{}{"env": "prod"},
 		},
 		"spec": map[string]interface{}{
 			"hubAcceptsClient": true,

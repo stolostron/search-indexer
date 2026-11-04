@@ -8,28 +8,29 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/pashagolub/pgxmock"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/pashagolub/pgxmock/v4"
 )
 
 func Test_initializeTables(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao, mockPool := buildMockDAO(t)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE SCHEMA IF NOT EXISTS search")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_kind_idx ON search.resources USING GIN ((data -> 'kind'))")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_namespace_idx ON search.resources USING GIN ((data -> 'namespace'))")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_cluster_idx ON search.resources USING btree (cluster)")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_composite_idx ON search.resources USING GIN ((data -> '_hubClusterResource'::text), (data -> 'namespace'::text), (data -> 'apigroup'::text), (data -> 'kind_plural'::text))")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_hubCluster_idx ON search.resources USING GIN ((data ->  '_hubClusterResource')) WHERE data ? '_hubClusterResource'")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS edges_sourceid_idx ON search.edges USING btree (sourceid)")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS edges_destid_idx ON search.edges USING btree (destid)")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS edges_cluster_idx ON search.edges USING btree (cluster)")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT USAGE ON SCHEMA search TO search_api_ro, search_mcp_ro")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.resources TO search_api_ro, search_mcp_ro")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.edges TO search_api_ro, search_mcp_ro")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("ALTER DEFAULT PRIVILEGES IN SCHEMA search GRANT SELECT ON TABLES TO search_api_ro, search_mcp_ro")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE SCHEMA IF NOT EXISTS search")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_kind_idx ON search.resources USING GIN ((data -> 'kind'))")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_namespace_idx ON search.resources USING GIN ((data -> 'namespace'))")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_cluster_idx ON search.resources USING btree (cluster)")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_composite_idx ON search.resources USING GIN ((data -> '_hubClusterResource'::text), (data -> 'namespace'::text), (data -> 'apigroup'::text), (data -> 'kind_plural'::text))")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_hubCluster_idx ON search.resources USING GIN ((data ->  '_hubClusterResource')) WHERE data ? '_hubClusterResource'")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS edges_sourceid_idx ON search.edges USING btree (sourceid)")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS edges_destid_idx ON search.edges USING btree (destid)")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS edges_cluster_idx ON search.edges USING btree (cluster)")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT USAGE ON SCHEMA search TO search_api_ro, search_mcp_ro")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.resources TO search_api_ro, search_mcp_ro")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.edges TO search_api_ro, search_mcp_ro")).Return(pgconn.CommandTag{}, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("ALTER DEFAULT PRIVILEGES IN SCHEMA search GRANT SELECT ON TABLES TO search_api_ro, search_mcp_ro")).Return(pgconn.CommandTag{}, nil)
 
 	// Execute function test.
 	dao.InitializeTables(context.Background())

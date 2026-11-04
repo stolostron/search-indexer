@@ -2,8 +2,8 @@
 package testutils
 
 import (
-	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
+	"github.com/stolostron/search-indexer/pkg/testutils/pgxpoolmock"
 )
 
 // MockDatabaseState mocks the existing database state for the local-cluster.
