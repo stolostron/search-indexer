@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
+	"k8s.io/client-go/features"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	klog "k8s.io/klog/v2"
@@ -49,6 +50,21 @@ var allAddons = [9]string{
 
 func ElectLeaderAndStart(ctx context.Context) {
 	client = config.Cfg.KubeClient
+
+	// disable WatchListClient to avoid warning logs:
+	// reflector.go:1159] "Warning: event bookmark expired" err="k8s.io/client-go@v0.35.3/tools/cache/reflector.go:289:
+	//     hasn't received required bookmark event marking the end of initial events stream, received last event 2m29.999846726s ago"
+	// FUTURE: investigate adoption of this
+	if features.FeatureGates().Enabled(features.WatchListClient) {
+		type featureGatesSetter interface {
+			features.Gates
+			Set(features.Feature, bool) error
+		}
+		if gates, ok := features.FeatureGates().(featureGatesSetter); ok {
+			_ = gates.Set(features.WatchListClient, false)
+		}
+	}
+
 	podName := config.Cfg.PodName
 	podNamespace := config.Cfg.PodNamespace
 	dynamicClient = config.GetDynamicClient()
