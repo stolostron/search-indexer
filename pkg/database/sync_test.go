@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/pashagolub/pgxmock"
+	"github.com/pashagolub/pgxmock/v5"
 	"github.com/stolostron/search-indexer/pkg/model"
 	"github.com/stolostron/search-indexer/pkg/testutils"
 	"github.com/stretchr/testify/assert"
