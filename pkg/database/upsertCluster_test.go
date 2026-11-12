@@ -81,7 +81,7 @@ func Test_UpsertCluster_Update1(t *testing.T) {
 		gomock.Eq([]interface{}{}),
 	).Return(mrows, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid, cluster) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
@@ -129,7 +129,7 @@ func Test_UpsertCluster_Update2(t *testing.T) {
 	).Return(mrows, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
 
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid, cluster) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
@@ -203,7 +203,7 @@ func Test_UpsertCluster_Insert(t *testing.T) {
 	).Return(nil, nil)
 	expectedProps, _ := json.Marshal(currCluster.Properties)
 
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid, cluster) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
@@ -477,7 +477,7 @@ func Test_UpsertCluster_ExecContextCanceled(t *testing.T) {
 	).Return(nil, nil)
 
 	expectedProps, _ := json.Marshal(currCluster.Properties)
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid, cluster) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
 
 	// Mock Exec to return context.Canceled error
 	mockPool.EXPECT().Exec(gomock.Any(),

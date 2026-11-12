@@ -138,7 +138,7 @@ func Test_ProcessClusterUpsert_ManagedCluster(t *testing.T) {
 		gomock.Eq([]interface{}{}),
 	).Return(nil, nil)
 
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid, cluster) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
@@ -171,7 +171,7 @@ func Test_ProcessClusterUpsert_ManagedClusterInfo(t *testing.T) {
 	existingCluster["Properties"] = props
 	expectedProps, _ := json.Marshal(existingCluster["Properties"])
 
-	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
+	sql := fmt.Sprintf(`INSERT INTO "search"."resources" AS "r" ("cluster", "data", "uid") VALUES ('name-foo', '%[1]s', '%[2]s') ON CONFLICT (uid, cluster) DO UPDATE SET "data"='%[1]s' WHERE "r".data IS DISTINCT FROM '%[1]s'`, string(expectedProps), "cluster__name-foo")
 	mockPool.EXPECT().Exec(gomock.Any(),
 		gomock.Eq(sql),
 		gomock.Eq([]interface{}{}),
@@ -603,7 +603,7 @@ func Test_storeDesiredFields_ManagedCluster(t *testing.T) {
 			"name":              "cluster1",
 			"uid":               "should-be-stripped",
 			"resourceVersion":   "12345",
-			"creationTimestamp":  "2024-01-01T00:00:00Z",
+			"creationTimestamp": "2024-01-01T00:00:00Z",
 			"labels":            map[string]interface{}{"env": "prod"},
 			"managedFields":     []interface{}{"big", "blob"},
 			"annotations":       map[string]interface{}{"note": "strip-me"},
@@ -612,9 +612,9 @@ func Test_storeDesiredFields_ManagedCluster(t *testing.T) {
 			"hubAcceptsClient": true,
 		},
 		"status": map[string]interface{}{
-			"capacity":   map[string]interface{}{"cpu": "8"},
-			"version":    map[string]interface{}{"kubernetes": "v1.28.0"},
-			"conditions": []interface{}{map[string]interface{}{"type": "Available"}},
+			"capacity":    map[string]interface{}{"cpu": "8"},
+			"version":     map[string]interface{}{"kubernetes": "v1.28.0"},
+			"conditions":  []interface{}{map[string]interface{}{"type": "Available"}},
 			"allocatable": map[string]interface{}{"cpu": "6"},
 		},
 	}}
@@ -690,10 +690,10 @@ func Test_storeDesiredFields_ManagedClusterInfo(t *testing.T) {
 			"loggingCA":      "strip-me",
 		},
 		"status": map[string]interface{}{
-			"consoleURL":    "https://console.cluster1",
-			"nodeList":      []interface{}{map[string]interface{}{"name": "node1"}},
+			"consoleURL":       "https://console.cluster1",
+			"nodeList":         []interface{}{map[string]interface{}{"name": "node1"}},
 			"distributionInfo": map[string]interface{}{"type": "OCP"},
-			"conditions":    []interface{}{map[string]interface{}{"type": "Available"}},
+			"conditions":       []interface{}{map[string]interface{}{"type": "Available"}},
 		},
 	}}
 
@@ -809,9 +809,9 @@ func Test_storeDesiredFields_DoesNotMutateOriginal(t *testing.T) {
 		"apiVersion": "cluster.open-cluster-management.io/v1",
 		"kind":       "ManagedCluster",
 		"metadata": map[string]interface{}{
-			"name":      "cluster1",
-			"uid":       "original-uid",
-			"labels":    map[string]interface{}{"env": "prod"},
+			"name":   "cluster1",
+			"uid":    "original-uid",
+			"labels": map[string]interface{}{"env": "prod"},
 		},
 		"spec": map[string]interface{}{
 			"hubAcceptsClient": true,

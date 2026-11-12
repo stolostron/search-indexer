@@ -122,6 +122,7 @@ func Test_Validate(t *testing.T) {
 	_ = os.Setenv("DB_NAME", "test")
 	_ = os.Setenv("DB_USER", "test")
 	_ = os.Setenv("DB_PASS", "test")
+	_ = os.Setenv("DB_HASH_PARTITION_COUNT", "16")
 	conf := new()
 
 	result := conf.Validate()
@@ -148,5 +149,15 @@ func Test_Validate(t *testing.T) {
 	result = conf.Validate()
 	if result.Error() != "required environment DB_NAME is not set" {
 		t.Errorf("Expected %s Got: %s", "required environment DB_NAME is not set", result)
+	}
+
+	_ = os.Setenv("DB_NAME", "test")
+	_ = os.Setenv("DB_USER", "test")
+	_ = os.Setenv("DB_PASS", "test")
+	_ = os.Setenv("DB_HASH_PARTITION_COUNT", "0")
+	conf = new()
+	result = conf.Validate()
+	if result.Error() != "environment DB_HASH_PARTITION_COUNT must be greater than 0" {
+		t.Errorf("Expected %s Got: %s", "environment DB_HASH_PARTITION_COUNT must be greater than 0", result)
 	}
 }

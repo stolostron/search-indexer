@@ -215,7 +215,7 @@ func (dao *DAO) upsertResources(ctx context.Context, resyncBody []byte, clusterN
 				}
 				data, _ := json.Marshal(resource.Properties)
 				query, params, err := useGoqu(
-					"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE r.cluster=$2 AND data!=$3",
+					"INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid, cluster) DO UPDATE SET data=$3 WHERE r.cluster=$2 AND data!=$3",
 					[]interface{}{uid, clusterName, string(data)})
 				if err == nil {
 					queueErr := batch.Queue(batchItem{
@@ -354,7 +354,7 @@ func addEdges(requestBody []byte, existingEdgesMap *map[string]model.Edge, clust
 				}
 				// If the edge doesn't exist, add it.
 				query, params, err := useGoqu(
-					"INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
+					"INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype, cluster) DO NOTHING",
 					[]interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName})
 				if err == nil {
 					queueErr := batch.Queue(batchItem{

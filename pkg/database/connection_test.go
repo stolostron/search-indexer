@@ -5,18 +5,25 @@ package database
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/pashagolub/pgxmock"
+	"github.com/stolostron/search-indexer/pkg/config"
 )
 
 func Test_initializeTables(t *testing.T) {
 	// Prepare a mock DAO instance
 	dao, mockPool := buildMockDAO(t)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE SCHEMA IF NOT EXISTS search")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")).Return(nil, nil)
-	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS search.resources (uid TEXT, cluster TEXT, data JSONB, PRIMARY KEY(cluster, uid)) PARTITION BY HASH (cluster)")).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(cluster, sourceId, destId, edgeType)) PARTITION BY HASH (cluster)")).Return(nil, nil)
+	hashPartitionCount := config.Cfg.DBHashPartitionCount
+	for i := 0; i < hashPartitionCount; i++ {
+		mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq(fmt.Sprintf("CREATE TABLE IF NOT EXISTS search.resources_%d PARTITION OF search.resources FOR VALUES WITH (MODULUS %d, REMAINDER %d)", i, hashPartitionCount, i))).Return(nil, nil)
+		mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq(fmt.Sprintf("CREATE TABLE IF NOT EXISTS search.edges_%d PARTITION OF search.edges FOR VALUES WITH (MODULUS %d, REMAINDER %d)", i, hashPartitionCount, i))).Return(nil, nil)
+	}
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_kind_idx ON search.resources USING GIN ((data -> 'kind'))")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_namespace_idx ON search.resources USING GIN ((data -> 'namespace'))")).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("CREATE INDEX IF NOT EXISTS data_name_idx ON search.resources USING GIN ((data ->  'name'))")).Return(nil, nil)

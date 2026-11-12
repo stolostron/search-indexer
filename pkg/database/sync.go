@@ -44,7 +44,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 		data, _ := json.Marshal(resource.Properties)
 		queueErr = batch.Queue(batchItem{
 			action: "addResource",
-			query: `INSERT into search.resources as r values($1,$2,$3) ON CONFLICT (uid) 
+			query: `INSERT into search.resources as r values($1,$2,$3) ON CONFLICT (uid, cluster) 
 			DO UPDATE SET data=$3 WHERE r.uid=$1 AND r.cluster=$2 AND r.data IS DISTINCT FROM $3`,
 			uid:  resource.UID,
 			args: []interface{}{resource.UID, clusterName, string(data)},
@@ -132,7 +132,7 @@ func (dao *DAO) SyncData(ctx context.Context, event model.SyncEvent,
 	for _, edge := range event.AddEdges {
 		queueErr = batch.Queue(batchItem{
 			action: "addEdge",
-			query:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype) DO NOTHING",
+			query:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6) ON CONFLICT (sourceid, destid, edgetype, cluster) DO NOTHING",
 			uid:    edge.SourceUID,
 			args:   []interface{}{edge.SourceUID, edge.SourceKind, edge.DestUID, edge.DestKind, edge.EdgeType, clusterName}})
 	}

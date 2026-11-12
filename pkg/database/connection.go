@@ -122,11 +122,22 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 	_, err := dao.pool.Exec(ctx, "CREATE SCHEMA IF NOT EXISTS search")
 	checkError(err, "Error creating schema.")
 	_, err = dao.pool.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS search.resources (uid TEXT PRIMARY KEY, cluster TEXT, data JSONB)")
+		"CREATE TABLE IF NOT EXISTS search.resources (uid TEXT, cluster TEXT, data JSONB, PRIMARY KEY(cluster, uid)) PARTITION BY HASH (cluster)")
 	checkError(err, "Error creating table search.resources.")
 	_, err = dao.pool.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(sourceId, destId, edgeType))")
+		"CREATE TABLE IF NOT EXISTS search.edges (sourceId TEXT, sourceKind TEXT,destId TEXT,destKind TEXT,edgeType TEXT,cluster TEXT, PRIMARY KEY(cluster, sourceId, destId, edgeType)) PARTITION BY HASH (cluster)")
 	checkError(err, "Error creating table search.edges.")
+
+	hashPartitionCount := config.Cfg.DBHashPartitionCount
+	for i := 0; i < hashPartitionCount; i++ {
+		_, err = dao.pool.Exec(ctx,
+			fmt.Sprintf("CREATE TABLE IF NOT EXISTS search.resources_%d PARTITION OF search.resources FOR VALUES WITH (MODULUS %d, REMAINDER %d)", i, hashPartitionCount, i))
+		checkError(err, "Error creating hash partition for search.resources.")
+
+		_, err = dao.pool.Exec(ctx,
+			fmt.Sprintf("CREATE TABLE IF NOT EXISTS search.edges_%d PARTITION OF search.edges FOR VALUES WITH (MODULUS %d, REMAINDER %d)", i, hashPartitionCount, i))
+		checkError(err, "Error creating hash partition for search.edges.")
+	}
 
 	// Jsonb indexing data keys:
 	_, err = dao.pool.Exec(ctx,

@@ -22,6 +22,7 @@ var Cfg = new()
 type Config struct {
 	DBBatchSize            int // Batch size used to write to DB. Default: 2500
 	DBHealthCkeckPeriod    int // Overrides pgxpool.Config{ HealthCheckPeriod } Default: 1 min
+	DBHashPartitionCount   int // Number of hash partitions for resources/edges tables. Default: 16
 	DBHost                 string
 	DBMaxConnIdleTime      int   // Overrides pgxpool.Config{ MaxConnIdleTime } Default: 5 min
 	DBMaxConnLifeJitter    int   // Overrides pgxpool.Config{ MaxConnLifetimeJitter } Default: 1 min
@@ -54,8 +55,9 @@ type Config struct {
 // Reads config from environment.
 func new() *Config {
 	conf := &Config{
-		DBBatchSize: getEnvAsInt("DB_BATCH_SIZE", 2500),
-		DBHost:      getEnv("DB_HOST", "localhost"),
+		DBBatchSize:          getEnvAsInt("DB_BATCH_SIZE", 2500),
+		DBHashPartitionCount: getEnvAsInt("DB_HASH_PARTITION_COUNT", 8),
+		DBHost:               getEnv("DB_HOST", "localhost"),
 		// Postgres has 100 conns by default. Using 10 allows scaling indexer and api.
 		DBMaxConnIdleTime:   getEnvAsInt("DB_MAX_CONN_IDLE_TIME", 5*60*1000),   // 5 min, Overrides pgxpool default (30)
 		DBMaxConnLifeJitter: getEnvAsInt("DB_MAX_CONN_LIFE_JITTER", 1*60*1000), // 1 min, Overrides pgxpool default
@@ -146,6 +148,9 @@ func getEnvAsInt32(name string, defaultVal int32) int32 {
 
 // Validate required configuration.
 func (cfg *Config) Validate() error {
+	if cfg.DBHashPartitionCount <= 0 {
+		return errors.New("environment DB_HASH_PARTITION_COUNT must be greater than 0")
+	}
 	if cfg.DBName == "" {
 		return errors.New("required environment DB_NAME is not set")
 	}

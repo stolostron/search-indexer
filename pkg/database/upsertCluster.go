@@ -291,7 +291,7 @@ func goquDelete(tableName, columnName, arg string) (string, []interface{}, error
 
 // Create the upsert query
 // query := "INSERT INTO search.resources as r (uid, cluster, data) values($1,",$2)
-// ON CONFLICT (uid) DO UPDATE SET data=$2 WHERE "r".data IS DISTINCT FROM $2"
+// ON CONFLICT (uid, cluster) DO UPDATE SET data=$2 WHERE "r".data IS DISTINCT FROM $2"
 //
 // "r".data is used (table-qualified) rather than bare data because PostgreSQL
 // exposes both the target row and the EXCLUDED pseudo-row inside ON CONFLICT DO
@@ -304,7 +304,7 @@ func goquInsertUpdate(tableName string, args []interface{}) (string, []interface
 		goqu.S("search").Table(tableName).As("r")).
 		Insert().
 		Rows(goqu.Record{"uid": args[0], "cluster": args[1], "data": args[2]}).
-		OnConflict(goqu.DoUpdate("uid",
+		OnConflict(goqu.DoUpdate("uid, cluster",
 			goqu.C("data").Set(args[2])).
 			Where(goqu.L(`"r".data IS DISTINCT FROM ?`, args[2]))).ToSQL()
 

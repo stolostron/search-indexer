@@ -17,7 +17,7 @@ func Test_useGoqu(t *testing.T) {
 }
 
 func Test_useGoqu_invalidParams(t *testing.T) {
-	q, p, er := useGoqu("INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid) DO UPDATE SET data=$3 WHERE data!=$3", []interface{}{"fakeUid", "fakeCluster"})
+	q, p, er := useGoqu("INSERT into search.resources values($1,$2,$3) ON CONFLICT (uid, cluster) DO UPDATE SET data=$3 WHERE data!=$3", []interface{}{"fakeUid", "fakeCluster"})
 
 	assert.Equal(t, "", q)
 	assert.Nil(t, p)
