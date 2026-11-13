@@ -57,6 +57,7 @@ func new() *Config {
 		DBBatchSize: getEnvAsInt("DB_BATCH_SIZE", 2500),
 		DBHost:      getEnv("DB_HOST", "localhost"),
 		// DB connection pool configuration.
+		// Use shorter connections to ensure memory and cpu resources are released often.
 		DBMaxConnIdleTime:   getEnvAsInt("DB_MAX_CONN_IDLE_TIME", 30*1000),   // 30 sec, Keeps pgxpool default (30)
 		DBMaxConnLifeJitter: getEnvAsInt("DB_MAX_CONN_LIFE_JITTER", 10*1000), // 10 sec, Overrides pgxpool default
 		DBMaxConnLifeTime:   getEnvAsInt("DB_MAX_CONN_LIFE_TIME", 1*60*1000), // 60 sec, Keeps pgxpool default (60)
