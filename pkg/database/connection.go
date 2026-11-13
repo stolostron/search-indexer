@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/driftprogramming/pgxpoolmock"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgconn/stmtcache"
 	"github.com/jackc/pgx/v4"
 	pgxpool "github.com/jackc/pgx/v4/pgxpool"
 	"github.com/stolostron/search-indexer/pkg/config"
@@ -23,6 +25,25 @@ type DAO struct {
 }
 
 var poolSingleton pgxpoolmock.PgxPool
+
+// preparedStatementCache wraps pgx's statement cache so dynamic SQL (especially DELETE ... IN (...))
+// is not retained as named prepared statements. Caching those blows memory because each
+// distinct IN-list length is a unique statement.
+//
+// For skipped statements we still Prepare with an empty name (unnamed). That is the pgx v4
+// equivalent of pgx v5's QueryExecModeExec: extended protocol without filling the cache.
+type preparedStatementCache struct {
+	stmtcache.Cache
+	conn *pgconn.PgConn
+}
+
+func (c *preparedStatementCache) Get(ctx context.Context, sql string) (*pgconn.StatementDescription, error) {
+	// Match both "DELETE FROM" and goqu/sync "DELETE from".
+	if strings.Contains(strings.ToUpper(sql), "DELETE FROM") {
+		return c.conn.Prepare(ctx, "", sql, nil)
+	}
+	return c.Cache.Get(ctx, sql)
+}
 
 // Creates new DAO instance.
 func NewDAO(p pgxpoolmock.PgxPool) DAO {
@@ -69,6 +90,7 @@ func initializePool() pgxpoolmock.PgxPool {
 		" user=", cfg.DBUser,
 		" password=", cfg.DBPass,
 		" dbname=", cfg.DBName,
+		" application_name=search-indexer",
 		" sslmode=require", // https://www.postgresql.org/docs/current/libpq-connect.html
 	)
 
@@ -80,6 +102,16 @@ func initializePool() pgxpoolmock.PgxPool {
 	if configErr != nil {
 		klog.Fatal("Error parsing database connection configuration. ", configErr)
 	}
+
+	// Keep a small LRU for stable statements (upserts). Skip caching dynamic DELETE/oversized SQL.
+	// This is a workaround for pgx v4. We should migrate to pgx v5 and use the default behavior.
+	config.ConnConfig.BuildStatementCache = func(conn *pgconn.PgConn) stmtcache.Cache {
+		return &preparedStatementCache{
+			Cache: stmtcache.New(conn, stmtcache.ModePrepare, 8),
+			conn:  conn,
+		}
+	}
+
 	config.AfterConnect = afterConnect   // Checks new connection health before using it.
 	config.BeforeAcquire = beforeAcquire // Checks idle connection health before using it.
 	// Add jitter to prevent all connections from being closed at same time.
