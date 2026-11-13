@@ -39,7 +39,9 @@ type preparedStatementCache struct {
 
 func (c *preparedStatementCache) Get(ctx context.Context, sql string) (*pgconn.StatementDescription, error) {
 	// Match both "DELETE FROM" and goqu/sync "DELETE from".
-	if strings.Contains(strings.ToUpper(sql), "DELETE FROM") {
+	// Only bypass cache for variable-shape IN-list deletes.
+	normalized := strings.ToUpper(sql)
+	if strings.Contains(normalized, "DELETE FROM") && strings.Contains(normalized, " IN (") {
 		return c.conn.Prepare(ctx, "", sql, nil)
 	}
 	return c.Cache.Get(ctx, sql)
