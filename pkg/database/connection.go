@@ -38,13 +38,19 @@ type preparedStatementCache struct {
 }
 
 func (c *preparedStatementCache) Get(ctx context.Context, sql string) (*pgconn.StatementDescription, error) {
-	// Match both "DELETE FROM" and goqu/sync "DELETE from".
-	// Only bypass cache for variable-shape IN-list deletes.
-	normalized := strings.ToUpper(sql)
-	if strings.Contains(normalized, "DELETE FROM") && strings.Contains(normalized, " IN (") {
+	if shouldUseUnnamedPrepare(sql) {
 		return c.conn.Prepare(ctx, "", sql, nil)
 	}
 	return c.Cache.Get(ctx, sql)
+}
+
+// shouldUseUnnamedPrepare returns true for variable-shape statements that should
+// bypass the named prepared statement cache.
+func shouldUseUnnamedPrepare(sql string) bool {
+	// Match both "DELETE FROM" and goqu/sync "DELETE from".
+	// Only bypass cache for variable-shape IN-list deletes.
+	normalized := strings.ToUpper(sql)
+	return strings.Contains(normalized, "DELETE FROM") && strings.Contains(normalized, " IN (")
 }
 
 // Creates new DAO instance.

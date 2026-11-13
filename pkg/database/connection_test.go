@@ -9,7 +9,43 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/pashagolub/pgxmock"
+	"github.com/stretchr/testify/assert"
 )
+
+func Test_shouldUseUnnamedPrepare(t *testing.T) {
+	tests := []struct {
+		name  string
+		sql   string
+		want  bool
+	}{
+		{
+			name: "resource delete with in list",
+			sql:  "DELETE from search.resources WHERE cluster=$1 AND uid IN ($2,$3)",
+			want: true,
+		},
+		{
+			name: "edge delete with in list",
+			sql:  "DELETE from search.edges WHERE cluster=$1 AND sourceid NOT IN ($2) OR destid NOT IN ($2)",
+			want: true,
+		},
+		{
+			name: "fixed shape edge delete",
+			sql:  "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4",
+			want: false,
+		},
+		{
+			name: "non delete statement",
+			sql:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6)",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, shouldUseUnnamedPrepare(tt.sql))
+		})
+	}
+}
 
 func Test_initializeTables(t *testing.T) {
 	// Prepare a mock DAO instance
