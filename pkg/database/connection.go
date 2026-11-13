@@ -34,11 +34,15 @@ var poolSingleton pgxpoolmock.PgxPool
 // equivalent of pgx v5's QueryExecModeExec: extended protocol without filling the cache.
 type preparedStatementCache struct {
 	stmtcache.Cache
-	conn *pgconn.PgConn
+	conn           *pgconn.PgConn
+	prepareUnnamed func(ctx context.Context, sql string) (*pgconn.StatementDescription, error)
 }
 
 func (c *preparedStatementCache) Get(ctx context.Context, sql string) (*pgconn.StatementDescription, error) {
 	if shouldUseUnnamedPrepare(sql) {
+		if c.prepareUnnamed != nil {
+			return c.prepareUnnamed(ctx, sql)
+		}
 		return c.conn.Prepare(ctx, "", sql, nil)
 	}
 	return c.Cache.Get(ctx, sql)
