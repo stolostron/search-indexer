@@ -56,12 +56,12 @@ func new() *Config {
 	conf := &Config{
 		DBBatchSize: getEnvAsInt("DB_BATCH_SIZE", 2500),
 		DBHost:      getEnv("DB_HOST", "localhost"),
-		// Postgres has 100 conns by default. Using 10 allows scaling indexer and api.
+		// DB connection pool configuration.
 		DBMaxConnIdleTime:   getEnvAsInt("DB_MAX_CONN_IDLE_TIME", 30*1000),   // 30 sec, Keeps pgxpool default (30)
 		DBMaxConnLifeJitter: getEnvAsInt("DB_MAX_CONN_LIFE_JITTER", 10*1000), // 10 sec, Overrides pgxpool default
 		DBMaxConnLifeTime:   getEnvAsInt("DB_MAX_CONN_LIFE_TIME", 1*60*1000), // 60 sec, Keeps pgxpool default (60)
-		DBMaxConns:          getEnvAsInt32("DB_MAX_CONNS", int32(4)),         // 4       Keeps pgxpool default (4)
-		DBMinConns:          getEnvAsInt32("DB_MIN_CONNS", int32(1)),         // 2       Overrides pgxpool default (0)
+		DBMaxConns:          getEnvAsInt32("DB_MAX_CONNS", int32(10)),        // 10      Overrides pgxpool default (4)
+		DBMinConns:          getEnvAsInt32("DB_MIN_CONNS", int32(1)),         // 1       Overrides pgxpool default (0)
 		DBName:              getEnv("DB_NAME", ""),
 		DBPass:              getEnv("DB_PASS", ""),
 		DBPort:              getEnvAsInt("DB_PORT", 5432),
