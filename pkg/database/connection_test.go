@@ -8,8 +8,113 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgconn/stmtcache"
 	"github.com/pashagolub/pgxmock"
+	"github.com/stretchr/testify/assert"
 )
+
+type fakeStmtCache struct {
+	getFn func(ctx context.Context, sql string) (*pgconn.StatementDescription, error)
+}
+
+func (f *fakeStmtCache) Get(ctx context.Context, sql string) (*pgconn.StatementDescription, error) {
+	if f.getFn != nil {
+		return f.getFn(ctx, sql)
+	}
+	return nil, nil
+}
+
+func (f *fakeStmtCache) Clear(ctx context.Context) error { return nil }
+
+func (f *fakeStmtCache) StatementErrored(sql string, err error) {}
+
+func (f *fakeStmtCache) Len() int { return 0 }
+
+func (f *fakeStmtCache) Cap() int { return 0 }
+
+func (f *fakeStmtCache) Mode() int { return stmtcache.ModePrepare }
+
+func Test_shouldUseUnnamedPrepare(t *testing.T) {
+	tests := []struct {
+		name  string
+		sql   string
+		want  bool
+	}{
+		{
+			name: "resource delete with in list",
+			sql:  "DELETE from search.resources WHERE cluster=$1 AND uid IN ($2,$3)",
+			want: true,
+		},
+		{
+			name: "edge delete with in list",
+			sql:  "DELETE from search.edges WHERE cluster=$1 AND sourceid NOT IN ($2) OR destid NOT IN ($2)",
+			want: true,
+		},
+		{
+			name: "fixed shape edge delete",
+			sql:  "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4",
+			want: false,
+		},
+		{
+			name: "non delete statement",
+			sql:  "INSERT into search.edges values($1,$2,$3,$4,$5,$6)",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, shouldUseUnnamedPrepare(tt.sql))
+		})
+	}
+}
+
+func Test_preparedStatementCache_Get_usesUnnamedPrepareForVariableShapeDelete(t *testing.T) {
+	calledUnnamed := false
+	calledCache := false
+	expected := &pgconn.StatementDescription{Name: "unnamed"}
+
+	cache := &preparedStatementCache{
+		Cache: &fakeStmtCache{getFn: func(ctx context.Context, sql string) (*pgconn.StatementDescription, error) {
+			calledCache = true
+			return nil, nil
+		}},
+		prepareUnnamed: func(ctx context.Context, sql string) (*pgconn.StatementDescription, error) {
+			calledUnnamed = true
+			return expected, nil
+		},
+	}
+
+	got, err := cache.Get(context.Background(), "DELETE from search.resources WHERE cluster=$1 AND uid IN ($2,$3)")
+	assert.NoError(t, err)
+	assert.True(t, calledUnnamed)
+	assert.False(t, calledCache)
+	assert.Equal(t, expected, got)
+}
+
+func Test_preparedStatementCache_Get_usesCacheForFixedShapeDelete(t *testing.T) {
+	calledUnnamed := false
+	calledCache := false
+	expected := &pgconn.StatementDescription{Name: "cached"}
+
+	cache := &preparedStatementCache{
+		Cache: &fakeStmtCache{getFn: func(ctx context.Context, sql string) (*pgconn.StatementDescription, error) {
+			calledCache = true
+			return expected, nil
+		}},
+		prepareUnnamed: func(ctx context.Context, sql string) (*pgconn.StatementDescription, error) {
+			calledUnnamed = true
+			return nil, nil
+		},
+	}
+
+	got, err := cache.Get(context.Background(), "DELETE from search.edges WHERE sourceid=$1 AND destid=$2 AND edgetype=$3 AND cluster=$4")
+	assert.NoError(t, err)
+	assert.False(t, calledUnnamed)
+	assert.True(t, calledCache)
+	assert.Equal(t, expected, got)
+}
 
 func Test_initializeTables(t *testing.T) {
 	// Prepare a mock DAO instance
