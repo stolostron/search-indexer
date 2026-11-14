@@ -12,8 +12,8 @@ import (
 	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgconn/stmtcache"
-	"github.com/jackc/pgx/v4"
-	pgxpool "github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	pgxpool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stolostron/search-indexer/pkg/config"
 	"k8s.io/klog/v2"
 )
