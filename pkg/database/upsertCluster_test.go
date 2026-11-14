@@ -14,7 +14,7 @@ import (
 	"github.com/driftprogramming/pgxpoolmock"
 	"github.com/golang/mock/gomock"
 	"github.com/jackc/pgconn"
-	pgx "github.com/jackc/pgx/v4"
+	pgx "github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock"
 	"github.com/stolostron/search-indexer/pkg/model"
 )

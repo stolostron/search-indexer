@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	pgx "github.com/jackc/pgx/v4"
+	pgx "github.com/jackc/pgx/v5"
 	"github.com/stolostron/search-indexer/pkg/testutils"
 
 	"github.com/stretchr/testify/assert"
