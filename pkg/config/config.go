@@ -34,7 +34,8 @@ type Config struct {
 	DBUser                 string
 	DetailedMetrics        bool // Enable detailed metrics. Default: false
 	DevelopmentMode        bool
-	HTTPTimeout            int // Timeout for http server connections. Default: 5 min
+	ExternalDBReaderUser   string // Role granted read-only access to the search tables. Empty: use built-in roles.
+	HTTPTimeout            int    // Timeout for http server connections. Default: 5 min
 	KubeClient             *kubernetes.Clientset
 	KubeConfigPath         string
 	LargeRequestLimit      int // Max number of large concurrent requests. Used to help control memory spikes
@@ -68,11 +69,14 @@ func new() *Config {
 		DBPort:              getEnvAsInt("DB_PORT", 5432),
 		DBUser:              getEnv("DB_USER", ""),
 		DetailedMetrics:     getEnvAsBool("ENABLE_DETAILED_METRICS", false),
-		DevelopmentMode:     DEVELOPMENT_MODE,                       // Don't read ENV. See config_development.go to enable.
-		HTTPTimeout:         getEnvAsInt("HTTP_TIMEOUT", 5*60*1000), // 5 min
-		KubeConfigPath:      getKubeConfigPath(),
-		LargeRequestLimit:   getEnvAsInt("LARGE_REQUEST_LIMIT", 5),
-		LargeRequestSize:    getEnvAsInt("LARGE_REQUEST_SIZE", 1024*1024*20), // 20 MB
+		DevelopmentMode:     DEVELOPMENT_MODE, // Don't read ENV. See config_development.go to enable.
+		// Set by search-v2-operator from the external PostgreSQL Secret's reader-user key.
+		// Only present when Search is backed by an external PostgreSQL instance.
+		ExternalDBReaderUser: getEnv("EXTERNAL_DB_READER_USER", ""),
+		HTTPTimeout:          getEnvAsInt("HTTP_TIMEOUT", 5*60*1000), // 5 min
+		KubeConfigPath:       getKubeConfigPath(),
+		LargeRequestLimit:    getEnvAsInt("LARGE_REQUEST_LIMIT", 5),
+		LargeRequestSize:     getEnvAsInt("LARGE_REQUEST_SIZE", 1024*1024*20), // 20 MB
 		// Use 5 min for delete cluster activities and 30 seconds for db reconnect retry
 		MaxBackoffMS:           getEnvAsInt("MAX_BACKOFF_MS", 5*60*1000), // 5 min
 		PodName:                getEnv("POD_NAME", "local-dev"),

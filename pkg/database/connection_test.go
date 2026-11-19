@@ -5,12 +5,14 @@ package database
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgconn/stmtcache"
 	"github.com/pashagolub/pgxmock"
+	"github.com/stolostron/search-indexer/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,9 +39,9 @@ func (f *fakeStmtCache) Mode() int { return stmtcache.ModePrepare }
 
 func Test_shouldUseUnnamedPrepare(t *testing.T) {
 	tests := []struct {
-		name  string
-		sql   string
-		want  bool
+		name string
+		sql  string
+		want bool
 	}{
 		{
 			name: "resource delete with in list",
@@ -139,6 +141,37 @@ func Test_initializeTables(t *testing.T) {
 	// Execute function test.
 	dao.InitializeTables(context.Background())
 
+}
+
+// notAGrantStatement matches the schema, table and index SQL that Test_initializeTables
+// already covers, so that any GRANT this test did not explicitly expect is reported by
+// gomock as an unexpected call.
+type notAGrantStatement struct{}
+
+func (notAGrantStatement) Matches(x interface{}) bool {
+	sql, ok := x.(string)
+	return ok && !strings.HasPrefix(sql, "GRANT ") && !strings.HasPrefix(sql, "ALTER DEFAULT PRIVILEGES")
+}
+
+func (notAGrantStatement) String() string { return "a non-GRANT statement" }
+
+// Verify that external grants quote the configured reader role and skip built-in grants.
+func Test_initializeTables_externalReaderRole(t *testing.T) {
+	original := config.Cfg.ExternalDBReaderUser
+	config.Cfg.ExternalDBReaderUser = `search-reader"; DROP SCHEMA search CASCADE --`
+	defer func() { config.Cfg.ExternalDBReaderUser = original }()
+
+	// pgx.Identifier escapes the embedded quote and wraps the whole name, so the injected
+	// statement stays inside the identifier instead of terminating it.
+	quoted := `"search-reader""; DROP SCHEMA search CASCADE --"`
+
+	dao, mockPool := buildMockDAO(t)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT USAGE ON SCHEMA search TO "+quoted)).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.resources TO "+quoted)).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.edges TO "+quoted)).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(), notAGrantStatement{}).Return(nil, nil).AnyTimes()
+
+	dao.InitializeTables(context.Background())
 }
 
 func Test_checkErrorAndRollback(t *testing.T) {

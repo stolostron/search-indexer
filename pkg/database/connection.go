@@ -212,6 +212,24 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 		"CREATE INDEX IF NOT EXISTS edges_cluster_idx ON search.edges USING btree (cluster)")
 	checkError(err, "Error creating index on search.edges key cluster.")
 
+	// Grant read access to the reader configured for external PostgreSQL.
+	if reader := config.Cfg.ExternalDBReaderUser; reader != "" {
+		// The role name comes from a customer-provided Secret and cannot be a bind parameter,
+		// so quote it as an identifier rather than interpolating it raw.
+		role := pgx.Identifier{reader}.Sanitize()
+
+		_, err = dao.pool.Exec(ctx, "GRANT USAGE ON SCHEMA search TO "+role)
+		checkError(err, "Error granting usage on schema search to the external reader role.")
+
+		_, err = dao.pool.Exec(ctx, "GRANT SELECT ON search.resources TO "+role)
+		checkError(err, "Error granting select on search.resources to the external reader role.")
+
+		_, err = dao.pool.Exec(ctx, "GRANT SELECT ON search.edges TO "+role)
+		checkError(err, "Error granting select on search.edges to the external reader role.")
+
+		return
+	}
+
 	//GRANT USAGE ON SCHEMA search TO search_api_ro, search_mcp_ro;
 	_, err = dao.pool.Exec(ctx,
 		"GRANT USAGE ON SCHEMA search TO search_api_ro, search_mcp_ro")
