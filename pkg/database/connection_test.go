@@ -169,6 +169,9 @@ func Test_initializeTables_externalReaderRole(t *testing.T) {
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT USAGE ON SCHEMA search TO "+quoted)).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.resources TO "+quoted)).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), gomock.Eq("GRANT SELECT ON search.edges TO "+quoted)).Return(nil, nil)
+	mockPool.EXPECT().Exec(gomock.Any(),
+		gomock.Eq("ALTER DEFAULT PRIVILEGES IN SCHEMA search GRANT SELECT ON TABLES TO "+quoted),
+	).Return(nil, nil)
 	mockPool.EXPECT().Exec(gomock.Any(), notAGrantStatement{}).Return(nil, nil).AnyTimes()
 
 	dao.InitializeTables(context.Background())

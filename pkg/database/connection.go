@@ -227,6 +227,10 @@ func (dao *DAO) InitializeTables(ctx context.Context) {
 		_, err = dao.pool.Exec(ctx, "GRANT SELECT ON search.edges TO "+role)
 		checkError(err, "Error granting select on search.edges to the external reader role.")
 
+		_, err = dao.pool.Exec(ctx,
+			"ALTER DEFAULT PRIVILEGES IN SCHEMA search GRANT SELECT ON TABLES TO "+role)
+		checkError(err, "Error granting default select on search tables to the external reader role.")
+
 		return
 	}
 
