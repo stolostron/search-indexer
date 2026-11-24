@@ -54,8 +54,8 @@ github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
-github.com/doug-martin/goqu/v9 v9.25.0 h1:g8zy34MwS1Q/RcEnY/9wB21xv9AQQXfE0mSlWmwsVtI=
-github.com/doug-martin/goqu/v9 v9.25.0/go.mod h1:N2bFjEJdaSS63muKeblweBurK81jQ+WSGja8gT6ykL8=
+github.com/doug-martin/goqu/v9 v9.27.0 h1:eiAjkaQxpDf6aLechblYKxw4SA8Rgm9lDDMfvhR6mHg=
+github.com/doug-martin/goqu/v9 v9.27.0/go.mod h1:N2bFjEJdaSS63muKeblweBurK81jQ+WSGja8gT6ykL8=
 github.com/driftprogramming/pgxpoolmock v1.1.0 h1:gLTxRYerNxz3y1iUQYQlZwIo4lgvgLOGx/qUcjOsG3A=
 github.com/driftprogramming/pgxpoolmock v1.1.0/go.mod h1:Uq6x6grXIh5FsovGWHolC33tGBOPV3fUg6lUKEXZ0dQ=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
