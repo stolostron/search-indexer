@@ -15,7 +15,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/jackc/pgconn"
 	pgx "github.com/jackc/pgx/v4"
-	"github.com/pashagolub/pgxmock"
+	"github.com/pashagolub/pgxmock/v5"
 	"github.com/stolostron/search-indexer/pkg/model"
 )
 

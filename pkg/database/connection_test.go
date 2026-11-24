@@ -10,7 +10,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgconn/stmtcache"
-	"github.com/pashagolub/pgxmock"
+	"github.com/pashagolub/pgxmock/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,9 +37,9 @@ func (f *fakeStmtCache) Mode() int { return stmtcache.ModePrepare }
 
 func Test_shouldUseUnnamedPrepare(t *testing.T) {
 	tests := []struct {
-		name  string
-		sql   string
-		want  bool
+		name string
+		sql  string
+		want bool
 	}{
 		{
 			name: "resource delete with in list",
