@@ -42,9 +42,7 @@ func main() {
 	dao := database.NewDAO(nil)
 	dao.InitializeTables(ctx)
 
-	// Apply the operator-supplied init script, if one is mounted. This must complete before
-	// sync starts: the script sets up objects the Indexer and the API depend on, and running
-	// against a half-initialized database would surface as confusing downstream failures.
+	// Apply the operator-supplied init script, if one is mounted.
 	if err := dao.RunPostgresInitScript(ctx); err != nil {
 		klog.Fatal(err)
 	}

@@ -15,8 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// A script shaped like the one the operator mounts: several statements and a dollar-quoted
-// PL/pgSQL body. It is sent verbatim in a single Exec, so the test asserts on it verbatim.
+// Multi-statement SQL fixture with a dollar-quoted PL/pgSQL body.
 const testInitScript = `CREATE SCHEMA IF NOT EXISTS search;
 DO $$
 BEGIN
@@ -27,7 +26,6 @@ END
 $$;
 `
 
-// writeInitScript writes a script to a temporary file and points the package at it.
 func writeInitScript(t *testing.T, contents string) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "postgresql.sql")
@@ -37,7 +35,7 @@ func writeInitScript(t *testing.T, contents string) {
 	setInitScriptPath(t, path)
 }
 
-// setInitScriptPath overrides the mounted script path and restores it when the test ends.
+// Override the script path for the duration of the test.
 func setInitScriptPath(t *testing.T, path string) {
 	t.Helper()
 	original := postgresInitScriptPath
@@ -55,8 +53,7 @@ func newMockTx(t *testing.T) pgxmock.PgxConnIface {
 	return mockConn
 }
 
-// boundedContext matches a context carrying a deadline, i.e. one that postgresInitTimeout
-// has been applied to.
+// boundedContext matches a context with a deadline.
 type boundedContext struct{}
 
 func (boundedContext) Matches(x interface{}) bool {
@@ -70,8 +67,6 @@ func (boundedContext) Matches(x interface{}) bool {
 
 func (boundedContext) String() string { return "a context with a deadline" }
 
-// The built-in PostgreSQL case: no script is mounted, so startup must not touch the database.
-// buildMockDAO fails the test on any unexpected call, which is the assertion here.
 func Test_RunPostgresInitScript_absentFileIsSkipped(t *testing.T) {
 	setInitScriptPath(t, filepath.Join(t.TempDir(), "does-not-exist.sql"))
 
@@ -88,21 +83,17 @@ func Test_RunPostgresInitScript_emptyFileIsSkipped(t *testing.T) {
 	assert.NoError(t, dao.RunPostgresInitScript(context.Background()))
 }
 
-// The script is taken under the advisory lock and committed as one transaction.
 func Test_RunPostgresInitScript_appliesScriptInOneTransaction(t *testing.T) {
 	writeInitScript(t, testInitScript)
 
 	dao, mockPool := buildMockDAO(t)
 	mockConn := newMockTx(t)
-	// boundedContext asserts the timeout is applied: the transaction must not inherit the
-	// caller's unbounded context, or a blocked DDL lock would stall startup forever.
+
 	mockPool.EXPECT().BeginTx(boundedContext{}, pgx.TxOptions{}).Return(mockConn, nil)
 
 	mockConn.ExpectExec(regexp.QuoteMeta("SELECT pg_advisory_xact_lock($1)")).
 		WithArgs(postgresInitLockID).
 		WillReturnResult(pgxmock.NewResult("SELECT", 1))
-	// Sent as one statement with no bind parameters, which is what routes it through the
-	// simple query protocol and lets the multi-statement script run.
 	mockConn.ExpectExec(regexp.QuoteMeta(testInitScript)).
 		WillReturnResult(pgxmock.NewResult("CREATE", 0))
 	mockConn.ExpectCommit()
@@ -111,8 +102,6 @@ func Test_RunPostgresInitScript_appliesScriptInOneTransaction(t *testing.T) {
 	assert.NoError(t, mockConn.ExpectationsWereMet())
 }
 
-// A failing script must roll back and return, so main.go exits before sync starts rather
-// than serving traffic against a half-initialized database.
 func Test_RunPostgresInitScript_sqlErrorRollsBackAndSurfaces(t *testing.T) {
 	writeInitScript(t, testInitScript)
 
@@ -134,14 +123,6 @@ func Test_RunPostgresInitScript_sqlErrorRollsBackAndSurfaces(t *testing.T) {
 	assert.NoError(t, mockConn.ExpectationsWereMet(), "the transaction must be rolled back")
 }
 
-// postgresInitTimeout firing mid-script must still roll back, so the advisory lock and the
-// ACCESS EXCLUSIVE lock on search.resources are released instead of being held until the
-// connection is reaped. rollbackPostgresInit issues the rollback on its own context for that
-// reason — a rollback sent on the expired context would never reach the server.
-//
-// This covers the control flow only: pgxmock ignores the context passed to Rollback, so it
-// cannot tell the two apart. The lock actually being released was verified against
-// PostgreSQL 16 by calling rollbackPostgresInit and polling pg_locks.
 func Test_RunPostgresInitScript_rollsBackWhenContextExpires(t *testing.T) {
 	writeInitScript(t, testInitScript)
 
@@ -152,8 +133,7 @@ func Test_RunPostgresInitScript_rollsBackWhenContextExpires(t *testing.T) {
 	mockConn.ExpectExec(regexp.QuoteMeta("SELECT pg_advisory_xact_lock($1)")).
 		WithArgs(postgresInitLockID).
 		WillReturnResult(pgxmock.NewResult("SELECT", 1))
-	// What pgx returns when the deadline lands while the script is running. The caller's
-	// context is left live: cancelling it here would race the lock Exec above instead.
+	// Simulate a timeout without cancelling the caller's context.
 	mockConn.ExpectExec(regexp.QuoteMeta(testInitScript)).WillReturnError(context.DeadlineExceeded)
 	mockConn.ExpectRollback()
 
@@ -163,8 +143,6 @@ func Test_RunPostgresInitScript_rollsBackWhenContextExpires(t *testing.T) {
 	assert.NoError(t, mockConn.ExpectationsWereMet(), "a timed-out script must still roll back")
 }
 
-// An unreadable file is a misconfiguration, not a reason to start: report it without
-// opening a transaction.
 func Test_RunPostgresInitScript_readErrorSurfaces(t *testing.T) {
 	setInitScriptPath(t, t.TempDir()) // a directory, so ReadFile fails with something other than ErrNotExist
 
