@@ -42,6 +42,11 @@ func main() {
 	dao := database.NewDAO(nil)
 	dao.InitializeTables(ctx)
 
+	// Apply the operator-supplied init script, if one is mounted.
+	if err := dao.RunPostgresInitScript(ctx); err != nil {
+		klog.Fatal(err)
+	}
+
 	// Start cluster sync.
 	go clustersync.ElectLeaderAndStart(ctx)
 
